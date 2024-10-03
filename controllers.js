@@ -41,9 +41,33 @@ const getMembers = async (req, res) => {
     }
 };
 
+// Fetch all active members
+const getAccolades = async (req, res) => {
+    try {
+        const result = await con.query('SELECT * FROM accolades WHERE accolade_status = $1', ['active']);
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Error fetching accolades:", error);
+        res.status(500).send("Error fetching accolades");
+    }
+};
+
+// Fetch all active members
+const getMemberCategory = async (req, res) => {
+    try {
+        const result = await con.query('SELECT * FROM category');
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Error fetching members category:", error);
+        res.status(500).send("Error fetching members category");
+    }
+};
+
 
 module.exports = {
     getRegions,
     getChapters,
-    getMembers
+    getMembers,
+    getAccolades,
+    getMemberCategory
 };
