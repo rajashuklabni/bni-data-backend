@@ -1,14 +1,18 @@
 const { Client } = require('pg');
 
 const con = new Client({
-    host: "localhost",
-    user: "postgres",
+    host: "dpg-cs0d2hi3esus739088bg-a.oregon-postgres.render.com",
+    user: "bni_dashboard_backend_database_user",
     port: 5432,
-    password: "princedjangoauth",
-    database: "bnibackend"
+    password: "8UGkmCixOpO5Gb89BSBI8aPPapoAW6fD",
+    database: "bni_dashboard_backend_database",
+    ssl: {
+        rejectUnauthorized: false // Required for secure connections to Render
+    }
 });
-
-con.connect().then(() => console.log("Connected to the database"));
+con.connect()
+  .then(() => console.log("Connected to Render PostgreSQL"))
+  .catch(err => console.error("Connection error", err.stack));
 
 const getRegions = async (req, res) => {
     try {

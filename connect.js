@@ -12,15 +12,21 @@ const upload = multer({ dest: 'uploads/' });
 
 app.use(express.json());
 
+// Replace with your Render database credentials
 const con = new Client({
-    host: "localhost",
-    user: "postgres",
+    host: "dpg-cs0d2hi3esus739088bg-a.oregon-postgres.render.com",
+    user: "bni_dashboard_backend_database_user",
     port: 5432,
-    password: "princedjangoauth",
-    database: "bnibackend"
+    password: "8UGkmCixOpO5Gb89BSBI8aPPapoAW6fD",
+    database: "bni_dashboard_backend_database",
+    ssl: {
+        rejectUnauthorized: false // Required for secure connections to Render
+    }
 });
 
-con.connect().then(() => console.log("Connected"));
+con.connect()
+  .then(() => console.log("Connected to Render PostgreSQL"))
+  .catch(err => console.error("Connection error", err.stack));
 
 app.get('/upload', (req, res) => {
     res.sendFile(path.join(__dirname, 'upload.html')); // Serves the HTML form
