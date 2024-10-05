@@ -13,12 +13,25 @@ const upload = multer({ dest: 'uploads/' });
 
 app.use(express.json());
 
+const allowedOrigins = [
+    'https://bni-data-backend.onrender.com', // Your front-end URL
+    'http://localhost:5173', // Add more allowed origins as needed
+];
+
 const corsOptions = {
-    origin: 'https://bni-data-backend.onrender.com', // Replace with your front-end URL
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true); // Allow the request
+        } else {
+            callback(new Error('Not allowed by CORS')); // Reject the request
+        }
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true, // Allow credentials (cookies, authorization headers)
     optionsSuccessStatus: 204 // Some legacy browsers choke on 204
 };
+
 
 // Use CORS with options
 app.use(cors(corsOptions));
