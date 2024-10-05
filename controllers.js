@@ -1,5 +1,6 @@
 const { Client } = require('pg');
 
+// Replace with your Render database credentials
 const con = new Client({
     host: "dpg-cs0d2hi3esus739088bg-a.oregon-postgres.render.com",
     user: "bni_dashboard_backend_database_user",
@@ -10,9 +11,8 @@ const con = new Client({
         rejectUnauthorized: false // Required for secure connections to Render
     }
 });
-con.connect()
-  .then(() => console.log("Connected to Render PostgreSQL"))
-  .catch(err => console.error("Connection error", err.stack));
+
+con.connect().then(() => console.log("Connected to the database"));
 
 const getRegions = async (req, res) => {
     try {

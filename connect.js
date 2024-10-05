@@ -5,12 +5,23 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const routes = require('./routes');
+const cors = require('cors')
 
 const app = express();
 
 const upload = multer({ dest: 'uploads/' });
 
 app.use(express.json());
+
+const corsOptions = {
+    origin: 'https://bni-data-backend.onrender.com', // Replace with your front-end URL
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true, // Allow credentials (cookies, authorization headers)
+    optionsSuccessStatus: 204 // Some legacy browsers choke on 204
+};
+
+// Use CORS with options
+app.use(cors(corsOptions));
 
 // Replace with your Render database credentials
 const con = new Client({
