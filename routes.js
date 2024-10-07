@@ -8,6 +8,6 @@ router.get('/members', getMembers);
 router.get('/accolades', getAccolades); 
 router.get('/memberCategory', getMemberCategory); 
 router.get('/company', getCompany); 
-router.get('/company', getSupplier); 
+router.get('/supplier', getSupplier); 
 
 module.exports = router;
