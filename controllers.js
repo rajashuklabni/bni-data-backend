@@ -112,6 +112,18 @@ const getSupplies = async (req, res) => {
     }
 };
 
+// Fetch all active members
+const getEvents = async (req, res) => {
+    try {
+        const result = await con.query('SELECT * FROM events');
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Error fetching events:", error);
+        res.status(500).send("Error fetching events");
+    }
+};
+
+
 
 
 module.exports = {
@@ -123,5 +135,6 @@ module.exports = {
     getCompany,
     getSupplier,
     getInventory,
-    getSupplies
+    getSupplies,
+    getEvents
 };
