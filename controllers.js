@@ -89,6 +89,18 @@ const getSupplier = async (req, res) => {
     }
 };
 
+// Fetch all active members
+const getInventory = async (req, res) => {
+    try {
+        const result = await con.query('SELECT * FROM inventory');
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Error fetching inventory:", error);
+        res.status(500).send("Error fetching inventory");
+    }
+};
+
+
 
 module.exports = {
     getRegions,
@@ -97,5 +109,6 @@ module.exports = {
     getAccolades,
     getMemberCategory,
     getCompany,
-    getSupplier
+    getSupplier,
+    getInventory
 };
