@@ -104,7 +104,7 @@ const getInventory = async (req, res) => {
 // Fetch all active members
 const getSupplies = async (req, res) => {
     try {
-        const result = await con.query('SELECT * FROM supplied');
+        const result = await con.query('SELECT * FROM supplies');
         res.json(result.rows);
     } catch (error) {
         console.error("Error fetching supplies:", error);
