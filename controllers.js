@@ -123,9 +123,6 @@ const getEvents = async (req, res) => {
     }
 };
 
-
-
-
 module.exports = {
     getRegions,
     getChapters,

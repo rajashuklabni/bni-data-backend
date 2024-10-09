@@ -15,7 +15,9 @@ app.use(express.json());
 
 const allowedOrigins = [
     'https://bni-data-backend.onrender.com', // Your front-end URL
-    'http://localhost:5173', // Add more allowed origins as needed
+    'http://localhost:5173',
+    'http://127.0.0.1:5500/',
+    'http://127.0.0.1:5500', // Add more allowed origins as needed
 ];
 
 const corsOptions = {
