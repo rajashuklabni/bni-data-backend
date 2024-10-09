@@ -5,7 +5,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const routes = require('./routes');
-const cors = require('cors')
+const cors = require('cors');
+const { request } = require('http');
 
 const app = express();
 
@@ -141,7 +142,9 @@ app.post('/import-members', upload.single('file'), async (req, res) => {
 });
 
 app.use('/api', routes);
-
+app.get('/', (req, res)=>{
+    res.send("Server is running.")
+})
 app.listen(3000, () => {
     console.log("Server is running on port 3000");
 });
