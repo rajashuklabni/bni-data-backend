@@ -26,7 +26,7 @@ const getRegions = async (req, res) => {
 
 const getChapters = async (req, res) => {
     try {
-        const result = await con.query('SELECT * FROM chapter');
+        const result = await con.query('SELECT * FROM chapter ORDER BY chapter_name ASC');
         res.json(result.rows);
     } catch (error) {
         console.error("Error fetching chapters:", error);
