@@ -1,3 +1,5 @@
+
+
 const { Client } = require('pg');
 const express = require('express');
 const xlsx = require('xlsx');
@@ -7,7 +9,8 @@ const fs = require('fs');
 const routes = require('./routes');
 const cors = require('cors');
 const { request } = require('http');
-
+const dotEnv = require('dotenv')
+dotEnv.config();
 const app = express();
 
 const upload = multer({ dest: 'uploads/' });
@@ -21,7 +24,8 @@ const allowedOrigins = [
     'http://127.0.0.1:5500',
     'https://bni-dashboard-backend.vercel.app/*',
     'https://bni-dashboard-backend.vercel.app',
-    '*', // Add more allowed origins as needed
+    'https://bnipayments.nidmm.org',
+    'https://bnipayments.nidmm.org/'
 ];
 
 const corsOptions = {
@@ -144,6 +148,26 @@ app.post('/import-members', upload.single('file'), async (req, res) => {
 
 app.use('/api', routes);
 app.get('/', (req, res)=>{
+    res.send("Server is running.")
+})
+app.post('/generate-cashfree-session',async (req, res)=>{
+    const headers = {
+        'x-client-id': process.env.x_client_id,  // Replace with your client ID
+        'x-client-secret':process.env.x_client_secret,  // Replace with your client secret
+        'x-api-version':process.env.x_api_version,
+  // Include the headers for form data
+      };
+     
+      const data =req.body;
+      try {
+        console.log(data)
+        const res = await axios.post("https://sandbox.cashfree.com/pg/orders", data, { headers });
+        console.log(res.data);
+        res.status(201).json(res.data) // Handle the response data
+      } catch (error) {
+        console.error('Error:', error.response ? error.response.data : error.message);
+      }
+  
     res.send("Server is running.")
 })
 app.listen(3000, () => {

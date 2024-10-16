@@ -26,7 +26,7 @@ const getRegions = async (req, res) => {
 
 const getChapters = async (req, res) => {
     try {
-        const result = await con.query('SELECT * FROM chapter');
+        const result = await con.query('SELECT * FROM chapter ORDER BY chapter_name ASC');
         res.json(result.rows);
     } catch (error) {
         console.error("Error fetching chapters:", error);
@@ -123,6 +123,17 @@ const getEvents = async (req, res) => {
     }
 };
 
+// Fetch all active members
+const getMembershipFee = async (req, res) => {
+    try {
+        const result = await con.query('SELECT * FROM membership_fees');
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Error fetching membership fees:", error);
+        res.status(500).send("Error fetching membership fees");
+    }
+};
+
 module.exports = {
     getRegions,
     getChapters,
@@ -133,5 +144,6 @@ module.exports = {
     getSupplier,
     getInventory,
     getSupplies,
-    getEvents
+    getEvents,
+    getMembershipFee
 };
