@@ -134,6 +134,18 @@ const getMembershipFee = async (req, res) => {
     }
 };
 
+// Add a new membership fee
+const addMembershipFee = async (req, res) => {
+    const { years, fee } = req.body; // Assuming you're sending 'years' and 'fee' in the request body
+    try {
+        const result = await con.query('INSERT INTO membership_fees (years, fee) VALUES ($1, $2) RETURNING *', [years, fee]);
+        res.status(201).json(result.rows[0]); // Return the newly created fee
+    } catch (error) {
+        console.error("Error adding membership fee:", error);
+        res.status(500).send("Error adding membership fee");
+    }
+};
+
 module.exports = {
     getRegions,
     getChapters,
@@ -145,5 +157,6 @@ module.exports = {
     getInventory,
     getSupplies,
     getEvents,
-    getMembershipFee
+    getMembershipFee,
+    addMembershipFee
 };

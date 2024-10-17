@@ -25,7 +25,9 @@ const allowedOrigins = [
     'https://bni-dashboard-backend.vercel.app/*',
     'https://bni-dashboard-backend.vercel.app',
     'https://bnipayments.nidmm.org',
-    'https://bnipayments.nidmm.org/'
+    'https://bnipayments.nidmm.org/',
+    'http://localhost:3000/',
+    'http://localhost:3000'
 ];
 
 const corsOptions = {
