@@ -27,7 +27,9 @@ const allowedOrigins = [
     'https://bnipayments.nidmm.org',
     'https://bnipayments.nidmm.org/',
     'http://localhost:3000/',
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'https://bni-xq0f.onrender.com/',
+    'https://bni-xq0f.onrender.com'
 ];
 
 const corsOptions = {
