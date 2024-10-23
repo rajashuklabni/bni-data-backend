@@ -24,6 +24,213 @@ const getRegions = async (req, res) => {
     }
 };
 
+
+const addRegion = async (req, res) => {
+    const {
+      region_name,
+      contact_person,
+      contact_number,
+      email_id,
+      chapterDays,
+      chapterStatus,
+      chapterType,
+      accolades_config,  // This should be an array of accolade IDs
+      region_status,
+      mission,
+      vision,
+      region_logo,
+      one_time_registration_fee,
+      one_year_fee,
+      two_year_fee,
+      five_year_fee,
+      late_fees,
+      country,
+      state,
+      city,
+      street_address_line_1,
+      street_address_line_2,
+      social_facebook,
+      social_instagram,
+      social_linkedin,
+      social_youtube,
+      website_link,
+      region_launched_by,
+      date_of_publishing
+    } = req.body;
+
+    // Ensure accolades_config is handled as an array
+    const chapterDaysArray = Array.isArray(chapterDays) ? chapterDays : [];
+    const chapterStatusArray = Array.isArray(chapterStatus) ? chapterStatus : [];
+    const chapterTypeArray = Array.isArray(chapterType) ? chapterType : [];
+    const accoladesArray = Array.isArray(accolades_config) ? accolades_config : [];
+
+    // Validate region name
+    if (!region_name) {
+      return res.status(400).json({ message: "Region name is required" });
+    }
+
+    try {
+      const result = await con.query(
+        `INSERT INTO region (
+          region_name, contact_person, contact_number, email_id, days_of_chapter, region_status,
+          accolades_config, chapter_status, chapter_type, mission, vision, region_logo, 
+          one_time_registration_fee, one_year_fee, two_year_fee, five_year_fee, late_fees, 
+          country, state, city, street_address_line_1, street_address_line_2, social_facebook, 
+          social_instagram, social_linkedin, social_youtube, website_link, region_launched_by, 
+          date_of_publishing
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 
+          $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
+        ) RETURNING *`,
+        [
+          region_name,
+          contact_person,
+          contact_number,
+          email_id,
+          `{${chapterDaysArray.join(',')}}`, // Chapter days array
+          region_status,
+          `{${accoladesArray.join(',')}}`,  // Handle accolades as an array for PostgreSQL
+          `{${chapterStatusArray.join(',')}}`,  // Chapter status array
+          `{${chapterTypeArray.join(',')}}`,    // Chapter type array
+          mission,
+          vision,
+          region_logo,
+          one_time_registration_fee,
+          one_year_fee,
+          two_year_fee,
+          five_year_fee,
+          late_fees,
+          country,
+          state,
+          city,
+          street_address_line_1,
+          street_address_line_2,
+          social_facebook,
+          social_instagram,
+          social_linkedin,
+          social_youtube,
+          website_link,
+          region_launched_by,
+          date_of_publishing
+        ]
+      );
+
+      res.status(201).json({ message: "Region added successfully!", data: result.rows[0] });
+    } catch (error) {
+      console.error("Error adding region:", error);
+      res.status(500).send("Error adding region");
+    }
+};
+
+
+const addChapter = async (req, res) => {
+    const {
+        region_id,
+        chapter_name,
+        chapter_logo,
+        chapter_status,
+        chapter_membership_fee,
+        chapter_kitty_fees,
+        chapter_visitor_fees,
+        chapter_meeting_day,
+        one_time_registration_fee,
+        chapter_type,
+        eoi_link,
+        member_app_link,
+        meeting_hotel_name,
+        chapter_membership_fee_two_year,
+        chapter_membership_fee_five_year,
+        contact_number,
+        contact_person,
+        chapter_mission,
+        chapter_vision,
+        email_id,
+        country,
+        state,
+        city,
+        street_address_line,
+        postal_code,
+        chapter_facebook,
+        chapter_instagram,
+        chapter_linkedin,
+        chapter_youtube,
+        chapter_website,
+        date_of_publishing,
+        chapter_launched_by,
+        chapter_location_note,
+        chapter_late_fees
+    } = req.body;
+
+    // Validate required fields
+    if (!chapter_name || !region_id) {
+        return res.status(400).json({ message: "Chapter name and region ID are required." });
+    }
+
+    try {
+        const result = await con.query(
+            `INSERT INTO chapter (
+                region_id, chapter_name, chapter_logo, chapter_status, chapter_membership_fee,
+                chapter_kitty_fees, chapter_visitor_fees, chapter_meeting_day, one_time_registration_fee,
+                chapter_type, eoi_link, member_app_link, meeting_hotel_name,
+                chapter_membership_fee_two_year, chapter_membership_fee_five_year, contact_number,
+                contact_person, chapter_mission, chapter_vision, email_id, country, state, city,
+                street_address_line, postal_code, chapter_facebook, chapter_instagram,
+                chapter_linkedin, chapter_youtube, chapter_website, date_of_publishing,
+                chapter_launched_by, chapter_location_note, chapter_late_fees
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                $10, $11, $12, $13, $14, $15, $16,
+                $17, $18, $19, $20, $21, $22, $23,
+                $24, $25, $26, $27, $28, $29, $30,
+                $31, $32, $33, $34
+            ) RETURNING *`,
+            [
+                region_id,
+                chapter_name,
+                chapter_logo,
+                chapter_status,
+                chapter_membership_fee,
+                chapter_kitty_fees,
+                chapter_visitor_fees,
+                chapter_meeting_day,
+                one_time_registration_fee,
+                chapter_type,
+                eoi_link,
+                member_app_link,
+                meeting_hotel_name,
+                chapter_membership_fee_two_year,
+                chapter_membership_fee_five_year,
+                contact_number,
+                contact_person,
+                chapter_mission,
+                chapter_vision,
+                email_id,
+                country,
+                state,
+                city,
+                street_address_line,
+                postal_code,
+                chapter_facebook,
+                chapter_instagram,
+                chapter_linkedin,
+                chapter_youtube,
+                chapter_website,
+                date_of_publishing,
+                chapter_launched_by,
+                chapter_location_note,
+                chapter_late_fees
+            ]
+        );
+
+        res.status(201).json({ message: "Chapter added successfully!", data: result.rows[0] });
+    } catch (error) {
+        console.error("Error adding chapter:", error);
+        res.status(500).send("Error adding chapter");
+    }
+};
+
+
+
 const getChapters = async (req, res) => {
     try {
         const result = await con.query('SELECT * FROM chapter ORDER BY chapter_name ASC');
@@ -158,5 +365,7 @@ module.exports = {
     getSupplies,
     getEvents,
     getMembershipFee,
-    addMembershipFee
+    addMembershipFee,
+    addRegion,
+    addChapter
 };
