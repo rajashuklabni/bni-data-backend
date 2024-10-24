@@ -387,6 +387,18 @@ const getMemberCategory = async (req, res) => {
     }
 };
 
+// Fetch all active universal links
+const getUniversalLinks = async (req, res) => {
+    try {
+        const result = await con.query('SELECT * FROM universal_link WHERE status = $1', ['active']);
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Error fetching universal links:", error);
+        res.status(500).send("Error fetching universal links");
+    }
+};
+
+
 // Fetch all active members
 const getCompany = async (req, res) => {
     try {
@@ -481,5 +493,6 @@ module.exports = {
     addMembershipFee,
     addRegion,
     addChapter,
-    addMember
+    addMember,
+    getUniversalLinks
 };
