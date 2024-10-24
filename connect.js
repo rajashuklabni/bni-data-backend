@@ -150,6 +150,9 @@ app.post('/import-members', upload.single('file'), async (req, res) => {
     }
 });
 
+const paymentRoutes=require('./allRoutes/paymentRoute')
+app.use('/api',paymentRoutes)
+
 app.use('/api', routes);
 app.get('/', (req, res)=>{
     res.send("Server is running.")
