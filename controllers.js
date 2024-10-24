@@ -229,6 +229,119 @@ const addChapter = async (req, res) => {
     }
 };
 
+const addMember = async (req, res) => {
+    const {
+        member_first_name,
+        member_last_name,
+        member_date_of_birth,
+        member_phone_number,
+        member_alternate_mobile_number,
+        member_email_address,
+        address_pincode,
+        address_city,
+        address_state,
+        region_id,
+        chapter_id,
+        accolades_id,
+        category_id,
+        member_induction_date,
+        member_current_membership,
+        member_renewal_date,
+        member_gst_number,
+        member_company_name,
+        member_company_address,
+        member_company_state,
+        member_company_city,
+        member_photo,
+        member_category,
+        member_website,
+        member_company_logo,
+        member_facebook,
+        member_instagram,
+        member_linkedin,
+        member_youtube,
+        country,
+        street_address_line_1,
+        street_address_line_2,
+        gender,
+        notification_consent,
+        date_of_publishing,
+        member_sponsored_by,
+        member_status
+    } = req.body;
+
+    // Validate required fields
+    if (!member_first_name || !member_email_address || !region_id || !chapter_id) {
+        return res.status(400).json({ message: "Member first name, email address, region ID, and chapter ID are required." });
+    }
+
+    try {
+        const result = await con.query(
+            `INSERT INTO member (
+                member_first_name, member_last_name, member_date_of_birth, member_phone_number,
+                member_alternate_mobile_number, member_email_address, address_pincode,
+                address_city, address_state, region_id, chapter_id, accolades_id, category_id,
+                member_induction_date, member_current_membership, member_renewal_date, member_gst_number,
+                member_company_name, member_company_address, member_company_state, member_company_city,
+                member_photo, member_category, member_website, member_company_logo,
+                member_facebook, member_instagram, member_linkedin, member_youtube, country,
+                street_address_line_1, street_address_line_2, gender, notification_consent,
+                date_of_publishing, member_sponsored_by, member_status
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                $11, $12, $13, $14, $15, $16, $17, $18,
+                $19, $20, $21, $22, $23, $24, $25, $26,
+                $27, $28, $29, $30, $31, $32, $33, $34,
+                $35, $36, $37
+            ) RETURNING *`,
+            [
+                member_first_name,
+                member_last_name,
+                member_date_of_birth,
+                member_phone_number,
+                member_alternate_mobile_number,
+                member_email_address,
+                address_pincode,
+                address_city,
+                address_state,
+                region_id,
+                chapter_id,
+                accolades_id,
+                category_id,
+                member_induction_date,
+                member_current_membership,
+                member_renewal_date,
+                member_gst_number,
+                member_company_name,
+                member_company_address,
+                member_company_state,
+                member_company_city,
+                member_photo,
+                member_category,
+                member_website,
+                member_company_logo,
+                member_facebook,
+                member_instagram,
+                member_linkedin,
+                member_youtube,
+                country,
+                street_address_line_1,
+                street_address_line_2,
+                gender,
+                notification_consent,
+                date_of_publishing,
+                member_sponsored_by,
+                member_status
+            ]
+        );
+
+        res.status(201).json({ message: "Member added successfully!", data: result.rows[0] });
+    } catch (error) {
+        console.error("Error adding member:", error);
+        res.status(500).send("Error adding member");
+    }
+};
+
 
 
 const getChapters = async (req, res) => {
@@ -367,5 +480,6 @@ module.exports = {
     getMembershipFee,
     addMembershipFee,
     addRegion,
-    addChapter
+    addChapter,
+    addMember
 };
