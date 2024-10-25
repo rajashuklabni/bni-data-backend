@@ -1,17 +1,18 @@
 const axios=require('axios')
 
+const headers = {
+    'x-client-id': process.env.x_client_id,  // Replace with your client ID
+    'x-client-secret': process.env.x_client_secret,  // Replace with your client secret
+    'x-api-version': process.env.x_api_version,
+};
+
+// generate cashfree sessionId
 const sessionIdGenerator = async (req, res) => {
-  const headers = {
-      'x-client-id': process.env.x_client_id,  // Replace with your client ID
-      'x-client-secret': process.env.x_client_secret,  // Replace with your client secret
-      'x-api-version': process.env.x_api_version,
-  };
-
-  const data = req.body;
-  console.log("================",data)
-
+    const data= req.body; // Access the data directly
+    console.log(data,"================body=================");
   try {
-      const axiosResponse = await axios.post("https://sandbox.cashfree.com/pg/orders", data, { headers });
+      const axiosResponse = await axios.post(`${process.env.cashfree_testing_url}/pg/orders`, data, { headers });
+      console.log(axiosResponse.data,"=============session controller data")
       res.json(axiosResponse.data); // Handle the response data correctly
   } catch (error) {
       console.error('Error:', error.response ? error.response.data : error.message);
@@ -19,6 +20,27 @@ const sessionIdGenerator = async (req, res) => {
   }
 };
 
+const getOrderStatus = async (req, res) => {
+    const { order_id } = req.params; // Extract order_id from req.params
+  
+    try {
+      const getOrderData = await axios.get(
+        `${process.env.cashfree_testing_url}/pg/orders/${order_id}/payments`,
+        { headers } // Corrected axios method and header placement
+      );
+      
+      console.log(getOrderData); // Log the data property
+  
+      // Send the response back to the client
+      res.json(getOrderData.data);
+    } catch (error) {
+      console.error("Error fetching order data:", error.message);
+      res.status(500).json({ error: "Error fetching order data" }); // Send error response
+    }
+  };
+  
+
 module.exports = {
-   sessionIdGenerator
+   sessionIdGenerator,
+   getOrderStatus
   };

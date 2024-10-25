@@ -49,7 +49,8 @@ const corsOptions = {
 
 // Use CORS with options
 app.use(cors(corsOptions));
-
+app.use(express.json()); // For parsing application/json
+app.use(express.urlencoded({ extended: true }));
 // Replace with your Render database credentials
 const con = new Client({
     host: "dpg-cs0d2hi3esus739088bg-a.oregon-postgres.render.com",

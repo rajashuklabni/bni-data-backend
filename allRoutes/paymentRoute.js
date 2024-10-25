@@ -1,10 +1,11 @@
 const express=require('express');
 const router = express.Router();
-const { sessionIdGenerator } = require('../allControllers/paymentControllers/cashfreeSessionIdController');
+const { sessionIdGenerator,getOrderStatus } = require('../allControllers/paymentControllers/cashfreeSessionIdController');
 
 
 
-router.post('/generate-cashfree-session',sessionIdGenerator)
+router.post('/generate-cashfree-session',sessionIdGenerator);
+router.get('/getCashfreeOrderDataAndVerifyPayment/:order_id',getOrderStatus)
 
 
 module.exports = router;
