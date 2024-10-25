@@ -253,7 +253,6 @@ const addMember = async (req, res) => {
         member_company_state,
         member_company_city,
         member_photo,
-        member_category,
         member_website,
         member_company_logo,
         member_facebook,
@@ -283,7 +282,7 @@ const addMember = async (req, res) => {
                 address_city, address_state, region_id, chapter_id, accolades_id, category_id,
                 member_induction_date, member_current_membership, member_renewal_date, member_gst_number,
                 member_company_name, member_company_address, member_company_state, member_company_city,
-                member_photo, member_category, member_website, member_company_logo,
+                member_photo, member_website, member_company_logo,
                 member_facebook, member_instagram, member_linkedin, member_youtube, country,
                 street_address_line_1, street_address_line_2, gender, notification_consent,
                 date_of_publishing, member_sponsored_by, member_status
@@ -292,7 +291,7 @@ const addMember = async (req, res) => {
                 $11, $12, $13, $14, $15, $16, $17, $18,
                 $19, $20, $21, $22, $23, $24, $25, $26,
                 $27, $28, $29, $30, $31, $32, $33, $34,
-                $35, $36, $37
+                $35, $36
             ) RETURNING *`,
             [
                 member_first_name,
@@ -317,7 +316,6 @@ const addMember = async (req, res) => {
                 member_company_state,
                 member_company_city,
                 member_photo,
-                member_category,
                 member_website,
                 member_company_logo,
                 member_facebook,
@@ -386,6 +384,18 @@ const getMemberCategory = async (req, res) => {
         res.status(500).send("Error fetching members category");
     }
 };
+
+// Fetch all active universal links
+const getUniversalLinks = async (req, res) => {
+    try {
+        const result = await con.query('SELECT * FROM universal_link WHERE status = $1', ['active']);
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Error fetching universal links:", error);
+        res.status(500).send("Error fetching universal links");
+    }
+};
+
 
 // Fetch all active members
 const getCompany = async (req, res) => {
@@ -466,6 +476,18 @@ const addMembershipFee = async (req, res) => {
     }
 };
 
+// Fetch all active members
+const getPaymentGateway = async (req, res) => {
+    try {
+        const result = await con.query('SELECT * FROM paymentgateways');
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Error fetching payment gateway:", error);
+        res.status(500).send("Error fetching payment gateway");
+    }
+};
+
+
 module.exports = {
     getRegions,
     getChapters,
@@ -481,5 +503,7 @@ module.exports = {
     addMembershipFee,
     addRegion,
     addChapter,
-    addMember
+    addMember,
+    getUniversalLinks,
+    getPaymentGateway
 };
