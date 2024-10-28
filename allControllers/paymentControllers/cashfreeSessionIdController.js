@@ -10,18 +10,18 @@ const headers = {
 // Generate Cashfree sessionId and store order details in Orders table
 const sessionIdGenerator = async (req, res) => {
     const data = req.body;
-    console.log(data, "================body=================");
+    // console.log(data, "================body=================");
 
     try {
         const axiosResponse = await axios.post(`${process.env.cashfree_testing_url}/pg/orders`, data, { headers });
         const responseData = axiosResponse.data;
 
-        console.log(responseData, "=============session controller data");
+        // console.log(responseData, "=============session controller data");
 
         // Insert order details into Orders table
         const insertOrderData = async () => {
           try {
-              console.log(data.customer_details, "================== Customer Details =================="); // Log customer details
+              // console.log(data.customer_details, "================== Customer Details =================="); // Log customer details
       
               await db.query(
                   `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note)
@@ -57,7 +57,6 @@ const sessionIdGenerator = async (req, res) => {
           }
       };
       
-
         // Execute insertions
         await insertOrderData();
         res.json(responseData);
@@ -67,59 +66,79 @@ const sessionIdGenerator = async (req, res) => {
     }
 };
 
-// Get order status and store transaction details in Transactions table
 const getOrderStatus = async (req, res) => {
-    const { order_id } = req.params;
+  const { order_id } = req.params;
 
-    try {
-        const getOrderData = await axios.get(
-            `${process.env.cashfree_testing_url}/pg/orders/${order_id}/payments`,
-            { headers }
-        );
-
-        const transactions = getOrderData.data.payments;
-        console.log(getOrderData.data);
-
-        // Insert each transaction into Transactions table
-        const insertTransactionData = async (transaction) => {
-            try {
-                await db.query(
-                    `INSERT INTO Transactions (cf_payment_id, order_id, payment_gateway_id, payment_amount, payment_currency, payment_status, payment_message, payment_time, payment_completion_time, bank_reference, auth_id, payment_method, error_details, auth_details)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-                    [
-                        transaction.cf_payment_id,
-                        transaction.order_id,
-                        data.customer_details.payment_gateway_id, // Get payment_gateway_id from customer_details
-                        transaction.payment_amount,
-                        transaction.payment_currency,
-                        transaction.payment_status,
-                        transaction.payment_message,
-                        transaction.payment_time,
-                        transaction.payment_completion_time,
-                        transaction.bank_reference,
-                        transaction.auth_id,
-                        transaction.payment_method,
-                        transaction.error_details,
-                        transaction.authorization
-                    ]
-                );
-                console.log('Transaction data inserted successfully');
-            } catch (error) {
-                console.error('Error inserting transaction data:', error);
-            }
-        };
-
-        // Process and insert each transaction
-        for (const transaction of transactions) {
-            await insertTransactionData(transaction);
-        }
-
-        res.json(getOrderData.data);
-    } catch (error) {
-        console.error("Error fetching order data:", error.message);
-        res.status(500).json({ error: "Error fetching order data" });
+  try {
+    // Check if the order_id exists in the Orders table before proceeding
+    const orderCheck = await db.query('SELECT * FROM Orders WHERE order_id = $1', [order_id]);
+    if (orderCheck.rowCount === 0) {
+      console.error("Order ID does not exist in Orders table");
+      return res.status(400).json({ error: "Order ID does not exist in Orders table" });
     }
+
+    const getOrderData = await axios.get(
+      `${process.env.cashfree_testing_url}/pg/orders/${order_id}/payments`,
+      { headers }
+    );
+
+    const paymentDetails = getOrderData.data[0];
+
+    if (paymentDetails) {
+      const {
+        cf_payment_id,
+        payment_amount,
+        payment_currency,
+        payment_status,
+        payment_time,
+        payment_completion_time,
+        bank_reference,
+        auth_id,
+        payment_group,
+        payment_message = null,
+        error_details = null,
+        payment_gateway_details: { gateway_order_id, gateway_payment_id },
+        payment_method,
+      } = paymentDetails;
+
+      await db.query(
+        `INSERT INTO Transactions 
+          (cf_payment_id, order_id, payment_gateway_id, payment_amount, payment_currency, payment_status, 
+           payment_message, payment_time, payment_completion_time, bank_reference, auth_id, payment_method, 
+           error_details, gateway_order_id, gateway_payment_id, payment_group)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+        [
+          cf_payment_id,
+          order_id,
+          1, // Assume 1 for Cashfree
+          payment_amount,
+          payment_currency,
+          payment_status,
+          payment_message,
+          payment_time,
+          payment_completion_time,
+          bank_reference,
+          auth_id,
+          JSON.stringify(payment_method),
+          JSON.stringify(error_details),
+          gateway_order_id,
+          gateway_payment_id,
+          payment_group
+        ]
+      );
+
+      console.log('Transaction data inserted successfully');
+      res.json(getOrderData.data);
+    } else {
+      res.status(404).json({ error: "Payment details not found" });
+    }
+  } catch (error) {
+    console.error("Error fetching order data:", error.message);
+    res.status(500).json({ error: "Error fetching order data" });
+  }
 };
+
+
 
 module.exports = {
     sessionIdGenerator,

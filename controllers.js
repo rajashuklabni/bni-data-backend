@@ -498,6 +498,17 @@ const getOrders = async (req, res) => {
     }
 };
 
+// Fetch all active members
+const getTransactions = async (req, res) => {
+    try {
+        const result = await con.query('SELECT * FROM transactions');
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Error fetching transactions:", error);
+        res.status(500).send("Error fetching transactions");
+    }
+};
+
 
 module.exports = {
     getRegions,
@@ -517,5 +528,6 @@ module.exports = {
     addMember,
     getUniversalLinks,
     getPaymentGateway,
-    getOrders
+    getOrders,
+    getTransactions
 };
