@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getRegions, getChapters, getMembers, getAccolades, getMemberCategory, getCompany, getSupplier, getInventory, getSupplies, getEvents, getMembershipFee, addMembershipFee, addRegion, addChapter, addMember, getUniversalLinks, getPaymentGateway } = require('./controllers');
+const { getRegions, getChapters, getMembers, getAccolades, getMemberCategory, getCompany, getSupplier, getInventory, getSupplies, getEvents, getMembershipFee, addMembershipFee, addRegion, addChapter, addMember, getUniversalLinks, getPaymentGateway, getOrders, getTransactions } = require('./controllers');
 
 router.get('/regions', getRegions);
 router.post('/regions', addRegion);
@@ -19,6 +19,8 @@ router.get('/membershipFee', getMembershipFee);
 router.post('/membershipFee', addMembershipFee);
 router.get('/universalLinks', getUniversalLinks);
 router.get('/paymentGateway', getPaymentGateway);
+router.get('/allOrders', getOrders);
+router.get('/allTransactions', getTransactions);
 
 
 module.exports = router;
