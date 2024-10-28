@@ -9,10 +9,10 @@ const headers = {
 // generate cashfree sessionId
 const sessionIdGenerator = async (req, res) => {
     const data= req.body; // Access the data directly
-    console.log(data,"================body=================");
+  
   try {
       const axiosResponse = await axios.post(`${process.env.cashfree_testing_url}/pg/orders`, data, { headers });
-      console.log(axiosResponse.data,"=============session controller data")
+   
       res.json(axiosResponse.data); // Handle the response data correctly
   } catch (error) {
       console.error('Error:', error.response ? error.response.data : error.message);
@@ -29,7 +29,7 @@ const getOrderStatus = async (req, res) => {
         { headers } // Corrected axios method and header placement
       );
       
-      console.log(getOrderData); // Log the data property
+      console.log(getOrderData.data); // Log the data property
   
       // Send the response back to the client
       res.json(getOrderData.data);
