@@ -128,9 +128,12 @@ const getOrderStatus = async (req, res) => {
       );
 
       console.log('Transaction data inserted successfully');
+      // -----redirect code---
+      res.redirect(`${process.env.BASE_URL}`);
       res.json(getOrderData.data);
     } else {
       res.status(404).json({ error: "Payment details not found" });
+      res.redirect("https://bnipayments.nidmm.org");
     }
   } catch (error) {
     console.error("Error fetching order data:", error.message);
