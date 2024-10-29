@@ -29,7 +29,9 @@ const allowedOrigins = [
     'http://localhost:3000/',
     'http://localhost:3000',
     'https://bni-xq0f.onrender.com/',
-    'https://bni-xq0f.onrender.com'
+    'https://bni-xq0f.onrender.com',
+    'https://bni-management-software-frontend-reactjs.vercel.app/',
+    'https://bni-management-software-frontend-reactjs.vercel.app'
 ];
 
 const corsOptions = {
