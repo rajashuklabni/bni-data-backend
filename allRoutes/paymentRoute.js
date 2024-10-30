@@ -1,6 +1,6 @@
 const express=require('express');
 const router = express.Router();
-const { sessionIdGenerator,getOrderStatus } = require('../allControllers/paymentControllers/cashfreeSessionIdController');
+const { sessionIdGenerator,getOrderStatus,getpaymentData } = require('../allControllers/paymentControllers/cashfreeSessionIdController');
 
 
 

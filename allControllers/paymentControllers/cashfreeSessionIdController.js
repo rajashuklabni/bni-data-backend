@@ -9,36 +9,6 @@ const headers = {
 
 // Generate Cashfree sessionId and store order details in Orders table
 const sessionIdGenerator = async (req, res) => {
-<<<<<<< HEAD
-    const data= req.body; // Access the data directly
-  
-  try {
-      const axiosResponse = await axios.post(`${process.env.cashfree_testing_url}/pg/orders`, data, { headers });
-   
-      res.json(axiosResponse.data); // Handle the response data correctly
-  } catch (error) {
-      console.error('Error:', error.response ? error.response.data : error.message);
-      res.status(500).json({ error: 'Something went wrong try again!' }); // Send an error response
-  }
-};
-
-const getOrderStatus = async (req, res) => {
-    const { order_id } = req.params; // Extract order_id from req.params
-  
-    try {
-      const getOrderData = await axios.get(
-        `${process.env.cashfree_testing_url}/pg/orders/${order_id}/payments`,
-        { headers } // Corrected axios method and header placement
-      );
-      
-      console.log(getOrderData.data); // Log the data property
-  
-      // Send the response back to the client
-      res.json(getOrderData.data);
-    } catch (error) {
-      console.error("Error fetching order data:", error.message);
-      res.status(500).json({ error: "Error fetching order data" }); // Send error response
-=======
     const data = req.body;
     // console.log(data, "================body=================");
 
@@ -105,7 +75,6 @@ const getOrderStatus = async (req, res) => {
     if (orderCheck.rowCount === 0) {
       console.error("Order ID does not exist in Orders table");
       return res.status(400).json({ error: "Order ID does not exist in Orders table" });
->>>>>>> refs/remotes/origin/master
     }
 
     const getOrderData = await axios.get(
