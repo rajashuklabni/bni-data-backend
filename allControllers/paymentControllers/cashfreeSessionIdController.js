@@ -68,7 +68,8 @@ const sessionIdGenerator = async (req, res) => {
 
 const getOrderStatus = async (req, res) => {
   const { order_id } = req.params;
-  console.log(order_id);
+  console.log(order_id)
+
   try {
     // Check if the order_id exists in the Orders table before proceeding
     const orderCheck = await db.query('SELECT * FROM Orders WHERE order_id = $1', [order_id]);
@@ -129,9 +130,9 @@ const getOrderStatus = async (req, res) => {
       console.log(getOrderData.data)
 
       console.log('Transaction data inserted successfully');
-      res.redirect(`${process.env.baseUrl}/payment-status/${getOrderData.data.order_id}`)
+      res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`)
     } else {
-      res.redirect(`${process.env.baseUrl}/payment-status/${getOrderData.data.order_id}`)
+      res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`)
 
     }
   } catch (error) {
@@ -144,6 +145,8 @@ const getOrderStatus = async (req, res) => {
 
 const getPaymentStatus=async(req,res)=>{
     const { order_id } = req.params;
+    console.log("getting payment status from payment page")
+    console.log(order_id)
   
     try {
   
