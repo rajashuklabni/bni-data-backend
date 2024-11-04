@@ -68,7 +68,7 @@ const sessionIdGenerator = async (req, res) => {
 
 const getOrderStatus = async (req, res) => {
   const { order_id } = req.params;
-
+  console.log(order_id);
   try {
     // Check if the order_id exists in the Orders table before proceeding
     const orderCheck = await db.query('SELECT * FROM Orders WHERE order_id = $1', [order_id]);
