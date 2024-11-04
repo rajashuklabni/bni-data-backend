@@ -126,21 +126,46 @@ const getOrderStatus = async (req, res) => {
           payment_group
         ]
       );
+      console.log(getOrderData.data)
 
       console.log('Transaction data inserted successfully');
-      res.json(getOrderData.data);
+      res.redirect(`${process.env.baseUrl}/payment-status/${getOrderData.data.order_id}`)
     } else {
-      res.status(404).json({ error: "Payment details not found" });
+      res.redirect(`${process.env.baseUrl}/payment-status/${getOrderData.data.order_id}`)
+
     }
   } catch (error) {
     console.error("Error fetching order data:", error.message);
-    res.status(500).json({ error: "Error fetching order data" });
+    res.redirect(`${process.env.baseUrl}/payment-status/${getOrderData.data.order_id}`)
+
   }
 };
 
 
+const getPaymentStatus=async(req,res)=>{
+    const { order_id } = req.params;
+  
+    try {
+  
+      const getOrderData = await axios.get(
+        `${process.env.cashfree_testing_url}/pg/orders/${order_id}/payments`,
+        { headers }
+      );
+
+  
+
+        res.json(getOrderData.data);
+      } 
+    catch (error) {
+      console.error("Error fetching order data:", error.message);
+      res.status(500).json({ error: "Error fetching order data" });
+    }
+
+}
+
 
 module.exports = {
     sessionIdGenerator,
-    getOrderStatus
+    getOrderStatus,
+    getPaymentStatus
 };
