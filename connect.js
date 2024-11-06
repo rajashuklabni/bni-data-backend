@@ -76,7 +76,7 @@ app.get('/upload', (req, res) => {
 });
 
 const elvoiceRoutes = require("./allRoutes/eInvoiceRoutes");
-app.use("/api/einvoice", elvoiceRoutes);
+app.use("/einvoice", elvoiceRoutes);
 
 function excelDateToJSDate(excelDate) {
     const epoch = new Date(Date.UTC(1899, 11, 30));
