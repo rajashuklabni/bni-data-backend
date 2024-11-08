@@ -510,6 +510,16 @@ const getTransactions = async (req, res) => {
 };
 
 
+const getParticularMember=async(req,res)=>{
+    try {
+        const {member_id}=req.params();
+        console.log(member_id)
+    } catch (error) {
+        
+    }
+}
+
+
 module.exports = {
     getRegions,
     getChapters,
@@ -529,5 +539,6 @@ module.exports = {
     getUniversalLinks,
     getPaymentGateway,
     getOrders,
-    getTransactions
+    getTransactions,
+    getParticularMember
 };
