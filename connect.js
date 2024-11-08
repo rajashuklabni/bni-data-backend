@@ -33,8 +33,8 @@ const allowedOrigins = [
     'https://bni-management-software-frontend-reactjs.vercel.app/',
     'https://bni-management-software-frontend-reactjs.vercel.app',
     'http://103.169.86.3:5173/',
-    'http://103.169.86.3:5173',
-    'http://103.169.86.3:5173/'
+    'http://103.169.86.3:5173/',
+    'http://103.169.86.3:5173'
 ];
 
 const corsOptions = {
@@ -75,6 +75,9 @@ con.connect()
 app.get('/upload', (req, res) => {
     res.sendFile(path.join(__dirname, 'upload.html')); // Serves the HTML form
 });
+
+const elvoiceRoutes = require("./allRoutes/eInvoiceRoutes");
+app.use("/einvoice", elvoiceRoutes);
 
 function excelDateToJSDate(excelDate) {
     const epoch = new Date(Date.UTC(1899, 11, 30));
