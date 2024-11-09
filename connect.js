@@ -33,7 +33,8 @@ const allowedOrigins = [
     'https://bni-management-software-frontend-reactjs.vercel.app/',
     'https://bni-management-software-frontend-reactjs.vercel.app',
     'http://103.169.86.3:5173/',
-    'http://103.169.86.3:5173/'
+    'http://103.169.86.3:5173/',
+    'http://103.169.86.3:5173'
 ];
 
 const corsOptions = {
