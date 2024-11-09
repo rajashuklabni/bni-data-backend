@@ -5,6 +5,8 @@ const { getToken, generateIRN } = require("../allControllers/paymentControllers/
 
 // POST endpoint to generate an e-invoice
 router.post("/get-token", getToken);
-router.post("/generate-irn", generateIRN);
+router.post('/generate-irn', async (req, res) => {
+    await generateIRN(req, res);
+  });
 
 module.exports = router;

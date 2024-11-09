@@ -119,8 +119,11 @@ async function decryptData(authToken, sek) {
 
 // ******************************GENERATING IRN - E-INVOICE************************************
 
-async function generateIRN() {
+async function generateIRN(req, res) {
   try {
+
+    console.log("Received Request Body:", req.body);
+
     // Step 1: Retrieve stored tokens from the database
     const query = 'SELECT * FROM authTokens ORDER BY created_at DESC LIMIT 1';
     const result = await db.query(query);
@@ -149,8 +152,8 @@ async function generateIRN() {
         },
         "DocDtls": {
           "Typ": "INV",
-          "No": "DOC/022",
-          "Dt": "07/11/2024"
+          "No": "DOC/044",
+          "Dt": "08/11/2024"
         },
         "SellerDtls": {
           "Gstin": "07EVVPS9453K001",
@@ -353,7 +356,13 @@ async function generateIRN() {
     const decryptedData = await decryptIrnData(irnResponse.data.Data, sek);  // Ensure to pass the encrypted data properly
     console.log("Decrypted IRN Data:", decryptedData);
 
+    const response = decryptedData;
+    const decryptedDataa = JSON.parse(response); // parse the JSON data
 
+console.log("AckNo:", decryptedDataa.AckNo);
+console.log("AckDt:", decryptedDataa.AckDt);
+console.log("IRN:", decryptedDataa.Irn);
+console.log("QR Code:", decryptedDataa.SignedQRCode);
 
     return decryptedData;
 
@@ -381,8 +390,5 @@ async function decryptIrnData(encryptedData, sek) {
     throw new Error("Failed to decrypt IRN");
   }
 }
-
-
-
 
 module.exports = { getToken, generateIRN };

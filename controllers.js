@@ -24,6 +24,24 @@ const getRegions = async (req, res) => {
     }
 };
 
+const getMember = async (req, res) => {
+    const { member_id } = req.params; // Get member_id from route parameters
+
+    try {
+        // Use a parameterized query to safely insert member_id into the SQL statement
+        const result = await con.query('SELECT * FROM member WHERE member_id = $1', [member_id]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "Member not found" });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error("Error fetching member:", error);
+        res.status(500).send("Error fetching member");
+    }
+};
+
 
 const addRegion = async (req, res) => {
     const {
@@ -509,6 +527,17 @@ const getTransactions = async (req, res) => {
     }
 };
 
+// Fetch all active members
+const authTokens = async (req, res) => {
+    try {
+        const result = await con.query('SELECT * FROM authTokens');
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Error fetching Auth Tokens:", error);
+        res.status(500).send("Error fetching Auth Tokens");
+    }
+};
+
 
 module.exports = {
     getRegions,
@@ -529,5 +558,7 @@ module.exports = {
     getUniversalLinks,
     getPaymentGateway,
     getOrders,
-    getTransactions
+    getTransactions,
+    authTokens,
+    getMember
 };
