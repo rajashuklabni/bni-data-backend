@@ -3,6 +3,8 @@ const axios = require('axios');
 const db = require('../../database/db');
 const { Client } = require('pg');  // Import PostgreSQL client
 const crypto = require('crypto');
+const moment = require('moment');
+
 
 // Initialize Axios client with base URL and headers
 const apiClient = axios.create({
@@ -119,11 +121,46 @@ async function decryptData(authToken, sek) {
 
 // ******************************GENERATING IRN - E-INVOICE************************************
 
+let docNumber = 1;
+
 async function generateIRN(req, res) {
   try {
 
     console.log("Received Request Body:", req.body);
+    const order_id = req.body.orderId.order_id;
 
+    // Step 1: Check if a document number already exists for this order
+    const existingDocQuery = 'SELECT doc_no FROM DocumentNumbers WHERE order_id = $1';
+    const existingDocResult = await db.query(existingDocQuery, [order_id]);
+
+    let docNo;
+
+    if (existingDocResult.rows.length > 0) {
+      // If a document number already exists, use it
+      docNo = existingDocResult.rows[0].doc_no;
+    } else {
+      // Step 2: Get the latest doc_no from the database
+      const lastDocQuery = 'SELECT doc_no FROM DocumentNumbers ORDER BY created_at DESC LIMIT 1';
+      const lastDocResult = await db.query(lastDocQuery);
+
+      // Extract the numeric part of the last doc_no and increment it
+      let newDocNumber = 1;  // Start from 1 if no records exist
+
+      if (lastDocResult.rows.length > 0) {
+        const lastDocNo = lastDocResult.rows[0].doc_no;
+        const lastNumber = parseInt(lastDocNo.split('/')[1], 10);
+        newDocNumber = lastNumber + 1;
+      }
+
+       // Step 3: Generate the new doc_no with incremented number
+       docNo = `DOC/${newDocNumber}`;
+
+       // Step 4: Insert the new doc_no into DocumentNumbers table
+       const insertDocQuery = 'INSERT INTO DocumentNumbers (doc_no, order_id) VALUES ($1, $2)';
+       await db.query(insertDocQuery, [docNo, order_id]);
+     }
+
+     console.log("Generated Document Number:", docNo);
     // Step 1: Retrieve stored tokens from the database
     const query = 'SELECT * FROM authTokens ORDER BY created_at DESC LIMIT 1';
     const result = await db.query(query);
@@ -131,12 +168,65 @@ async function generateIRN(req, res) {
     if (result.rows.length === 0) {
       throw new Error("No tokens found in the database.");
     }
-
     const { authtoken, sek } = result.rows[0];  // Fetch the most recent token
+    const member_id = req.body.orderId.customer_id;
+    console.log(member_id);
+    const memberResponse = await axios.get(`https://bni-data-backend.onrender.com/api/getMember/${member_id}`);
+    const memberData = memberResponse.data;
+    const gstin = memberData.member_gst_number;
+
+    if (!memberData || memberData.length === 0) {
+      throw new Error("GST and address details not found.");
+    }
+
+    const stateCode = gstin.substring(0, 2);
+
+    // Populate address fields from member data
+    const buyerDetails = {
+      Addr1: memberData.member_company_address || "Address not found",
+      Addr2: memberData.member_company_address || "",
+      Loc: memberData.member_company_state || "GANDHINAGAR",
+      Pos: stateCode,
+      Pin: memberData.address_pincode || 110001,
+      Stcd: stateCode,  // Extract state code from GSTIN
+      Ph: req.body.orderId.customer_phone,
+      Em: req.body.orderId.customer_email,
+      LglNm: req.body.orderId.company,
+      TrdNm: req.body.orderId.company,
+      Gstin: memberData.member_gst_number
+    };
+
+    console.log(buyerDetails);
+
+    // Increment document number and format the date
+    const docDate = moment().format("DD/MM/YYYY");
+
+    // Calculate Base Price and UnitPrice
+    const orderAmount = parseFloat(req.body.orderId.order_amount);  // Total amount with GST
+    const gstAmount = parseFloat(req.body.orderId.tax);  // GST value
+    const basePrice = (orderAmount / 1.18).toFixed(2);  // Base Price calculation with two decimal places
+console.log("Calculated Base Price:", basePrice);
+
 
     // Print the authToken and sek to the console
     console.log("AuthToken:", authtoken);
     console.log("SEK:", sek);
+
+    // Calculate IGST, CGST, and SGST based on the buyer's state code
+let igstAmount = 0;
+let cgstAmount = 0;
+let sgstAmount = 0;
+
+// If the buyer's state code is the same as the seller (Delhi - state code 07), it's an intra-state transaction
+if (buyerDetails.Stcd === "07") {
+  cgstAmount = parseFloat(req.body.orderId.tax) / 2;  // Split tax equally between CGST and SGST
+  sgstAmount = parseFloat(req.body.orderId.tax) / 2;
+} else {
+  // For inter-state transaction, all tax goes to IGST
+  igstAmount = parseFloat(req.body.orderId.tax);
+}
+
+console.log(cgstAmount, sgstAmount, igstAmount);
 
     // Step 2: Encrypt the IRN data payload
     const payload = {
@@ -152,52 +242,22 @@ async function generateIRN(req, res) {
         },
         "DocDtls": {
           "Typ": "INV",
-          "No": "DOC/044",
-          "Dt": "08/11/2024"
+          "No": docNo,
+          "Dt": docDate
         },
         "SellerDtls": {
           "Gstin": "07EVVPS9453K001",
           "LglNm": "NIC company pvt ltd",
           "TrdNm": "NIC Industries",
           "Addr1": "5th block, kuvempu layout",
-          "Addr2": "kuvempu layout",
           "Loc": "GANDHINAGAR",
           "Pin": 110001,
           "Stcd": "07",
           "Ph": "9000000000",
           "Em": "abc@gmail.com"
         },
-        "BuyerDtls": {
-          "Gstin": "07EVVPS9453K3Z9",
-          "LglNm": "XYZ company pvt ltd",
-          "TrdNm": "XYZ Industries",
-          "Pos": "12",
-          "Addr1": "7th block, kuvempu layout",
-          "Addr2": "kuvempu layout",
-          "Loc": "GANDHINAGAR",
-          "Pin": 110001,
-          "Stcd": "07",
-          "Ph": "91111111111",
-          "Em": "xyz@yahoo.com"
-        },
-        "DispDtls": {
-          "Nm": "ABC company pvt ltd",
-          "Addr1": "7th block, kuvempu layout",
-          "Addr2": "kuvempu layout",
-          "Loc": "Banagalore",
-          "Pin": 110001,
-          "Stcd": "07"
-        },
-        "ShipDtls": {
-          "Gstin": "07EVVPS9453K3Z9",
-          "LglNm": "CBE company pvt ltd",
-          "TrdNm": "kuvempu layout",
-          "Addr1": "7th block, kuvempu layout",
-          "Addr2": "kuvempu layout",
-          "Loc": "Banagalore",
-          "Pin": 110001,
-          "Stcd": "07"
-        },
+        "BuyerDtls": buyerDetails,
+        "ShipDtls": buyerDetails,
         "ItemList": [
           {
             "SlNo": "1",
@@ -205,120 +265,33 @@ async function generateIRN(req, res) {
             "IsServc": "N",
             "HsnCd": "1001",
             "Barcde": "123456",
-            "Qty": 100.345,
-            "FreeQty": 10,
+            "Qty": 1,
             "Unit": "BAG",
-            "UnitPrice": 99.545,
-            "TotAmt": 9988.84,
-            "Discount": 10,
-            "PreTaxVal": 1,
-            "AssAmt": 9978.84,
-            "GstRt": 12.0,
-            "IgstAmt": 1197.46,
-            "CgstAmt": 0,
-            "SgstAmt": 0,
-            "CesRt": 5,
-            "CesAmt": 498.94,
-            "CesNonAdvlAmt": 10,
-            "StateCesRt": 12,
-            "StateCesAmt": 1197.46,
-            "StateCesNonAdvlAmt": 5,
-            "OthChrg": 10,
-            "TotItemVal": 12897.7,
-            "OrdLineRef": "3256",
-            "OrgCntry": "AG",
-            "PrdSlNo": "12345",
-            "BchDtls": {
-              "Nm": "123456",
-              "ExpDt": "01/08/2020",
-              "WrDt": "01/09/2020"
-            },
-            "AttribDtls": [
-              {
-                "Nm": "Rice",
-                "Val": "10000"
-              }
-            ]
+            "UnitPrice": basePrice,
+            "TotAmt": basePrice,
+            "Discount": 0,
+            "AssAmt": basePrice,
+            "GstRt": 18.0,
+            "IgstAmt": 0,
+            "CgstAmt": cgstAmount,
+            "SgstAmt": sgstAmount,
+            "TotItemVal": parseFloat(req.body.orderId.order_amount),
           }
         ],
         "ValDtls": {
-          "AssVal": 9978.84,
-          "CgstVal": 0,
-          "SgstVal": 0,
-          "IgstVal": 1197.46,
-          "CesVal": 508.94,
-          "StCesVal": 1202.46,
-          "Discount": 10,
-          "OthChrg": 20,
-          "RndOffAmt": 0.3,
-          "TotInvVal": 12908,
-          "TotInvValFc": 12897.7
+          "AssVal": basePrice,
+          "IgstVal":0,
+          "CgstVal": cgstAmount,
+          "SgstVal": sgstAmount,
+          "TotInvVal": parseFloat(req.body.orderId.order_amount)
         },
         "PayDtls": {
-          "Nm": "ABCDE",
+          "Nm": req.body.gatewayName,
           "AccDet": "5697389713210",
           "Mode": "Cash",
-          "FinInsBr": "SBIN11000",
           "PayTerm": "100",
-          "PayInstr": "Gift",
-          "CrTrn": "test",
-          "DirDr": "test",
-          "CrDay": 100,
-          "PaidAmt": 10000,
-          "PaymtDue": 5000
+          "PayInstr": req.body.orderId.payment_note,
         },
-        "RefDtls": {
-          "InvRm": "TEST",
-          "DocPerdDtls": {
-            "InvStDt": "01/08/2024",
-            "InvEndDt": "01/09/2024"
-          },
-          "PrecDocDtls": [
-            {
-              "InvNo": "DOC/002",
-              "InvDt": "01/11/2024",
-              "OthRefNo": "123456"
-            }
-          ],
-          "ContrDtls": [
-            {
-              "RecAdvRefr": "Doc/003",
-              "RecAdvDt": "01/11/2024",
-              "TendRefr": "Abc001",
-              "ContrRefr": "Co123",
-              "ExtRefr": "Yo456",
-              "ProjRefr": "Doc-456",
-              "PORefr": "Doc-789",
-              "PORefDt": "12/11/2024"
-            }
-          ]
-        },
-        "AddlDocDtls": [
-          {
-            "Url": "https://einv-apisandbox.nic.in",
-            "Docs": "Test Doc",
-            "Info": "Document Test"
-          }
-        ],
-        "ExpDtls": {
-          "ShipBNo": "A-248",
-          "ShipBDt": "01/11/2024",
-          "Port": "INABG1",
-          "RefClm": "N",
-          "ForCur": "AED",
-          "CntCode": "AE",
-          "ExpDuty": null
-        },
-        "EwbDtls": {
-          "TransId": "12AWGPV7107B1Z1",
-          "TransName": "XYZ EXPORTS",
-          "Distance": 100,
-          "TransDocNo": "DOC01",
-          "TransDocDt": "10/11/2024",
-          "VehNo": "ka123456",
-          "VehType": "R",
-          "TransMode": "1"
-        }
       }),
       key: sek
     };
@@ -363,6 +336,25 @@ console.log("AckNo:", decryptedDataa.AckNo);
 console.log("AckDt:", decryptedDataa.AckDt);
 console.log("IRN:", decryptedDataa.Irn);
 console.log("QR Code:", decryptedDataa.SignedQRCode);
+
+// Insert the decrypted IRN data into the einvoice table
+const insertEInvoiceQuery = `
+INSERT INTO einvoice (order_id, transaction_id, member_id, ack_no, ack_dt, irn, qrcode)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+`;
+
+const transaction_id = req.body.transactionId.transaction_id; // Assuming transaction_id is in the request body
+    await db.query(insertEInvoiceQuery, [
+      order_id,
+      transaction_id,
+      member_id,
+      decryptedDataa.AckNo,
+      decryptedDataa.AckDt,
+      decryptedDataa.Irn,
+      decryptedDataa.SignedQRCode
+    ]);
+
+    console.log("IRN Data saved to einvoice table");
 
     return decryptedData;
 
