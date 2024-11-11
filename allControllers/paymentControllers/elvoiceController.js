@@ -356,11 +356,24 @@ const transaction_id = req.body.transactionId.transaction_id; // Assuming transa
 
     console.log("IRN Data saved to einvoice table");
 
-    return decryptedData;
+    // Send success response to frontend
+    return res.status(200).json({
+      message: "IRN and QR code generated successfully",
+      data: {
+        ackNo: decryptedDataa.AckNo,
+        ackDate: decryptedDataa.AckDt,
+        irn: decryptedDataa.Irn,
+        qrCode: decryptedDataa.SignedQRCode
+      }
+    });
 
   } catch (error) {
     console.error("IRN Generation Error:", error.message);
-    throw new Error("Failed to generate IRN");
+    // Send error details to the frontend
+    return res.status(500).json({
+      message: "Failed to generate IRN",
+      error: error.message
+    });
   }
 }
 
