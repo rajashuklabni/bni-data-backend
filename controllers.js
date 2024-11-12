@@ -42,6 +42,43 @@ const getMember = async (req, res) => {
     }
 };
 
+const getChapter = async (req, res) => {
+    const { chapter_id } = req.params; // Get member_id from route parameters
+
+    try {
+        // Use a parameterized query to safely insert member_id into the SQL statement
+        const result = await con.query('SELECT * FROM chapter WHERE chapter_id = $1', [chapter_id]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "Chapter not found" });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error("Error fetching Chapter:", error);
+        res.status(500).send("Error fetching Chapter");
+    }
+};
+
+const getRegion = async (req, res) => {
+    const { region_id } = req.params; // Get member_id from route parameters
+
+    try {
+        // Use a parameterized query to safely insert member_id into the SQL statement
+        const result = await con.query('SELECT * FROM region WHERE region_id = $1', [region_id]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "Region not found" });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error("Error fetching Region:", error);
+        res.status(500).send("Error fetching Region");
+    }
+};
+
+
 const getEinvoice = async (req, res) => {
     const { order_id } = req.params; // Get member_id from route parameters
 
@@ -583,5 +620,7 @@ module.exports = {
     getTransactions,
     authTokens,
     getMember,
-    getEinvoice
+    getEinvoice,
+    getChapter,
+    getRegion
 };
