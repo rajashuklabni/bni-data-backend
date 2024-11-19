@@ -429,7 +429,7 @@ const getChapters = async (req, res) => {
 // Fetch all active members
 const getMembers = async (req, res) => {
     try {
-        const result = await con.query('SELECT * FROM member WHERE member_status = $1', ['active']);
+        const result = await con.query('SELECT * FROM member');
         res.json(result.rows);
     } catch (error) {
         console.error("Error fetching members:", error);
