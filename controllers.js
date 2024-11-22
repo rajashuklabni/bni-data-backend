@@ -16,7 +16,7 @@ con.connect().then(() => console.log("Connected to the database"));
 
 const getRegions = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM region");
+    const result = await con.query("SELECT * FROM region WHERE delete_status = 0");
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching regions:", error);
@@ -652,25 +652,122 @@ const updateRegion = async (req, res) => {
   const { region_id } = req.params; // Get region_id from URL parameter
   const regionData = req.body; // Get the updated data from the request body
 
-  try {
-    // Find the region by ID and update it with the new data
-    const updatedRegion = await Region.findByIdAndUpdate(
-      region_id,
-      regionData,
-      { new: true } // This option ensures the updated document is returned
-    );
+  console.log("Updating region with ID:", region_id);
+  console.log("Received data:", regionData);
 
-    if (!updatedRegion) {
+  try {
+    // Construct the SQL query for updating the region
+    const query = `
+      UPDATE region
+      SET
+        region_name = $1,
+        contact_person = $2,
+        contact_number = $3,
+        email_id = $4,
+        mission = $5,
+        vision = $6,
+        region_logo = $7,
+        region_status = $8,
+        one_time_registration_fee = $9,
+        one_year_fee = $10,
+        two_year_fee = $11,
+        five_year_fee = $12,
+        late_fees = $13,
+        country = $14,
+        state = $15,
+        city = $16,
+        street_address_line_1 = $17,
+        street_address_line_2 = $18,
+        postal_code = $19,
+        social_facebook = $20,
+        social_instagram = $21,
+        social_linkedin = $22,
+        social_youtube = $23,
+        website_link = $24,
+        date_of_publishing = $25,
+        region_launched_by = $26,
+        days_of_chapter = $27,
+        chapter_status = $28,
+        chapter_type = $29,
+        accolades_config = $30
+      WHERE region_id = $31
+      RETURNING *;`;
+
+    // Execute the query with the provided region data
+    const values = [
+      regionData.region_name,
+      regionData.contact_person,
+      regionData.contact_number,
+      regionData.email_id,
+      regionData.mission,
+      regionData.vision,
+      regionData.region_logo,
+      regionData.region_status,
+      regionData.one_time_registration_fee,
+      regionData.one_year_fee,
+      regionData.two_year_fee,
+      regionData.five_year_fee,
+      regionData.late_fees,
+      regionData.country,
+      regionData.state,
+      regionData.city,
+      regionData.street_address_line_1,
+      regionData.street_address_line_2,
+      regionData.postal_code,
+      regionData.social_facebook,
+      regionData.social_instagram,
+      regionData.social_linkedin,
+      regionData.social_youtube,
+      regionData.website_link,
+      regionData.date_of_publishing,
+      regionData.region_launched_by,
+      regionData.chapter_days,
+      regionData.chapter_status,
+      regionData.chapter_type,
+      regionData.accolades_config,
+      region_id, // Ensure the region_id is used for the WHERE clause
+    ];
+
+    const { rows } = await con.query(query, values);
+
+    if (rows.length === 0) {
+      console.error("Region not found:", region_id);
       return res.status(404).json({ message: "Region not found" });
     }
 
     // Return the updated region data
-    res.status(200).json(updatedRegion);
+    res.status(200).json(rows[0]);
   } catch (error) {
     console.error("Error updating region:", error);
     res.status(500).json({ message: "Error updating region" });
   }
 };
+
+const deleteRegion = async (req, res) => {
+
+  const { region_id } = req.params;
+
+  try {
+
+    const result = await con.query(
+      `UPDATE region SET delete_status = 1 WHERE region_id = $1 RETURNING *`, 
+      [region_id]
+  );
+  
+  if (result.rowCount > 0) {
+      res.status(200).json({ message: 'Region marked as deleted successfully' });
+  } else {
+      res.status(404).json({ message: 'Region not found' });
+  }
+
+  } catch (error) {
+
+    console.error('Error deleting region:', error);
+        res.status(500).json({ message: 'Error deleting region' });
+  }
+};
+
+
 
 
 module.exports = {
@@ -700,4 +797,5 @@ module.exports = {
   getRegion,
   getUniversalLink,
   updateRegion,
+  deleteRegion,
 };

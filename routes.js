@@ -27,6 +27,7 @@ const {
   getRegion,
   getUniversalLink,
   updateRegion,
+  deleteRegion,
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -55,6 +56,7 @@ router.get("/getChapter/:chapter_id", getChapter);
 router.get("/getRegion/:region_id", getRegion);
 router.get("/getUniversalLink/:id", getUniversalLink);
 router.put("/updateRegion/:region_id", updateRegion);
+router.put("/deleteRegion/:region_id", deleteRegion);
 
 
 module.exports = router;
