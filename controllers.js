@@ -648,6 +648,31 @@ const authTokens = async (req, res) => {
   }
 };
 
+const updateRegion = async (req, res) => {
+  const { region_id } = req.params; // Get region_id from URL parameter
+  const regionData = req.body; // Get the updated data from the request body
+
+  try {
+    // Find the region by ID and update it with the new data
+    const updatedRegion = await Region.findByIdAndUpdate(
+      region_id,
+      regionData,
+      { new: true } // This option ensures the updated document is returned
+    );
+
+    if (!updatedRegion) {
+      return res.status(404).json({ message: "Region not found" });
+    }
+
+    // Return the updated region data
+    res.status(200).json(updatedRegion);
+  } catch (error) {
+    console.error("Error updating region:", error);
+    res.status(500).json({ message: "Error updating region" });
+  }
+};
+
+
 module.exports = {
   getRegions,
   getChapters,
@@ -674,4 +699,5 @@ module.exports = {
   getChapter,
   getRegion,
   getUniversalLink,
+  updateRegion,
 };
