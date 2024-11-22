@@ -14,15 +14,28 @@ const con = new Client({
 
 con.connect().then(() => console.log("Connected to the database"));
 
+// Backend: Adjusted to filter based on query parameter
 const getRegions = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM region WHERE delete_status = 0");
-    res.json(result.rows);
+    const { filter } = req.query; // Get filter from query string (e.g., filter=deleted)
+
+    let query = "SELECT * FROM region WHERE delete_status = 0"; // Default query (non-deleted regions)
+    if (filter === 'deleted') {
+      query = "SELECT * FROM region WHERE delete_status = 1"; // Query for deleted regions
+    } else if (filter === 'inactive') {
+      query = "SELECT * FROM region WHERE region_status = 'inactive' AND delete_status = 0";
+    } else if (filter === 'active') {
+      query = "SELECT * FROM region WHERE region_status = 'active' AND delete_status = 0";
+    }
+
+    const result = await con.query(query); // Execute the query
+    res.json(result.rows); // Return filtered data
   } catch (error) {
     console.error("Error fetching regions:", error);
     res.status(500).send("Error fetching regions");
   }
 };
+
 
 const getMember = async (req, res) => {
   const { member_id } = req.params; // Get member_id from route parameters
