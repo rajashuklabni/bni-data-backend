@@ -486,6 +486,18 @@ const getChapters = async (req, res) => {
   }
 };
 
+const getUsers = async (req, res) => {
+  try {
+    const result = await con.query(
+      "SELECT * FROM users where is_active = 'true' "
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).send("Error fetching users");
+  }
+};
+
 // Fetch all active members
 const getMembers = async (req, res) => {
   try {
@@ -811,4 +823,5 @@ module.exports = {
   getUniversalLink,
   updateRegion,
   deleteRegion,
+  getUsers,
 };
