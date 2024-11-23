@@ -498,6 +498,30 @@ const getUsers = async (req, res) => {
   }
 };
 
+const getLoginOtps = async (req, res) => {
+  try {
+    const result = await con.query(
+      "SELECT * FROM otp_verification "
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching otp code:", error);
+    res.status(500).send("Error fetching otp code");
+  }
+};
+
+const getLoginLogs = async (req, res) => {
+  try {
+    const result = await con.query(
+      "SELECT * FROM login_logs "
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching login logs:", error);
+    res.status(500).send("Error fetching login logs");
+  }
+};
+
 // Fetch all active members
 const getMembers = async (req, res) => {
   try {
@@ -824,4 +848,6 @@ module.exports = {
   updateRegion,
   deleteRegion,
   getUsers,
+  getLoginOtps,
+  getLoginLogs,
 };
