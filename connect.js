@@ -1,5 +1,3 @@
-
-
 const { Client } = require('pg');
 const express = require('express');
 const xlsx = require('xlsx');
@@ -161,6 +159,10 @@ app.post('/import-members', upload.single('file'), async (req, res) => {
 
 const paymentRoutes=require('./allRoutes/paymentRoute')
 app.use('/api',paymentRoutes)
+
+// Routes for Auth and Payment
+const authRoutes = require('./allRoutes/authRoutes/authRoutes');
+app.use('/api', authRoutes);
 
 app.use('/api', routes);
 app.get('/', (req, res)=>{
