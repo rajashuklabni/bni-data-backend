@@ -1,6 +1,7 @@
 const { Client } = require('pg');
 const express = require('express');
 const xlsx = require('xlsx');
+const bodyParser = require('body-parser');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -14,6 +15,7 @@ const app = express();
 const upload = multer({ dest: 'uploads/' });
 
 app.use(express.json());
+app.use(bodyParser.raw({ type: 'application/json' }));
 
 const allowedOrigins = [
     'https://bni-data-backend.onrender.com', // Your front-end URL

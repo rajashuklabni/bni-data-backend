@@ -20,6 +20,7 @@ const headers = {
 
 app.use(bodyParser.raw({ type: 'application/json' }));
 
+
 // Generate Cashfree sessionId and store order details in Orders table
 const sessionIdGenerator = async (req, res) => {
     const data = req.body;
@@ -169,78 +170,44 @@ const getPaymentStatus=async(req,res)=>{
     }
 }
 
-
-app.use((req, res, next) => {
-  if (req.headers['content-type'] === 'application/json') {
-    rawBody(req, { encoding: 'utf8' })
-      .then((body) => {
-        req.rawBody = body; // Attach raw body to the request
-        next();
-      })
-      .catch((err) => {
-        console.error('Error parsing raw body:', err);
-        res.status(400).send('Invalid raw body');
-      });
-  } else {
-    next();
-  }
-});
-
-
-const verifyWebhookSignature = (signature, timestamp, rawPayload, secretKey) => {
+const getSettlementWebhook = async function (req, res) {
   try {
-    if (!rawPayload) throw new Error('Raw payload is undefined');
-
-    // Step 1: Create the signed payload
-    const signedPayload = `${timestamp}.${rawPayload}`; // Concatenate timestamp and raw payload
-
-    // Step 2: Generate HMAC-SHA256 hash
-    const hmac = crypto.createHmac('sha256', secretKey);
-    hmac.update(signedPayload);
-    const expectedSignature = hmac.digest('base64'); // Base64 encode the result
-
-    // Step 3: Compare the signatures
-    if (signature !== expectedSignature) {
-      throw new Error('Signature mismatch');
-    }
-
-    console.log('Signature verified successfully');
-    return true;
-  } catch (error) {
-    console.error('Error verifying signature:', error.message);
-    return false;
-  }
-};
-
-
-
-const getSettlementWebhook = async (req, res) => {
-  try {
-    const signature = req.headers["x-webhook-signature"];
     const timestamp = req.headers["x-webhook-timestamp"];
-    const rawPayload = req.rawBody; // Captured raw body
-    const secretKey = process.env.MERCHANT_SECRET_KEY;
+    const signature = req.headers["x-webhook-signature"];
+    const secretKey = process.env.cashfree_secret_key;
 
-    // Verify the signature
-    if (!verifyWebhookSignature(signature, timestamp, rawPayload, secretKey)) {
-      return res.status(400).json({ error: 'Signature verification failed' });
+    const generatedSignature = verifySignature(timestamp, req.body, secretKey);
+
+    if (signature === generatedSignature) {
+      console.log("Webhook signature verified successfully");
+
+      const webhookData = JSON.parse(req.body.toString());
+      console.log("Webhook data:", webhookData);
+
+      // Process webhook data here (e.g., update settlement status in DB)
+
+      res.status(200).send("Webhook processed successfully");
+    } else {
+      console.error("Invalid webhook signature");
+      res.status(400).send("Invalid webhook signature");
     }
-
-    console.log('Webhook payload:', req.body);
-
-    // Process webhook payload
-    const { transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference } = req.body;
-
-    // Database update logic here...
-
-    res.status(200).json({ success: true });
   } catch (err) {
-    console.error('Error processing webhook:', err.message);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Error in webhook processing:", err.message);
+    res.status(500).send("Error processing webhook");
   }
 };
 
 
+
+function verifySignature(timestamp, rawBody, secretKey) {
+  const signedPayload = timestamp + rawBody;
+  const genSignature = crypto
+    .createHmac('sha256', secretKey)
+    .update(signedPayload)
+    .digest("base64");
+
+  return genSignature;
+}
 
 
 module.exports = {
