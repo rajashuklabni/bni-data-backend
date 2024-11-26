@@ -169,65 +169,77 @@ const getPaymentStatus=async(req,res)=>{
     }
 }
 
-const getRawBody = async (req, res, next) => {
-  try {
-    const body = await rawBody(req, { encoding: false });  // Get raw body as a Buffer
-    req.rawBody = body;  // Store the raw body as Buffer
+
+app.use((req, res, next) => {
+  if (req.headers['content-type'] === 'application/json') {
+    rawBody(req, { encoding: 'utf8' })
+      .then((body) => {
+        req.rawBody = body; // Attach raw body to the request
+        next();
+      })
+      .catch((err) => {
+        console.error('Error parsing raw body:', err);
+        res.status(400).send('Invalid raw body');
+      });
+  } else {
     next();
-  } catch (err) {
-    console.error('Error processing raw body:', err);
-    res.status(500).json({ error: 'Error processing raw body' });
+  }
+});
+
+
+const verifyWebhookSignature = (signature, timestamp, rawPayload, secretKey) => {
+  try {
+    if (!rawPayload) throw new Error('Raw payload is undefined');
+
+    // Step 1: Create the signed payload
+    const signedPayload = `${timestamp}.${rawPayload}`; // Concatenate timestamp and raw payload
+
+    // Step 2: Generate HMAC-SHA256 hash
+    const hmac = crypto.createHmac('sha256', secretKey);
+    hmac.update(signedPayload);
+    const expectedSignature = hmac.digest('base64'); // Base64 encode the result
+
+    // Step 3: Compare the signatures
+    if (signature !== expectedSignature) {
+      throw new Error('Signature mismatch');
+    }
+
+    console.log('Signature verified successfully');
+    return true;
+  } catch (error) {
+    console.error('Error verifying signature:', error.message);
+    return false;
   }
 };
 
 
-app.use(getRawBody); // Add this middleware before any route
 
 const getSettlementWebhook = async (req, res) => {
   try {
     const signature = req.headers["x-webhook-signature"];
     const timestamp = req.headers["x-webhook-timestamp"];
-    const rawBodyContent = req.rawBody; // Raw body is now a Buffer
+    const rawPayload = req.rawBody; // Captured raw body
+    const secretKey = process.env.MERCHANT_SECRET_KEY;
 
-    // Verify the webhook signature using SDK
-    try {
-      Cashfree.PGVerifyWebhookSignature(signature, rawBodyContent, timestamp);
-      console.log('Signature verified successfully');
-    } catch (err) {
-      console.error('Webhook signature verification failed:', err.message);
+    // Verify the signature
+    if (!verifyWebhookSignature(signature, timestamp, rawPayload, secretKey)) {
       return res.status(400).json({ error: 'Signature verification failed' });
     }
 
-    // Process the webhook data
+    console.log('Webhook payload:', req.body);
+
+    // Process webhook payload
     const { transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference } = req.body;
 
-    console.log('Webhook received:', req.body);
+    // Database update logic here...
 
-    // Find the transaction in the database
-    const transaction = await db.query('SELECT * FROM transactions WHERE transaction_id = $1', [transaction_id]);
-
-    if (transaction.rowCount === 0) {
-      console.error(`Transaction ID ${transaction_id} not found.`);
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
-
-    // Update settlement status or insert if new
-    await db.query(
-      `INSERT INTO SettlementStatus (transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (transaction_id)
-       DO UPDATE SET settlement_status = $2, settlement_amount = $3, settlement_date = $4, settlement_reference = $5, updated_at = CURRENT_TIMESTAMP`,
-      [transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference]
-    );
-
-    console.log('Settlement status updated successfully');
     res.status(200).json({ success: true });
-
   } catch (err) {
     console.error('Error processing webhook:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
 
 
 
