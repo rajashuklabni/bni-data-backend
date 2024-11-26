@@ -1,6 +1,11 @@
 const axios = require('axios');
 const db = require('../../database/db');
-const crypto = require('crypto');
+const { Cashfree } = require('cashfree-pg');
+
+// Set up Cashfree SDK with environment variables
+Cashfree.XClientId = process.env.x_client_id;
+Cashfree.XClientSecret = process.env.x_client_secret;
+Cashfree.XEnvironment = Cashfree.Environment.SANDBOX; // Use SANDBOX for testing
 
 const headers = {
     'x-client-id': process.env.x_client_id,
@@ -157,22 +162,25 @@ const getPaymentStatus=async(req,res)=>{
     }
 }
 
-const getSettlementWebhook = async (req, res) => {
-  const data = req.body;
-  const signature = req.headers['x-cashfree-signature'];  // Assuming the signature is sent in the header
-  const secret = process.env.x_client_secret;
 
-  // Validate the signature
-  if (!validateCashfreeSignature(data, signature, secret)) {
-      console.error("Invalid signature, ignoring webhook");
-      return res.status(403).json({ error: "Invalid signature" });
+const getSettlementWebhook = async (req, res) => {
+  const rawBody = req.body;  // Get the raw request body
+  const signature = req.headers['x-webhook-signature'];  // Get the signature from headers
+  const timestamp = req.headers['x-webhook-timestamp'];  // Get the timestamp from headers
+
+  try {
+      // Validate the signature using Cashfree's method
+      Cashfree.PGVerifyWebhookSignature(signature, rawBody, timestamp);
+  } catch (err) {
+      console.error('Invalid signature, ignoring webhook:', err.message);
+      return res.status(403).json({ error: 'Invalid signature' });
   }
 
   // Respond immediately to Cashfree
   res.status(200).json({ success: true });
 
   try {
-      const { transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference } = data;
+      const { transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference } = req.body;
 
       const transaction = await db.query('SELECT * FROM transactions WHERE transaction_id = $1', [transaction_id]);
       if (transaction.rowCount === 0) {
@@ -195,15 +203,6 @@ const getSettlementWebhook = async (req, res) => {
   }
 };
 
-
-
-const validateCashfreeSignature = (payload, signature, secret) => {
-  const computedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(JSON.stringify(payload))
-      .digest('hex');
-  return computedSignature === signature;
-};
 
 module.exports = {
     sessionIdGenerator,
