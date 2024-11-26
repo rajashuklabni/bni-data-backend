@@ -65,4 +65,5 @@ router.get("/getLoginOtps", getLoginOtps);
 router.get("/getLoginLogs", getLoginLogs);
 
 
+
 module.exports = router;

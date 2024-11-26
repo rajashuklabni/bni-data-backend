@@ -1,5 +1,6 @@
 const axios = require('axios');
 const db = require('../../database/db');
+const crypto = require('crypto');
 
 const headers = {
     'x-client-id': process.env.x_client_id,
@@ -82,9 +83,7 @@ const getOrderStatus = async (req, res) => {
       `${process.env.cashfree_testing_url}/pg/orders/${order_id}/payments`,
       { headers }
     );
-
     const paymentDetails = getOrderData.data[0];
-
     if (paymentDetails) {
       const {
         cf_payment_id,
@@ -128,7 +127,6 @@ const getOrderStatus = async (req, res) => {
         ]
       );
       console.log(getOrderData.data)
-
       console.log('Transaction data inserted successfully');
       res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`)
     } else {
@@ -142,33 +140,74 @@ const getOrderStatus = async (req, res) => {
   }
 };
 
-
 const getPaymentStatus=async(req,res)=>{
     const { order_id } = req.params;
     console.log("getting payment status from payment page")
     console.log(order_id)
-  
     try {
-  
       const getOrderData = await axios.get(
         `${process.env.cashfree_testing_url}/pg/orders/${order_id}/payments`,
         { headers }
       );
-
-  
-
         res.json(getOrderData.data);
       } 
     catch (error) {
       console.error("Error fetching order data:", error.message);
       res.status(500).json({ error: "Error fetching order data" });
     }
-
 }
 
+const getSettlementWebhook = async (req, res) => {
+  const data = req.body;
+  const signature = req.headers['x-cashfree-signature'];  // Assuming the signature is sent in the header
+  const secret = process.env.x_client_secret;
+
+  // Validate the signature
+  if (!validateCashfreeSignature(data, signature, secret)) {
+      console.error("Invalid signature, ignoring webhook");
+      return res.status(403).json({ error: "Invalid signature" });
+  }
+
+  // Respond immediately to Cashfree
+  res.status(200).json({ success: true });
+
+  try {
+      const { transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference } = data;
+
+      const transaction = await db.query('SELECT * FROM transactions WHERE transaction_id = $1', [transaction_id]);
+      if (transaction.rowCount === 0) {
+          console.error(`Transaction ID ${transaction_id} not found.`);
+          return;
+      }
+
+      // Update settlement status or insert if new
+      await db.query(
+          `INSERT INTO SettlementStatus (transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (transaction_id)
+           DO UPDATE SET settlement_status = $2, settlement_amount = $3, settlement_date = $4, settlement_reference = $5, updated_at = CURRENT_TIMESTAMP`,
+          [transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference]
+      );
+
+      console.log('Settlement status updated successfully');
+  } catch (error) {
+      console.error('Error processing webhook:', error.message);
+  }
+};
+
+
+
+const validateCashfreeSignature = (payload, signature, secret) => {
+  const computedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(JSON.stringify(payload))
+      .digest('hex');
+  return computedSignature === signature;
+};
 
 module.exports = {
     sessionIdGenerator,
     getOrderStatus,
-    getPaymentStatus
+    getPaymentStatus,
+    getSettlementWebhook
 };
