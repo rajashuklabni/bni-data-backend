@@ -1,6 +1,10 @@
+const express = require('express');
+const bodyParser = require('body-parser');
 const axios = require('axios');
 const db = require('../../database/db');
 const { Cashfree } = require('cashfree-pg');
+const crypto = require('crypto');
+const app = express();
 
 // Set up Cashfree SDK with environment variables
 Cashfree.XClientId = process.env.x_client_id;
@@ -12,6 +16,8 @@ const headers = {
     'x-client-secret': process.env.x_client_secret,
     'x-api-version': process.env.x_api_version,
 };
+
+app.use(bodyParser.raw({ type: 'application/json' }));
 
 // Generate Cashfree sessionId and store order details in Orders table
 const sessionIdGenerator = async (req, res) => {
@@ -162,27 +168,33 @@ const getPaymentStatus=async(req,res)=>{
     }
 }
 
-
-const getSettlementWebhook = async (req, res) => {
-  const rawBody = req.body;  // Get the raw request body
-  const signature = req.headers['x-webhook-signature'];  // Get the signature from headers
-  const timestamp = req.headers['x-webhook-timestamp'];  // Get the timestamp from headers
-
-  try {
-      // Validate the signature using Cashfree's method
-      Cashfree.PGVerifyWebhookSignature(signature, rawBody, timestamp);
-  } catch (err) {
-      console.error('Invalid signature, ignoring webhook:', err.message);
-      return res.status(403).json({ error: 'Invalid signature' });
-  }
-
-  // Respond immediately to Cashfree
-  res.status(200).json({ success: true });
+// Webhook endpoint for Cashfree to hit
+const getSettlementWebhook = async  (req, res) => {
+  const rawBody = req.body;  // Raw body as Buffer
+  const signature = req.headers['x-webhook-signature'];  // Signature from Cashfree
+  const timestamp = req.headers['x-webhook-timestamp'];  // Timestamp from Cashfree
 
   try {
+      // Verify the signature using Cashfree's method
+      const isValidSignature = verifyCashfreeSignature(rawBody, signature, timestamp);
+
+      if (!isValidSignature) {
+          console.error('Invalid signature, ignoring webhook');
+          return res.status(403).json({ error: 'Invalid signature' });
+      }
+
+      // Respond immediately to Cashfree
+      res.status(200).json({ success: true });
+
+      // Process the webhook data
       const { transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference } = req.body;
 
+      // Log the incoming data for debugging
+      console.log('Webhook received:', req.body);
+
+      // Find the transaction in the database
       const transaction = await db.query('SELECT * FROM transactions WHERE transaction_id = $1', [transaction_id]);
+
       if (transaction.rowCount === 0) {
           console.error(`Transaction ID ${transaction_id} not found.`);
           return;
@@ -198,9 +210,24 @@ const getSettlementWebhook = async (req, res) => {
       );
 
       console.log('Settlement status updated successfully');
-  } catch (error) {
-      console.error('Error processing webhook:', error.message);
+  } catch (err) {
+      console.error('Error processing webhook:', err.message);
+      res.status(500).json({ error: 'Internal server error' });
   }
+};
+
+// Function to verify Cashfree webhook signature
+const verifyCashfreeSignature = (rawBody, receivedSignature, timestamp) => {
+  const secret = process.env.x_client_secret;  // Your client secret from Cashfree
+
+  // Compute the signature using HMAC SHA-256
+  const computedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(rawBody + timestamp)  // Concatenate the raw body and timestamp
+      .digest('hex');
+
+  // Compare the computed signature with the received signature
+  return computedSignature === receivedSignature;
 };
 
 
