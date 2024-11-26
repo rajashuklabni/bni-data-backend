@@ -4,12 +4,13 @@ const axios = require('axios');
 const db = require('../../database/db');
 const { Cashfree } = require('cashfree-pg');
 const crypto = require('crypto');
+const rawBody = require('raw-body');
 const app = express();
 
 // Set up Cashfree SDK with environment variables
 Cashfree.XClientId = process.env.x_client_id;
 Cashfree.XClientSecret = process.env.x_client_secret;
-Cashfree.XEnvironment = Cashfree.Environment.SANDBOX; // Use SANDBOX for testing
+Cashfree.XEnvironment = Cashfree.Environment.SANDBOX;  // Use SANDBOX for testing
 
 const headers = {
     'x-client-id': process.env.x_client_id,
@@ -168,67 +169,66 @@ const getPaymentStatus=async(req,res)=>{
     }
 }
 
-// Webhook endpoint for Cashfree to hit
-const getSettlementWebhook = async  (req, res) => {
-  const rawBody = req.body;  // Raw body as Buffer
-  const signature = req.headers['x-webhook-signature'];  // Signature from Cashfree
-  const timestamp = req.headers['x-webhook-timestamp'];  // Timestamp from Cashfree
-
+const getRawBody = async (req, res, next) => {
   try {
-      // Verify the signature using Cashfree's method
-      const isValidSignature = verifyCashfreeSignature(rawBody, signature, timestamp);
-
-      if (!isValidSignature) {
-          console.error('Invalid signature, ignoring webhook');
-          return res.status(403).json({ error: 'Invalid signature' });
-      }
-
-      // Respond immediately to Cashfree
-      res.status(200).json({ success: true });
-
-      // Process the webhook data
-      const { transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference } = req.body;
-
-      // Log the incoming data for debugging
-      console.log('Webhook received:', req.body);
-
-      // Find the transaction in the database
-      const transaction = await db.query('SELECT * FROM transactions WHERE transaction_id = $1', [transaction_id]);
-
-      if (transaction.rowCount === 0) {
-          console.error(`Transaction ID ${transaction_id} not found.`);
-          return;
-      }
-
-      // Update settlement status or insert if new
-      await db.query(
-          `INSERT INTO SettlementStatus (transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (transaction_id)
-           DO UPDATE SET settlement_status = $2, settlement_amount = $3, settlement_date = $4, settlement_reference = $5, updated_at = CURRENT_TIMESTAMP`,
-          [transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference]
-      );
-
-      console.log('Settlement status updated successfully');
+    const body = await rawBody(req, { encoding: false });  // Get raw body as a Buffer
+    req.rawBody = body;  // Store the raw body as Buffer
+    next();
   } catch (err) {
-      console.error('Error processing webhook:', err.message);
-      res.status(500).json({ error: 'Internal server error' });
+    console.error('Error processing raw body:', err);
+    res.status(500).json({ error: 'Error processing raw body' });
   }
 };
 
-// Function to verify Cashfree webhook signature
-const verifyCashfreeSignature = (rawBody, receivedSignature, timestamp) => {
-  const secret = process.env.x_client_secret;  // Your client secret from Cashfree
 
-  // Compute the signature using HMAC SHA-256
-  const computedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(rawBody + timestamp)  // Concatenate the raw body and timestamp
-      .digest('hex');
+app.use(getRawBody); // Add this middleware before any route
 
-  // Compare the computed signature with the received signature
-  return computedSignature === receivedSignature;
+const getSettlementWebhook = async (req, res) => {
+  try {
+    const signature = req.headers["x-webhook-signature"];
+    const timestamp = req.headers["x-webhook-timestamp"];
+    const rawBodyContent = req.rawBody; // Raw body is now a Buffer
+
+    // Verify the webhook signature using SDK
+    try {
+      Cashfree.PGVerifyWebhookSignature(signature, rawBodyContent, timestamp);
+      console.log('Signature verified successfully');
+    } catch (err) {
+      console.error('Webhook signature verification failed:', err.message);
+      return res.status(400).json({ error: 'Signature verification failed' });
+    }
+
+    // Process the webhook data
+    const { transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference } = req.body;
+
+    console.log('Webhook received:', req.body);
+
+    // Find the transaction in the database
+    const transaction = await db.query('SELECT * FROM transactions WHERE transaction_id = $1', [transaction_id]);
+
+    if (transaction.rowCount === 0) {
+      console.error(`Transaction ID ${transaction_id} not found.`);
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    // Update settlement status or insert if new
+    await db.query(
+      `INSERT INTO SettlementStatus (transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (transaction_id)
+       DO UPDATE SET settlement_status = $2, settlement_amount = $3, settlement_date = $4, settlement_reference = $5, updated_at = CURRENT_TIMESTAMP`,
+      [transaction_id, settlement_status, settlement_amount, settlement_date, settlement_reference]
+    );
+
+    console.log('Settlement status updated successfully');
+    res.status(200).json({ success: true });
+
+  } catch (err) {
+    console.error('Error processing webhook:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 };
+
 
 
 module.exports = {

@@ -7,5 +7,4 @@ router.get('/getCashfreeOrderDataAndVerifyPayment/:order_id',getOrderStatus)
 router.get('/orders/:order_id/paymentStatus',getPaymentStatus)
 router.post('/webhook/cashfree',getSettlementWebhook)
 
-
 module.exports = router;
