@@ -562,8 +562,8 @@ const getMemberCategory = async (req, res) => {
 const getUniversalLinks = async (req, res) => {
   try {
     const result = await con.query(
-      "SELECT * FROM universal_link WHERE status = $1",
-      ["active"]
+      "SELECT * FROM universal_link WHERE status = $1 AND delete_status = $2",
+      ["active", 0]
     );
     res.json(result.rows);
   } catch (error) {
@@ -571,6 +571,7 @@ const getUniversalLinks = async (req, res) => {
     res.status(500).send("Error fetching universal links");
   }
 };
+
 
 // Fetch all active members
 const getCompany = async (req, res) => {
@@ -1048,6 +1049,24 @@ const deleteMember = async (req, res) => {
   }
 };
 
+const deleteUniversalLink = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await con.query(
+      `UPDATE universal_link SET delete_status = 1 WHERE id = $1 RETURNING *`, 
+      [id]
+  );
+  if (result.rowCount > 0) {
+      res.status(200).json({ message: 'Universal Link marked as deleted successfully' });
+  } else {
+      res.status(404).json({ message: 'Universal Link not found' });
+  }
+  } catch (error) {
+    console.error('Error deleting Universal Link', error);
+        res.status(500).json({ message: 'Error deleting Universal Link' });
+  }
+};
+
 module.exports = {
   getRegions,
   getChapters,
@@ -1083,4 +1102,5 @@ module.exports = {
   deleteChapter,
   updateMember,
   deleteMember,
+  deleteUniversalLink,
 };

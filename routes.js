@@ -35,6 +35,7 @@ const {
   deleteChapter,
   updateMember,
   deleteMember,
+  deleteUniversalLink,
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -71,6 +72,7 @@ router.put("/updateChapter/:chapter_id", updateChapter);
 router.put("/deleteChapter/:chapter_id", deleteChapter);
 router.put("/updateMember/:member_id", updateMember);
 router.put("/deleteMember/:member_id", deleteMember);
+router.put("/deleteUniversalLink/:id", deleteUniversalLink);
 
 
 
