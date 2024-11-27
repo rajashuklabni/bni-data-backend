@@ -994,6 +994,52 @@ const updateMember = async (req, res) => {
   }
 };
 
+const updateUniversalLink = async (req, res) => {
+  const { id } = req.params; // Get id from URL parameter
+  const linkData = req.body; // Get the updated data from the request body
+
+  console.log("Updating Universal with ID:", id);
+  console.log("Received data:", linkData);
+
+  try {
+    // Construct the SQL query for updating the universal link
+    const query = `
+      UPDATE universal_link
+      SET
+        member_first_name = $1,
+        member_last_name = $2,
+        member_date_of_birth = $3,
+        member_phone_number = $4,
+        member_alternate_mobile_number = $5,
+      WHERE id = $6
+      RETURNING *;`;
+
+    // Prepare the values for the SQL query
+    const values = [
+      memberData.member_first_name,
+      memberData.member_last_name,
+      memberData.member_date_of_birth,
+      memberData.member_phone_number,
+      memberData.member_alternate_mobile_number,
+      id, // Ensure the id is used for the WHERE clause
+    ];
+
+    // Execute the query with the provided universal link data
+    const { rows } = await con.query(query, values);
+
+    if (rows.length === 0) {
+      console.error("Universal Link not found:", id);
+      return res.status(404).json({ message: "Universal Link not found" });
+    }
+
+    // Return the updated universal data
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error("Error updating Universal Link:", error);
+    res.status(500).json({ message: "Error updating Universal Link" });
+  }
+};
+
 
 const deleteRegion = async (req, res) => {
   const { region_id } = req.params;
@@ -1102,5 +1148,6 @@ module.exports = {
   deleteChapter,
   updateMember,
   deleteMember,
+  updateUniversalLink,
   deleteUniversalLink,
 };
