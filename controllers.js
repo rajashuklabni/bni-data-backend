@@ -1006,21 +1006,21 @@ const updateUniversalLink = async (req, res) => {
     const query = `
       UPDATE universal_link
       SET
-        member_first_name = $1,
-        member_last_name = $2,
-        member_date_of_birth = $3,
-        member_phone_number = $4,
-        member_alternate_mobile_number = $5,
+        universal_link_name = $1,
+        ulid = $2,
+        link_slug = $3,
+        status = $4,
+        payment_gateway = $5
       WHERE id = $6
       RETURNING *;`;
 
     // Prepare the values for the SQL query
     const values = [
-      memberData.member_first_name,
-      memberData.member_last_name,
-      memberData.member_date_of_birth,
-      memberData.member_phone_number,
-      memberData.member_alternate_mobile_number,
+      linkData.link_name,
+      linkData.link_ulid,
+      linkData.link_slug,
+      linkData.link_status,
+      linkData.link_payment_gateway,
       id, // Ensure the id is used for the WHERE clause
     ];
 
