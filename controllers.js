@@ -525,7 +525,7 @@ const getLoginLogs = async (req, res) => {
 // Fetch all active members
 const getMembers = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM member");
+    const result = await con.query("SELECT * FROM member WHERE delete_status = 0");
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching members:", error);
@@ -929,6 +929,24 @@ const deleteChapter = async (req, res) => {
   }
 };
 
+const deleteMember = async (req, res) => {
+  const { member_id } = req.params;
+  try {
+    const result = await con.query(
+      `UPDATE member SET delete_status = 1 WHERE member_id = $1 RETURNING *`, 
+      [member_id]
+  );
+  if (result.rowCount > 0) {
+      res.status(200).json({ message: 'Member marked as deleted successfully' });
+  } else {
+      res.status(404).json({ message: 'Member not found' });
+  }
+  } catch (error) {
+    console.error('Error deleting Member:', error);
+        res.status(500).json({ message: 'Error deleting Member' });
+  }
+};
+
 module.exports = {
   getRegions,
   getChapters,
@@ -961,5 +979,6 @@ module.exports = {
   getLoginOtps,
   getLoginLogs,
   updateChapter,
-  deleteChapter
+  deleteChapter,
+  deleteMember,
 };

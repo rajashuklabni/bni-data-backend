@@ -33,6 +33,7 @@ const {
   getLoginLogs,
   updateChapter,
   deleteChapter,
+  deleteMember,
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -67,6 +68,7 @@ router.get("/getLoginOtps", getLoginOtps);
 router.get("/getLoginLogs", getLoginLogs);
 router.put("/updateChapter/:chapter_id", updateChapter);
 router.put("/deleteChapter/:chapter_id", deleteChapter);
+router.put("/deleteMember/:member_id", deleteMember);
 
 
 
