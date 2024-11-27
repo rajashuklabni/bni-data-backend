@@ -893,6 +893,107 @@ const updateChapter = async (req, res) => {
   }
 };
 
+const updateMember = async (req, res) => {
+  const { member_id } = req.params; // Get member_id from URL parameter
+  const memberData = req.body; // Get the updated data from the request body
+
+  console.log("Updating member with ID:", member_id);
+  console.log("Received data:", memberData);
+
+  try {
+    // Construct the SQL query for updating the member
+    const query = `
+      UPDATE member
+      SET
+        member_first_name = $1,
+        member_last_name = $2,
+        member_date_of_birth = $3,
+        member_phone_number = $4,
+        member_alternate_mobile_number = $5,
+        member_email_address = $6,
+        street_address_line_1 = $7,
+        street_address_line_2 = $8,
+        address_pincode = $9,
+        address_city = $10,
+        address_state = $11,
+        region_id = $12,
+        chapter_id = $13,
+        accolades_id = $14,  -- Assuming accolades are stored in an array or JSON
+        category_id = $15,
+        member_current_membership = $16,
+        member_renewal_date = $17,
+        member_gst_number = $18,
+        member_company_name = $19,
+        member_company_address = $20,
+        member_company_state = $21,
+        member_company_city = $22,
+        member_company_pincode = $23,
+        member_photo = $24,  -- Assuming member photo is stored in the URL or path
+        member_website = $25,
+        member_facebook = $26,
+        member_instagram = $27,
+        member_linkedin = $28,
+        member_youtube = $29,
+        member_sponsored_by = $30,
+        date_of_publishing = $31,
+        member_status = $32
+      WHERE member_id = $33
+      RETURNING *;`;
+
+    // Prepare the values for the SQL query
+    const values = [
+      memberData.member_first_name,
+      memberData.member_last_name,
+      memberData.member_date_of_birth,
+      memberData.member_phone_number,
+      memberData.member_alternate_mobile_number,
+      memberData.member_email_address,
+      memberData.street_address_line_1,
+      memberData.street_address_line_2,
+      memberData.address_pincode,
+      memberData.address_city,
+      memberData.address_state,
+      memberData.region_id,
+      memberData.chapter_id,
+      memberData.accolades_id, // Assuming accolades are stored as JSON
+      memberData.category_id,
+      memberData.member_current_membership,
+      memberData.member_renewal_date,
+      memberData.member_gst_number,
+      memberData.member_company_name,
+      memberData.member_company_address,
+      memberData.member_company_state,
+      memberData.member_company_city,
+      memberData.member_company_pincode,
+      memberData.member_photo,
+      memberData.member_website,
+      memberData.member_facebook,
+      memberData.member_instagram,
+      memberData.member_linkedin,
+      memberData.member_youtube,
+      memberData.member_sponsored_by,
+      memberData.date_of_publishing,
+      memberData.member_status,
+      member_id, // Ensure the member_id is used for the WHERE clause
+    ];
+
+    // Execute the query with the provided member data
+    const { rows } = await con.query(query, values);
+
+    if (rows.length === 0) {
+      console.error("Member not found:", member_id);
+      return res.status(404).json({ message: "Member not found" });
+    }
+
+    // Return the updated member data
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error("Error updating member:", error);
+    res.status(500).json({ message: "Error updating member" });
+  }
+};
+
+
 const deleteRegion = async (req, res) => {
   const { region_id } = req.params;
   try {
@@ -980,5 +1081,6 @@ module.exports = {
   getLoginLogs,
   updateChapter,
   deleteChapter,
+  updateMember,
   deleteMember,
 };
