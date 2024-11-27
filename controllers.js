@@ -477,7 +477,7 @@ const addMember = async (req, res) => {
 const getChapters = async (req, res) => {
   try {
     const result = await con.query(
-      "SELECT * FROM chapter ORDER BY chapter_name ASC"
+      "SELECT * FROM chapter WHERE delete_status = 0 ORDER BY chapter_name ASC"
     );
     res.json(result.rows);
   } catch (error) {
@@ -792,32 +792,142 @@ const updateRegion = async (req, res) => {
   }
 };
 
-const deleteRegion = async (req, res) => {
+const updateChapter = async (req, res) => {
+  const { chapter_id } = req.params; // Get chapter_id from URL parameter
+  const chapterData = req.body; // Get the updated data from the request body
 
-  const { region_id } = req.params;
+  console.log("Updating chapter with ID:", chapter_id);
+  console.log("Received data:", chapterData);
 
   try {
+    // Construct the SQL query for updating the chapter
+    const query = `
+      UPDATE chapter
+      SET
+        chapter_name = $1,
+        region_id = $2,
+        chapter_meeting_day = $3,
+        chapter_type = $4,
+        chapter_status = $5,
+        chapter_membership_fee = $6,
+        chapter_kitty_fees = $7,
+        chapter_visitor_fees = $8,
+        one_time_registration_fee = $9,
+        eoi_link = $10,
+        member_app_link = $11,
+        meeting_hotel_name = $12,
+        chapter_mission = $13,
+        chapter_vision = $14,
+        contact_person = $15,
+        contact_number = $16,
+        email_id = $17,
+        country = $18,
+        state = $19,
+        city = $20,
+        street_address_line = $21,
+        postal_code = $22,
+        chapter_facebook = $23,
+        chapter_instagram = $24,
+        chapter_linkedin = $25,
+        chapter_youtube = $26,
+        chapter_website = $27,
+        chapter_logo = $28,
+        date_of_publishing = $29,
+        chapter_launched_by = $30,
+        chapter_late_fees = $31,
+        chapter_membership_fee_two_year = $32,
+        chapter_membership_fee_five_year = $33
+      WHERE chapter_id = $34
+      RETURNING *;`;
 
+    // Execute the query with the provided chapter data
+    const values = [
+      chapterData.chapter_name,
+      chapterData.region_id,
+      chapterData.chapter_meeting_day,
+      chapterData.chapter_type,
+      chapterData.chapter_status,
+      chapterData.chapter_membership_fee,
+      chapterData.chapter_kitty_fees,
+      chapterData.chapter_visitor_fees,
+      chapterData.one_time_registration_fee,
+      chapterData.eoi_link,
+      chapterData.member_app_link,
+      chapterData.meeting_hotel_name,
+      chapterData.chapter_mission,
+      chapterData.chapter_vision,
+      chapterData.contact_person,
+      chapterData.contact_number,
+      chapterData.email_id,
+      chapterData.country,
+      chapterData.state,
+      chapterData.city,
+      chapterData.street_address_line,
+      chapterData.postal_code,
+      chapterData.chapter_facebook,
+      chapterData.chapter_instagram,
+      chapterData.chapter_linkedin,
+      chapterData.chapter_youtube,
+      chapterData.chapter_website,
+      chapterData.chapter_logo,
+      chapterData.date_of_publishing,
+      chapterData.chapter_launched_by,
+      chapterData.chapter_late_fees,
+      chapterData.chapter_membership_fee_two_year,
+      chapterData.chapter_membership_fee_five_year,
+      chapter_id, // Ensure the chapter_id is used for the WHERE clause
+    ];
+
+    const { rows } = await con.query(query, values);
+
+    if (rows.length === 0) {
+      console.error("Chapter not found:", chapter_id);
+      return res.status(404).json({ message: "Chapter not found" });
+    }
+
+    // Return the updated chapter data
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error("Error updating chapter:", error);
+    res.status(500).json({ message: "Error updating chapter" });
+  }
+};
+
+const deleteRegion = async (req, res) => {
+  const { region_id } = req.params;
+  try {
     const result = await con.query(
       `UPDATE region SET delete_status = 1 WHERE region_id = $1 RETURNING *`, 
       [region_id]
   );
-  
   if (result.rowCount > 0) {
       res.status(200).json({ message: 'Region marked as deleted successfully' });
   } else {
       res.status(404).json({ message: 'Region not found' });
   }
-
   } catch (error) {
-
     console.error('Error deleting region:', error);
         res.status(500).json({ message: 'Error deleting region' });
   }
 };
 
-
-
+const deleteChapter = async (req, res) => {
+  const { chapter_id } = req.params;
+  try {
+    const result = await con.query(
+      `UPDATE chapter SET delete_status = 1 WHERE chapter_id = $1 RETURNING *`, 
+      [chapter_id]
+  );
+  if (result.rowCount > 0) {
+      res.status(200).json({ message: 'Chapter marked as deleted successfully' });
+  } else {
+      res.status(404).json({ message: 'Chapter not found' });
+  }
+  } catch (error) {
+    console.error('Error deleting Chapter:', error);
+        res.status(500).json({ message: 'Error deleting Chapter' });
+  }
+};
 
 module.exports = {
   getRegions,
@@ -850,4 +960,6 @@ module.exports = {
   getUsers,
   getLoginOtps,
   getLoginLogs,
+  updateChapter,
+  deleteChapter
 };
