@@ -20,12 +20,14 @@ const getRegions = async (req, res) => {
     const { filter } = req.query; // Get filter from query string (e.g., filter=deleted)
 
     let query = "SELECT * FROM region WHERE delete_status = 0"; // Default query (non-deleted regions)
-    if (filter === 'deleted') {
+    if (filter === "deleted") {
       query = "SELECT * FROM region WHERE delete_status = 1"; // Query for deleted regions
-    } else if (filter === 'inactive') {
-      query = "SELECT * FROM region WHERE region_status = 'inactive' AND delete_status = 0";
-    } else if (filter === 'active') {
-      query = "SELECT * FROM region WHERE region_status = 'active' AND delete_status = 0";
+    } else if (filter === "inactive") {
+      query =
+        "SELECT * FROM region WHERE region_status = 'inactive' AND delete_status = 0";
+    } else if (filter === "active") {
+      query =
+        "SELECT * FROM region WHERE region_status = 'active' AND delete_status = 0";
     }
 
     const result = await con.query(query); // Execute the query
@@ -35,7 +37,6 @@ const getRegions = async (req, res) => {
     res.status(500).send("Error fetching regions");
   }
 };
-
 
 const getMember = async (req, res) => {
   const { member_id } = req.params; // Get member_id from route parameters
@@ -500,9 +501,7 @@ const getUsers = async (req, res) => {
 
 const getLoginOtps = async (req, res) => {
   try {
-    const result = await con.query(
-      "SELECT * FROM otp_verification "
-    );
+    const result = await con.query("SELECT * FROM otp_verification ");
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching otp code:", error);
@@ -512,9 +511,7 @@ const getLoginOtps = async (req, res) => {
 
 const getLoginLogs = async (req, res) => {
   try {
-    const result = await con.query(
-      "SELECT * FROM login_logs "
-    );
+    const result = await con.query("SELECT * FROM login_logs ");
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching login logs:", error);
@@ -525,7 +522,9 @@ const getLoginLogs = async (req, res) => {
 // Fetch all active members
 const getMembers = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM member WHERE delete_status = 0");
+    const result = await con.query(
+      "SELECT * FROM member WHERE delete_status = 0"
+    );
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching members:", error);
@@ -571,7 +570,6 @@ const getUniversalLinks = async (req, res) => {
     res.status(500).send("Error fetching universal links");
   }
 };
-
 
 // Fetch all active members
 const getCompany = async (req, res) => {
@@ -801,7 +799,28 @@ const updateChapter = async (req, res) => {
   console.log("Received data:", chapterData);
 
   try {
-    // Construct the SQL query for updating the chapter
+    // Convert invalid numeric fields to null
+    const toNumeric = (value) =>
+      isNaN(value) || value === "Not Found" ? null : Number(value);
+
+    // Clean the input data
+    const cleanedData = {
+      ...chapterData,
+      chapter_membership_fee: toNumeric(chapterData.chapter_membership_fee),
+      chapter_kitty_fees: toNumeric(chapterData.chapter_kitty_fees),
+      chapter_visitor_fees: toNumeric(chapterData.chapter_visitor_fees),
+      one_time_registration_fee: toNumeric(
+        chapterData.one_time_registration_fee
+      ),
+      chapter_late_fees: toNumeric(chapterData.chapter_late_fees),
+      chapter_membership_fee_two_year: toNumeric(
+        chapterData.chapter_membership_fee_two_year
+      ),
+      chapter_membership_fee_five_year: toNumeric(
+        chapterData.chapter_membership_fee_five_year
+      ),
+    };
+
     const query = `
       UPDATE chapter
       SET
@@ -841,41 +860,40 @@ const updateChapter = async (req, res) => {
       WHERE chapter_id = $34
       RETURNING *;`;
 
-    // Execute the query with the provided chapter data
     const values = [
-      chapterData.chapter_name,
-      chapterData.region_id,
-      chapterData.chapter_meeting_day,
-      chapterData.chapter_type,
-      chapterData.chapter_status,
-      chapterData.chapter_membership_fee,
-      chapterData.chapter_kitty_fees,
-      chapterData.chapter_visitor_fees,
-      chapterData.one_time_registration_fee,
-      chapterData.eoi_link,
-      chapterData.member_app_link,
-      chapterData.meeting_hotel_name,
-      chapterData.chapter_mission,
-      chapterData.chapter_vision,
-      chapterData.contact_person,
-      chapterData.contact_number,
-      chapterData.email_id,
-      chapterData.country,
-      chapterData.state,
-      chapterData.city,
-      chapterData.street_address_line,
-      chapterData.postal_code,
-      chapterData.chapter_facebook,
-      chapterData.chapter_instagram,
-      chapterData.chapter_linkedin,
-      chapterData.chapter_youtube,
-      chapterData.chapter_website,
-      chapterData.chapter_logo,
-      chapterData.date_of_publishing,
-      chapterData.chapter_launched_by,
-      chapterData.chapter_late_fees,
-      chapterData.chapter_membership_fee_two_year,
-      chapterData.chapter_membership_fee_five_year,
+      cleanedData.chapter_name,
+      cleanedData.region_id,
+      cleanedData.chapter_meeting_day,
+      cleanedData.chapter_type,
+      cleanedData.chapter_status,
+      cleanedData.chapter_membership_fee,
+      cleanedData.chapter_kitty_fees,
+      cleanedData.chapter_visitor_fees,
+      cleanedData.one_time_registration_fee,
+      cleanedData.eoi_link,
+      cleanedData.member_app_link,
+      cleanedData.meeting_hotel_name,
+      cleanedData.chapter_mission,
+      cleanedData.chapter_vision,
+      cleanedData.contact_person,
+      cleanedData.contact_number,
+      cleanedData.email_id,
+      cleanedData.country,
+      cleanedData.state,
+      cleanedData.city,
+      cleanedData.street_address_line,
+      cleanedData.postal_code,
+      cleanedData.chapter_facebook,
+      cleanedData.chapter_instagram,
+      cleanedData.chapter_linkedin,
+      cleanedData.chapter_youtube,
+      cleanedData.chapter_website,
+      cleanedData.chapter_logo,
+      cleanedData.date_of_publishing,
+      cleanedData.chapter_launched_by,
+      cleanedData.chapter_late_fees,
+      cleanedData.chapter_membership_fee_two_year,
+      cleanedData.chapter_membership_fee_five_year,
       chapter_id, // Ensure the chapter_id is used for the WHERE clause
     ];
 
@@ -1040,22 +1058,23 @@ const updateUniversalLink = async (req, res) => {
   }
 };
 
-
 const deleteRegion = async (req, res) => {
   const { region_id } = req.params;
   try {
     const result = await con.query(
-      `UPDATE region SET delete_status = 1 WHERE region_id = $1 RETURNING *`, 
+      `UPDATE region SET delete_status = 1 WHERE region_id = $1 RETURNING *`,
       [region_id]
-  );
-  if (result.rowCount > 0) {
-      res.status(200).json({ message: 'Region marked as deleted successfully' });
-  } else {
-      res.status(404).json({ message: 'Region not found' });
-  }
+    );
+    if (result.rowCount > 0) {
+      res
+        .status(200)
+        .json({ message: "Region marked as deleted successfully" });
+    } else {
+      res.status(404).json({ message: "Region not found" });
+    }
   } catch (error) {
-    console.error('Error deleting region:', error);
-        res.status(500).json({ message: 'Error deleting region' });
+    console.error("Error deleting region:", error);
+    res.status(500).json({ message: "Error deleting region" });
   }
 };
 
@@ -1063,17 +1082,19 @@ const deleteChapter = async (req, res) => {
   const { chapter_id } = req.params;
   try {
     const result = await con.query(
-      `UPDATE chapter SET delete_status = 1 WHERE chapter_id = $1 RETURNING *`, 
+      `UPDATE chapter SET delete_status = 1 WHERE chapter_id = $1 RETURNING *`,
       [chapter_id]
-  );
-  if (result.rowCount > 0) {
-      res.status(200).json({ message: 'Chapter marked as deleted successfully' });
-  } else {
-      res.status(404).json({ message: 'Chapter not found' });
-  }
+    );
+    if (result.rowCount > 0) {
+      res
+        .status(200)
+        .json({ message: "Chapter marked as deleted successfully" });
+    } else {
+      res.status(404).json({ message: "Chapter not found" });
+    }
   } catch (error) {
-    console.error('Error deleting Chapter:', error);
-        res.status(500).json({ message: 'Error deleting Chapter' });
+    console.error("Error deleting Chapter:", error);
+    res.status(500).json({ message: "Error deleting Chapter" });
   }
 };
 
@@ -1081,17 +1102,19 @@ const deleteMember = async (req, res) => {
   const { member_id } = req.params;
   try {
     const result = await con.query(
-      `UPDATE member SET delete_status = 1 WHERE member_id = $1 RETURNING *`, 
+      `UPDATE member SET delete_status = 1 WHERE member_id = $1 RETURNING *`,
       [member_id]
-  );
-  if (result.rowCount > 0) {
-      res.status(200).json({ message: 'Member marked as deleted successfully' });
-  } else {
-      res.status(404).json({ message: 'Member not found' });
-  }
+    );
+    if (result.rowCount > 0) {
+      res
+        .status(200)
+        .json({ message: "Member marked as deleted successfully" });
+    } else {
+      res.status(404).json({ message: "Member not found" });
+    }
   } catch (error) {
-    console.error('Error deleting Member:', error);
-        res.status(500).json({ message: 'Error deleting Member' });
+    console.error("Error deleting Member:", error);
+    res.status(500).json({ message: "Error deleting Member" });
   }
 };
 
@@ -1099,17 +1122,19 @@ const deleteUniversalLink = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await con.query(
-      `UPDATE universal_link SET delete_status = 1 WHERE id = $1 RETURNING *`, 
+      `UPDATE universal_link SET delete_status = 1 WHERE id = $1 RETURNING *`,
       [id]
-  );
-  if (result.rowCount > 0) {
-      res.status(200).json({ message: 'Universal Link marked as deleted successfully' });
-  } else {
-      res.status(404).json({ message: 'Universal Link not found' });
-  }
+    );
+    if (result.rowCount > 0) {
+      res
+        .status(200)
+        .json({ message: "Universal Link marked as deleted successfully" });
+    } else {
+      res.status(404).json({ message: "Universal Link not found" });
+    }
   } catch (error) {
-    console.error('Error deleting Universal Link', error);
-        res.status(500).json({ message: 'Error deleting Universal Link' });
+    console.error("Error deleting Universal Link", error);
+    res.status(500).json({ message: "Error deleting Universal Link" });
   }
 };
 
