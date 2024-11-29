@@ -122,6 +122,27 @@ const getRegion = async (req, res) => {
   }
 };
 
+const getAccolade = async (req, res) => {
+  const { accolade_id } = req.params; // Get member_id from route parameters
+
+  try {
+    // Use a parameterized query to safely insert member_id into the SQL statement
+    const result = await con.query(
+      "SELECT * FROM accolades WHERE accolade_id = $1",
+      [accolade_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Accolade not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching Accolade:", error);
+    res.status(500).send("Error fetching Accolade");
+  }
+};
+
 const getEinvoice = async (req, res) => {
   const { order_id } = req.params; // Get member_id from route parameters
 
@@ -536,7 +557,7 @@ const getMembers = async (req, res) => {
 const getAccolades = async (req, res) => {
   try {
     const result = await con.query(
-      "SELECT * FROM accolades WHERE accolade_status = $1",
+      "SELECT * FROM accolades WHERE delete_status = 0",
       ["active"]
     );
     res.json(result.rows);
@@ -1138,6 +1159,28 @@ const deleteUniversalLink = async (req, res) => {
   }
 };
 
+const deleteAccolade = async (req, res) => {
+  const { accolade_id } = req.params;
+  console.log("Accolade ID:", accolade_id);
+
+  try {
+    const result = await con.query(
+      `UPDATE accolades SET delete_status = 1 WHERE accolade_id = $1 RETURNING *`,
+      [accolade_id]
+    );
+    if (result.rowCount > 0) {
+      res
+        .status(200)
+        .json({ message: "Accolade marked as deleted successfully" });
+    } else {
+      res.status(404).json({ message: "Accolade not found" });
+    }
+  } catch (error) {
+    console.error("Error deleting Accolade", error);
+    res.status(500).json({ message: "Error deleting Accolade" });
+  }
+};
+
 module.exports = {
   getRegions,
   getChapters,
@@ -1175,4 +1218,6 @@ module.exports = {
   deleteMember,
   updateUniversalLink,
   deleteUniversalLink,
+  deleteAccolade,
+  getAccolade,
 };
