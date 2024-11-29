@@ -558,7 +558,6 @@ const getAccolades = async (req, res) => {
   try {
     const result = await con.query(
       "SELECT * FROM accolades WHERE delete_status = 0",
-      ["active"]
     );
     res.json(result.rows);
   } catch (error) {
