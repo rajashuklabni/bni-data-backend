@@ -1180,6 +1180,55 @@ const deleteAccolade = async (req, res) => {
   }
 };
 
+
+const updateAccolade = async (req, res) => {
+  const { accolade_id } = req.params; // Get id from URL parameter
+  const linkData = req.body; // Get the updated data from the request body
+
+  console.log("Updating accolade with ID:", accolade_id);
+  console.log("Received data:", linkData);
+
+  try {
+    // Construct the SQL query for updating the universal link
+    const query = `
+      UPDATE accolades
+      SET
+        accolade_name = $1,
+        accolade_published_by = $2,
+        accolade_publish_date = $3,
+        accolade_availability = $4,
+        accolade_status = $5,
+        stock_available = $6
+      WHERE accolade_id = $7
+      RETURNING *;`;
+
+    // Prepare the values for the SQL query
+    const values = [
+      linkData.accolade_name,
+      linkData.accolade_publish_by,
+      linkData.stock_in_date,
+      linkData.stock_availability,
+      linkData.stock_status,
+      linkData.stock_available,
+      accolade_id, // Ensure the id is used for the WHERE clause
+    ];
+
+    // Execute the query with the provided universal link data
+    const { rows } = await con.query(query, values);
+
+    if (rows.length === 0) {
+      console.error("Accolade not found:", id);
+      return res.status(404).json({ message: "Accolade not found" });
+    }
+
+    // Return the updated universal data
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error("Error updating accolade:", error);
+    res.status(500).json({ message: "Error updating accolade" });
+  }
+};
+
 module.exports = {
   getRegions,
   getChapters,
@@ -1219,4 +1268,5 @@ module.exports = {
   deleteUniversalLink,
   deleteAccolade,
   getAccolade,
+  updateAccolade,
 };

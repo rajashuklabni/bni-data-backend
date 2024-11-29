@@ -39,6 +39,7 @@ const {
   updateUniversalLink,
   deleteAccolade,
   getAccolade,
+  updateAccolade,
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -78,6 +79,7 @@ router.put("/updateMember/:member_id", updateMember);
 router.put("/deleteMember/:member_id", deleteMember);
 router.put("/updateUniversalLink/:id", updateUniversalLink);
 router.put("/deleteUniversalLink/:id", deleteUniversalLink);
+router.put("/updateAccolade/:accolade_id", updateAccolade);
 router.put("/deleteAccolade/:accolade_id", deleteAccolade);
 
 
