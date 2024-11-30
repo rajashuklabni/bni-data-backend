@@ -1386,6 +1386,89 @@ const exportRegionsToExcel = async (req, res) => {
   }
 };
 
+// Corrected Controller to export chapters to Excel
+const exportChaptersToExcel = async (req, res) => {
+  try {
+    // Fetch all chapters from the database
+    const result = await con.query(`
+      SELECT 
+        region_id, chapter_name, chapter_logo, chapter_status, chapter_membership_fee,
+        chapter_kitty_fees, chapter_visitor_fees, chapter_meeting_day, one_time_registration_fee,
+        chapter_type, eoi_link, member_app_link, meeting_hotel_name, 
+        chapter_membership_fee_two_year, chapter_membership_fee_five_year, contact_number,
+        contact_person, chapter_mission, chapter_vision, email_id, country, state, city,
+        street_address_line, postal_code, chapter_facebook, chapter_instagram,
+        chapter_linkedin, chapter_youtube, chapter_website, date_of_publishing,
+        chapter_launched_by, chapter_location_note, chapter_late_fees, delete_status
+      FROM chapter
+    `);
+
+    // Prepare data for Excel file
+    const chapters = result.rows.map((chapter) => ({
+      region_id: chapter.region_id,
+      chapter_name: chapter.chapter_name,
+      chapter_logo: chapter.chapter_logo,
+      chapter_status: chapter.chapter_status,
+      chapter_membership_fee: chapter.chapter_membership_fee,
+      chapter_kitty_fees: chapter.chapter_kitty_fees,
+      chapter_visitor_fees: chapter.chapter_visitor_fees,
+      chapter_meeting_day: chapter.chapter_meeting_day,
+      one_time_registration_fee: chapter.one_time_registration_fee,
+      chapter_type: chapter.chapter_type,
+      eoi_link: chapter.eoi_link,
+      member_app_link: chapter.member_app_link,
+      meeting_hotel_name: chapter.meeting_hotel_name,
+      chapter_membership_fee_two_year: chapter.chapter_membership_fee_two_year,
+      chapter_membership_fee_five_year: chapter.chapter_membership_fee_five_year,
+      contact_number: chapter.contact_number,
+      contact_person: chapter.contact_person,
+      chapter_mission: chapter.chapter_mission,
+      chapter_vision: chapter.chapter_vision,
+      email_id: chapter.email_id,
+      country: chapter.country,
+      state: chapter.state,
+      city: chapter.city,
+      street_address_line: chapter.street_address_line,
+      postal_code: chapter.postal_code,
+      chapter_facebook: chapter.chapter_facebook,
+      chapter_instagram: chapter.chapter_instagram,
+      chapter_linkedin: chapter.chapter_linkedin,
+      chapter_youtube: chapter.chapter_youtube,
+      chapter_website: chapter.chapter_website,
+      date_of_publishing: chapter.date_of_publishing,
+      chapter_launched_by: chapter.chapter_launched_by,
+      chapter_location_note: chapter.chapter_location_note,
+      chapter_late_fees: chapter.chapter_late_fees,
+      delete_status: chapter.delete_status,
+    }));
+
+    // Create a new workbook and add a sheet
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(chapters);
+
+    // Append the sheet to the workbook
+    xlsx.utils.book_append_sheet(wb, ws, 'Chapters');
+
+    // Set the file name for the Excel download
+    const filename = 'chapters.xlsx';
+
+    // Set headers to prompt the download of the file
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    // Write the Excel file to the response buffer
+    const fileBuffer = xlsx.write(wb, { bookType: 'xlsx', type: 'buffer' });
+
+    // Send the file buffer in the response
+    res.end(fileBuffer);
+  } catch (error) {
+    console.error('Error exporting chapters:', error);
+    res.status(500).send('Error exporting chapters');
+  }
+};
+
+
+
 
 module.exports = {
   getRegions,
@@ -1429,4 +1512,5 @@ module.exports = {
   updateAccolade,
   addAccolade,
   exportRegionsToExcel,
+  exportChaptersToExcel,
 };
