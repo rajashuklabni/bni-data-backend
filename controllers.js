@@ -211,6 +211,19 @@ const addRegion = async (req, res) => {
   }
 
   try {
+
+    const checkDuplicate = await con.query(
+      `SELECT * FROM region WHERE region_name = $1`,
+      [region_name]
+    );
+
+    if (checkDuplicate.rows.length > 0) {
+      return res.status(409).json({
+        message: "Region name already exists",
+      });
+    }
+
+
     const result = await con.query(
       `INSERT INTO region (
           region_name, contact_person, contact_number, email_id, days_of_chapter, region_status,
