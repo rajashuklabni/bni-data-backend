@@ -1,4 +1,5 @@
 const { Client } = require("pg");
+const xlsx = require('xlsx');
 
 // Replace with your Render database credentials
 const con = new Client({
@@ -1312,6 +1313,80 @@ const addAccolade = async (req, res) => {
 };
 
 
+// Controller to export regions to Excel
+const exportRegionsToExcel = async (req, res) => {
+  try {
+    // Fetch all regions from the database
+    const result = await con.query(`
+      SELECT 
+        region_name, contact_person, contact_number, email_id, 
+        days_of_chapter, region_status, accolades_config, chapter_status, 
+        chapter_type, mission, vision, region_logo, one_time_registration_fee, 
+        one_year_fee, two_year_fee, five_year_fee, late_fees, 
+        country, state, city, street_address_line_1, street_address_line_2, 
+        social_facebook, social_instagram, social_linkedin, social_youtube, 
+        website_link, region_launched_by, date_of_publishing, delete_status
+      FROM region
+    `);
+
+    // Prepare data for Excel file
+    const regions = result.rows.map((region) => ({
+      region_name: region.region_name,
+      contact_person: region.contact_person,
+      contact_number: region.contact_number,
+      email_id: region.email_id,
+      chapter_days: region.days_of_chapter,
+      region_status: region.region_status,
+      accolades_config: Array.isArray(region.accolades_config) ? region.accolades_config.join(', ') : region.accolades_config,
+      chapter_status: Array.isArray(region.chapter_status) ? region.chapter_status.join(', ') : region.chapter_status,
+      chapter_type: Array.isArray(region.chapter_type) ? region.chapter_type.join(', ') : region.chapter_type,
+      mission: region.mission,
+      vision: region.vision,
+      region_logo: region.region_logo,
+      one_time_registration_fee: region.one_time_registration_fee,
+      one_year_fee: region.one_year_fee,
+      two_year_fee: region.two_year_fee,
+      five_year_fee: region.five_year_fee,
+      late_fees: region.late_fees,
+      country: region.country,
+      state: region.state,
+      city: region.city,
+      street_address_line_1: region.street_address_line_1,
+      street_address_line_2: region.street_address_line_2,
+      social_facebook: region.social_facebook,
+      social_instagram: region.social_instagram,
+      social_linkedin: region.social_linkedin,
+      social_youtube: region.social_youtube,
+      website_link: region.website_link,
+      region_launched_by: region.region_launched_by,
+      date_of_publishing: region.date_of_publishing,
+      delete_status: region.delete_status,
+    }));
+
+    // Create a new workbook and add a sheet
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(regions);
+
+    // Append the sheet to the workbook
+    xlsx.utils.book_append_sheet(wb, ws, 'Regions');
+
+    // Set the file name for the Excel download
+    const filename = 'regions.xlsx';
+
+    // Set headers to prompt the download of the file
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    // Write the Excel file to the response
+    const fileBuffer = xlsx.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    res.end(fileBuffer);
+  } catch (error) {
+    console.error('Error exporting regions:', error);
+    res.status(500).send('Error exporting regions');
+  }
+};
+
+
 module.exports = {
   getRegions,
   getChapters,
@@ -1353,4 +1428,5 @@ module.exports = {
   getAccolade,
   updateAccolade,
   addAccolade,
+  exportRegionsToExcel,
 };
