@@ -1229,6 +1229,63 @@ const updateAccolade = async (req, res) => {
   }
 };
 
+const addAccolade = async (req, res) => {
+  const {
+    accolade_name,
+    accolade_published_by,
+    accolade_publish_date,
+    accolade_availability,
+    accolade_price,
+    accolade_status,
+    stock_available,
+  } = req.body;
+
+  // Validate accolade_name
+  if (!accolade_name) {
+    return res.status(400).json({ message: "Accolade name is required" });
+  }
+
+  try {
+    // Check if accolade_name already exists
+    const checkDuplicate = await con.query(
+      `SELECT * FROM accolades WHERE accolade_name = $1`,
+      [accolade_name]
+    );
+
+    if (checkDuplicate.rows.length > 0) {
+      return res.status(409).json({
+        message: "Accolade name already exists",
+      });
+    }
+
+    // Insert new accolade
+    const result = await con.query(
+      `INSERT INTO accolades (
+          accolade_name, accolade_published_by, accolade_publish_date, accolade_availability, accolade_price, accolade_status, stock_available
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7
+        ) RETURNING *`,
+      [
+        accolade_name,
+        accolade_published_by,
+        accolade_publish_date,
+        accolade_availability,
+        accolade_price,
+        accolade_status,
+        stock_available,
+      ]
+    );
+
+    res
+      .status(201)
+      .json({ message: "Accolade added successfully!", data: result.rows[0] });
+  } catch (error) {
+    console.error("Error adding Accolade:", error);
+    res.status(500).json({ message: "Error adding Accolade" });
+  }
+};
+
+
 module.exports = {
   getRegions,
   getChapters,
@@ -1269,4 +1326,5 @@ module.exports = {
   deleteAccolade,
   getAccolade,
   updateAccolade,
+  addAccolade,
 };
