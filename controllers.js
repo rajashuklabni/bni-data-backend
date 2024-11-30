@@ -1468,6 +1468,116 @@ const exportChaptersToExcel = async (req, res) => {
 };
 
 
+const exportMembersToExcel = async (req, res) => {
+  try {
+    // Fetch all members from the database
+    const result = await con.query(`
+      SELECT 
+        member_first_name, 
+        member_last_name, 
+        member_date_of_birth, 
+        member_phone_number, 
+        member_alternate_mobile_number, 
+        member_email_address, 
+        address_pincode, 
+        address_city, 
+        address_state, 
+        region_id, 
+        chapter_id, 
+        accolades_id, 
+        category_id, 
+        member_induction_date, 
+        member_current_membership, 
+        member_renewal_date, 
+        member_gst_number, 
+        member_company_name, 
+        member_company_address, 
+        member_company_state, 
+        member_company_city, 
+        member_photo, 
+        member_website, 
+        member_company_logo, 
+        member_facebook, 
+        member_instagram, 
+        member_linkedin, 
+        member_youtube, 
+        country, 
+        street_address_line_1, 
+        street_address_line_2, 
+        gender, 
+        notification_consent, 
+        date_of_publishing, 
+        member_sponsored_by, 
+        member_status,
+        delete_status
+      FROM member
+    `);
+
+    // Prepare data for the Excel file
+    const members = result.rows.map((member) => ({
+      member_first_name: member.member_first_name,
+      member_last_name: member.member_last_name,
+      member_date_of_birth: member.member_date_of_birth,
+      member_phone_number: member.member_phone_number,
+      member_alternate_mobile_number: member.member_alternate_mobile_number,
+      member_email_address: member.member_email_address,
+      address_pincode: member.address_pincode,
+      address_city: member.address_city,
+      address_state: member.address_state,
+      region_id: member.region_id,
+      chapter_id: member.chapter_id,
+      accolades_id: member.accolades_id ? member.accolades_id.join(', ') : '',
+      category_id: member.category_id,
+      member_induction_date: member.member_induction_date,
+      member_current_membership: member.member_current_membership,
+      member_renewal_date: member.member_renewal_date,
+      member_gst_number: member.member_gst_number,
+      member_company_name: member.member_company_name,
+      member_company_address: member.member_company_address,
+      member_company_state: member.member_company_state,
+      member_company_city: member.member_company_city,
+      member_photo: member.member_photo,
+      member_website: member.member_website,
+      member_company_logo: member.member_company_logo,
+      member_facebook: member.member_facebook,
+      member_instagram: member.member_instagram,
+      member_linkedin: member.member_linkedin,
+      member_youtube: member.member_youtube,
+      country: member.country,
+      street_address_line_1: member.street_address_line_1,
+      street_address_line_2: member.street_address_line_2,
+      gender: member.gender,
+      notification_consent: member.notification_consent,
+      date_of_publishing: member.date_of_publishing,
+      member_sponsored_by: member.member_sponsored_by,
+      member_status: member.member_status,
+      delete_status: member.delete_status,
+    }));
+
+    // Create a new workbook and add a sheet
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(members);
+
+    // Append the sheet to the workbook
+    xlsx.utils.book_append_sheet(wb, ws, 'Members');
+
+    // Set the file name for the Excel download
+    const filename = 'members.xlsx';
+
+    // Set headers to prompt the download of the file
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    // Write the Excel file to the response
+    const buffer = xlsx.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    res.send(buffer);
+  } catch (error) {
+    console.error('Error exporting members:', error);
+    res.status(500).send('Error exporting members');
+  }
+};
+
+
 
 
 module.exports = {
@@ -1513,4 +1623,5 @@ module.exports = {
   addAccolade,
   exportRegionsToExcel,
   exportChaptersToExcel,
+  exportMembersToExcel,
 };

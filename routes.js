@@ -43,6 +43,7 @@ const {
   addAccolade,
   exportRegionsToExcel,
   exportChaptersToExcel,
+  exportMembersToExcel,
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -87,6 +88,8 @@ router.put("/deleteAccolade/:accolade_id", deleteAccolade);
 router.post("/accolades", addAccolade);
 router.get('/exportRegions', exportRegionsToExcel);
 router.get('/export-chapters', exportChaptersToExcel);
+router.get('/export-members', exportMembersToExcel);
+
 
 
 
