@@ -324,6 +324,19 @@ const addChapter = async (req, res) => {
   }
 
   try {
+
+    const checkDuplicate = await con.query(
+      `SELECT * FROM chapter WHERE chapter_name = $1`,
+      [chapter_name]
+    );
+
+    if (checkDuplicate.rows.length > 0) {
+      return res.status(409).json({
+        message: "Chapter name already exists",
+      });
+    }
+
+
     const result = await con.query(
       `INSERT INTO chapter (
                 region_id, chapter_name, chapter_logo, chapter_status, chapter_membership_fee,
