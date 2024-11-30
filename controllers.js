@@ -1577,6 +1577,136 @@ const exportMembersToExcel = async (req, res) => {
   }
 };
 
+const exportOrdersToExcel = async (req, res) => {
+  try {
+    // Fetch all orders from the database
+    const result = await con.query('SELECT * FROM Orders');
+
+    // Prepare data for Excel
+    const orders = result.rows.map((order) => ({
+      order_id: order.order_id,
+      order_amount: order.order_amount,
+      order_currency: order.order_currency,
+      payment_gateway_id: order.payment_gateway_id,
+      customer_id: order.customer_id,
+      chapter_id: order.chapter_id,
+      region_id: order.region_id,
+      universal_link_id: order.universal_link_id,
+      ulid: order.ulid,
+      order_status: order.order_status,
+      payment_session_id: order.payment_session_id,
+      one_time_registration_fee: order.one_time_registration_fee,
+      membership_fee: order.membership_fee,
+      tax: order.tax,
+      member_name: order.member_name,
+      customer_email: order.customer_email,
+      customer_phone: order.customer_phone,
+      gstin: order.gstin,
+      company: order.company,
+      mobile_number: order.mobile_number,
+      renewal_year: order.renewal_year,
+      payment_note: order.payment_note,
+      created_at: order.created_at, // Assuming you have timestamp fields
+      updated_at: order.updated_at,
+    }));
+
+    // Create an Excel workbook and sheet
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(orders);
+
+    // Append the sheet to the workbook
+    xlsx.utils.book_append_sheet(wb, ws, 'Orders');
+
+    // Set the file name
+    const filename = 'orders.xlsx';
+
+    // Set headers for the file download
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+
+    // Write the Excel file to the response
+    const buffer = xlsx.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    res.send(buffer);
+  } catch (error) {
+    console.error('Error exporting orders:', error);
+    res.status(500).send('Error exporting orders');
+  }
+};
+
+const exportTransactionsToExcel = async (req, res) => {
+  try {
+    // Fetch all transactions from the database
+    const result = await con.query(`
+      SELECT 
+        cf_payment_id, order_id, payment_gateway_id, payment_amount, payment_currency, payment_status, 
+        payment_message, payment_time, payment_completion_time, bank_reference, auth_id, payment_method, 
+        error_details, gateway_order_id, gateway_payment_id, payment_group
+      FROM Transactions
+    `);
+
+    // Prepare data for Excel file
+    const transactions = result.rows.map((transaction) => {
+      const parseJSONSafely = (value) => {
+        try {
+          // If the value is a valid JSON string, parse it, otherwise return the value as is
+          if (typeof value === 'string' && value.startsWith('{')) {
+            return JSON.parse(value);
+          }
+          return value;
+        } catch (error) {
+          return value; // Return the value as is if JSON parsing fails
+        }
+      };
+
+      return {
+        cf_payment_id: transaction.cf_payment_id,
+        order_id: transaction.order_id,
+        payment_gateway_id: transaction.payment_gateway_id,
+        payment_amount: transaction.payment_amount,
+        payment_currency: transaction.payment_currency,
+        payment_status: transaction.payment_status,
+        payment_message: transaction.payment_message,
+        payment_time: transaction.payment_time,
+        payment_completion_time: transaction.payment_completion_time,
+        bank_reference: transaction.bank_reference,
+        auth_id: transaction.auth_id,
+        payment_method: parseJSONSafely(transaction.payment_method),  // Safely parse JSON
+        error_details: parseJSONSafely(transaction.error_details),  // Safely parse JSON
+        gateway_order_id: transaction.gateway_order_id,
+        gateway_payment_id: transaction.gateway_payment_id,
+        payment_group: transaction.payment_group,
+      };
+    });
+
+    // Create a new workbook and add a sheet
+    const wb = xlsx.utils.book_new();
+    const ws = xlsx.utils.json_to_sheet(transactions);
+
+    // Append the sheet to the workbook
+    xlsx.utils.book_append_sheet(wb, ws, 'Transactions');
+
+    // Set the file name for the Excel download
+    const filename = 'transactions.xlsx';
+
+    // Set headers to prompt the download of the file
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    // Write the Excel file to the response
+    const excelFile = xlsx.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    res.end(excelFile);
+  } catch (error) {
+    console.error('Error exporting transactions:', error);
+    res.status(500).send('Error exporting transactions');
+  }
+};
+
+
+
+
 
 
 
@@ -1624,4 +1754,6 @@ module.exports = {
   exportRegionsToExcel,
   exportChaptersToExcel,
   exportMembersToExcel,
+  exportOrdersToExcel,
+  exportTransactionsToExcel ,
 };
