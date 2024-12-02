@@ -1225,8 +1225,11 @@ const updateAccolade = async (req, res) => {
         accolade_publish_date = $3,
         accolade_availability = $4,
         accolade_status = $5,
-        stock_available = $6
-      WHERE accolade_id = $7
+        stock_available = $6,
+        item_type = $7,
+        accolade_type = $8,
+        eligibility_and_condition = $9
+      WHERE accolade_id = $10
       RETURNING *;`;
 
     // Prepare the values for the SQL query
@@ -1237,6 +1240,9 @@ const updateAccolade = async (req, res) => {
       linkData.stock_availability,
       linkData.stock_status,
       linkData.stock_available,
+      linkData.item_type,
+      linkData.accolade_type,
+      linkData.eligibility_and_condition,
       accolade_id, // Ensure the id is used for the WHERE clause
     ];
 
@@ -1703,12 +1709,6 @@ const exportTransactionsToExcel = async (req, res) => {
     res.status(500).send('Error exporting transactions');
   }
 };
-
-
-
-
-
-
 
 module.exports = {
   getRegions,
