@@ -46,6 +46,7 @@ const {
   exportMembersToExcel,
   exportOrdersToExcel,
   exportTransactionsToExcel ,
+  deleteEvent,
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -93,6 +94,7 @@ router.get('/export-chapters', exportChaptersToExcel);
 router.get('/export-members', exportMembersToExcel);
 router.get('/export-orders', exportOrdersToExcel);
 router.get('/export-transactions', exportTransactionsToExcel );
+router.put("/deleteEvent/:event_id", deleteEvent);
 
 
 

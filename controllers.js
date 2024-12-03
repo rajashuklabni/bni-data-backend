@@ -665,7 +665,7 @@ const getSupplies = async (req, res) => {
 // Fetch all active members
 const getEvents = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM events");
+    const result = await con.query("SELECT * FROM events WHERE delete_status = 0");
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching events:", error);
@@ -1710,6 +1710,26 @@ const exportTransactionsToExcel = async (req, res) => {
   }
 };
 
+const deleteEvent = async (req, res) => {
+  const { event_id } = req.params;
+  try {
+    const result = await con.query(
+      `UPDATE events SET delete_status = 1 WHERE event_id = $1 RETURNING *`,
+      [event_id]
+    );
+    if (result.rowCount > 0) {
+      res
+        .status(200)
+        .json({ message: "Event marked as deleted successfully" });
+    } else {
+      res.status(404).json({ message: "Event not found" });
+    }
+  } catch (error) {
+    console.error("Error deleting Event:", error);
+    res.status(500).json({ message: "Error deleting event" });
+  }
+};
+
 module.exports = {
   getRegions,
   getChapters,
@@ -1755,5 +1775,6 @@ module.exports = {
   exportChaptersToExcel,
   exportMembersToExcel,
   exportOrdersToExcel,
-  exportTransactionsToExcel ,
+  exportTransactionsToExcel,
+  deleteEvent,
 };
