@@ -1730,6 +1730,74 @@ const deleteEvent = async (req, res) => {
   }
 };
 
+const getEvent = async (req, res) => {
+  const { event_id } = req.params; // Get member_id from route parameters
+
+  try {
+    // Use a parameterized query to safely insert member_id into the SQL statement
+    const result = await con.query(
+      "SELECT * FROM events WHERE event_id = $1",
+      [event_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching Event:", error);
+    res.status(500).send("Error fetching Event");
+  }
+};
+
+
+const updateEvent = async (req, res) => {
+  const { event_id } = req.params; // Get id from URL parameter
+  const linkData = req.body; // Get the updated data from the request body
+
+  console.log("Updating event with ID:", event_id);
+  console.log("Received data:", linkData);
+
+  try {
+    // Construct the SQL query for updating the events
+    const query = `
+      UPDATE events
+      SET
+        event_name = $1,
+        event_venue = $2,
+        event_price = $3,
+        event_date = $4,
+        event_status = $5
+      WHERE event_id = $6
+      RETURNING *;`;
+
+    // Prepare the values for the SQL query
+    const values = [
+      linkData.event_name,
+      linkData.event_venue,
+      linkData.event_price,
+      linkData.event_date,
+      linkData.event_status,
+      event_id, // Ensure the id is used for the WHERE clause
+    ];
+
+    // Execute the query with the provided universal link data
+    const { rows } = await con.query(query, values);
+
+    if (rows.length === 0) {
+      console.error("Event not found:", id);
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Return the updated universal data
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error("Error updating event:", error);
+    res.status(500).json({ message: "Error updating event" });
+  }
+};
+
 module.exports = {
   getRegions,
   getChapters,
@@ -1777,4 +1845,6 @@ module.exports = {
   exportOrdersToExcel,
   exportTransactionsToExcel,
   deleteEvent,
+  getEvent,
+  updateEvent,
 };
