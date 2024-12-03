@@ -1798,6 +1798,60 @@ const updateEvent = async (req, res) => {
   }
 };
 
+const addEvent = async (req, res) => {
+  const {
+    event_name,
+    billing_company,
+    event_venue,
+    event_ticket_price,
+    event_date,
+    event_status,
+  } = req.body;
+
+  // Validate accolade_name
+  if (!event_name) {
+    return res.status(400).json({ message: "Event name is required" });
+  }
+
+  try {
+    // Check if accolade_name already exists
+    const checkDuplicate = await con.query(
+      `SELECT * FROM events WHERE event_name = $1`,
+      [event_name]
+    );
+
+    if (checkDuplicate.rows.length > 0) {
+      return res.status(409).json({
+        message: "Event name already exists",
+      });
+    }
+
+    // Insert new accolade
+    const result = await con.query(
+      `INSERT INTO events (
+        event_name, billing_company, event_venue, event_price, event_date, event_status
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6
+        ) RETURNING *`,
+      [
+        event_name,
+        billing_company,
+        event_venue,
+        event_ticket_price,
+        event_date,
+        event_status,
+      ]
+    );
+
+    res
+      .status(201)
+      .json({ message: "Event added successfully!", data: result.rows[0] });
+  } catch (error) {
+    console.error("Error adding Event:", error);
+    res.status(500).json({ message: "Error adding Event" });
+  }
+};
+
 module.exports = {
   getRegions,
   getChapters,
@@ -1847,4 +1901,5 @@ module.exports = {
   deleteEvent,
   getEvent,
   updateEvent,
+  addEvent,
 };
