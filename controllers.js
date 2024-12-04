@@ -1901,8 +1901,9 @@ const updateTraining = async (req, res) => {
        training_venue = $3,
        training_price = $4,
        training_date = $5,
-       training_note = $6
-      WHERE training_id = $7
+       training_note = $6,
+       training_published_by = $7
+      WHERE training_id = $8
       RETURNING *;`;
 
     // Prepare the values for the SQL query
@@ -1913,6 +1914,7 @@ const updateTraining = async (req, res) => {
       linkData.training_price,
       linkData.training_date,
       linkData.training_note,
+      linkData.training_published_by,
       training_id, // Ensure the id is used for the WHERE clause
     ];
 
