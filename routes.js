@@ -50,6 +50,11 @@ const {
   getEvent,
   updateEvent,
   addEvent,
+  getTrainings,
+  getTraining,
+  updateTraining,
+  deleteTraining,
+  addTraining,
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -101,6 +106,11 @@ router.put("/deleteEvent/:event_id", deleteEvent);
 router.get("/getEvent/:event_id", getEvent);
 router.put("/updateEvent/:event_id", updateEvent);
 router.post("/events", addEvent);
+router.get("/allTrainings", getTrainings);
+router.get("/getTraining/:training_id", getTraining);
+router.put("/updateTraining/:training_id", updateTraining);
+router.put("/deleteTraining/:training_id", deleteTraining);
+router.post("/training", addTraining);
 
 
 

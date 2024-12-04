@@ -1852,6 +1852,164 @@ const addEvent = async (req, res) => {
   }
 };
 
+// Fetch all active members
+const getTrainings = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM training WHERE delete_status = 0");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching trainings:", error);
+    res.status(500).send("Error fetching trainings");
+  }
+};
+
+const getTraining = async (req, res) => {
+  const { training_id } = req.params; // Get member_id from route parameters
+
+  try {
+    // Use a parameterized query to safely insert member_id into the SQL statement
+    const result = await con.query(
+      "SELECT * FROM training WHERE training_id = $1",
+      [training_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Training not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching Training:", error);
+    res.status(500).send("Error fetching Training");
+  }
+};
+
+const updateTraining = async (req, res) => {
+  const { training_id } = req.params; // Get id from URL parameter
+  const linkData = req.body; // Get the updated data from the request body
+
+  console.log("Updating training with ID:", training_id);
+  console.log("Received data:", linkData);
+
+  try {
+    // Construct the SQL query for updating the events
+    const query = `
+      UPDATE training
+      SET
+       training_name = $1,
+       training_status = $2,
+       training_venue = $3,
+       training_price = $4,
+       training_date = $5,
+       training_note = $6
+      WHERE training_id = $7
+      RETURNING *;`;
+
+    // Prepare the values for the SQL query
+    const values = [
+      linkData.training_name,
+      linkData.training_status,
+      linkData.training_venue,
+      linkData.training_price,
+      linkData.training_date,
+      linkData.training_note,
+      training_id, // Ensure the id is used for the WHERE clause
+    ];
+
+    // Execute the query with the provided universal link data
+    const { rows } = await con.query(query, values);
+
+    if (rows.length === 0) {
+      console.error("Training not found:", id);
+      return res.status(404).json({ message: "Training not found" });
+    }
+
+    // Return the updated universal data
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error("Error updating training:", error);
+    res.status(500).json({ message: "Error updating training" });
+  }
+};
+
+const deleteTraining = async (req, res) => {
+  const { training_id } = req.params;
+  console.log("Training ID:", training_id);
+
+  try {
+    const result = await con.query(
+      `UPDATE training SET delete_status = 1 WHERE training_id = $1 RETURNING *`,
+      [training_id]
+    );
+    if (result.rowCount > 0) {
+      res
+        .status(200)
+        .json({ message: "Training marked as deleted successfully" });
+    } else {
+      res.status(404).json({ message: "Training not found" });
+    }
+  } catch (error) {
+    console.error("Error deleting Training", error);
+    res.status(500).json({ message: "Error deleting Training" });
+  }
+};
+
+const addTraining = async (req, res) => {
+  const {
+    training_name,
+    billing_company,
+    training_status,
+    training_venue,
+    training_price,
+    training_date,
+    training_note,
+  } = req.body;
+
+  // Validate accolade_name
+  if (!training_name) {
+    return res.status(400).json({ message: "Training name is required" });
+  }
+
+  try {
+    // Check if accolade_name already exists
+    const checkDuplicate = await con.query(
+      `SELECT * FROM training WHERE training_name = $1`,
+      [training_name]
+    );
+
+    if (checkDuplicate.rows.length > 0) {
+      return res.status(409).json({
+        message: "Training name already exists",
+      });
+    }
+
+    // Insert new accolade
+    const result = await con.query(
+      `INSERT INTO training (
+        training_name, billing_company, training_status, training_venue, training_price, training_date, training_note
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7
+        ) RETURNING *`,
+      [
+        training_name,
+        billing_company,
+        training_status,
+        training_venue,
+        training_price,
+        training_date,
+        training_note,
+      ]
+    );
+
+    res
+      .status(201)
+      .json({ message: "Training added successfully!", data: result.rows[0] });
+  } catch (error) {
+    console.error("Error adding Training:", error);
+    res.status(500).json({ message: "Error adding Training" });
+  }
+};
+
 module.exports = {
   getRegions,
   getChapters,
@@ -1902,4 +2060,9 @@ module.exports = {
   getEvent,
   updateEvent,
   addEvent,
+  getTrainings,
+  getTraining,
+  updateTraining,
+  deleteTraining,
+  addTraining,
 };
