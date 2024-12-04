@@ -1271,7 +1271,11 @@ const addAccolade = async (req, res) => {
     accolade_price,
     accolade_status,
     stock_available,
+    item_type,
+    accolade_type,
   } = req.body;
+
+  console.log(req.body);
 
   // Validate accolade_name
   if (!accolade_name) {
@@ -1279,6 +1283,10 @@ const addAccolade = async (req, res) => {
   }
 
   try {
+    // Extract single value from item_type and accolade_type
+    const selectedItemType = typeof item_type === "object" && item_type.length > 0 ? item_type[0] : item_type;
+    const selectedAccoladeType = typeof accolade_type === "object" && accolade_type.length > 0 ? accolade_type[0] : accolade_type;
+
     // Check if accolade_name already exists
     const checkDuplicate = await con.query(
       `SELECT * FROM accolades WHERE accolade_name = $1`,
@@ -1294,9 +1302,9 @@ const addAccolade = async (req, res) => {
     // Insert new accolade
     const result = await con.query(
       `INSERT INTO accolades (
-          accolade_name, accolade_published_by, accolade_publish_date, accolade_availability, accolade_price, accolade_status, stock_available
+          accolade_name, accolade_published_by, accolade_publish_date, accolade_availability, accolade_price, accolade_status, stock_available, item_type, accolade_type
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7
+          $1, $2, $3, $4, $5, $6, $7, $8, $9
         ) RETURNING *`,
       [
         accolade_name,
@@ -1306,6 +1314,8 @@ const addAccolade = async (req, res) => {
         accolade_price,
         accolade_status,
         stock_available,
+        selectedItemType, // Store single value
+        selectedAccoladeType, // Store single value
       ]
     );
 
@@ -1317,6 +1327,8 @@ const addAccolade = async (req, res) => {
     res.status(500).json({ message: "Error adding Accolade" });
   }
 };
+
+
 
 
 // Controller to export regions to Excel
