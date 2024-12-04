@@ -1962,10 +1962,13 @@ const addTraining = async (req, res) => {
     billing_company,
     training_status,
     training_venue,
-    training_price,
+    training_ticket_price,
     training_date,
     training_note,
+    training_published_by,
   } = req.body;
+
+  console.log(req.body);
 
   // Validate accolade_name
   if (!training_name) {
@@ -1988,18 +1991,19 @@ const addTraining = async (req, res) => {
     // Insert new accolade
     const result = await con.query(
       `INSERT INTO training (
-        training_name, billing_company, training_status, training_venue, training_price, training_date, training_note
+        training_name, billing_company, training_status, training_venue, training_price, training_date, training_note, training_published_by
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7
+          $1, $2, $3, $4, $5, $6, $7, $8
         ) RETURNING *`,
       [
         training_name,
         billing_company,
         training_status,
         training_venue,
-        training_price,
+        training_ticket_price,
         training_date,
         training_note,
+        training_published_by,
       ]
     );
 
