@@ -4,7 +4,6 @@ const axios = require('axios');
 const db = require('../../database/db');
 const { Cashfree } = require('cashfree-pg');
 const crypto = require('crypto');
-const rawBody = require('raw-body');
 const app = express();
 
 // Set up Cashfree SDK with environment variables
@@ -170,49 +169,88 @@ const getPaymentStatus=async(req,res)=>{
     }
 }
 
-const getSettlementWebhook = async function (req, res) {
+const getSettlementStatus = async (req, res) => {
+  const { order_id } = req.params;
+
   try {
-    const timestamp = req.headers["x-webhook-timestamp"];
-    const signature = req.headers["x-webhook-signature"];
-    const secretKey = process.env.cashfree_secret_key;
+      // Fetch settlement status from Cashfree API
+      const settlementResponse = await axios.get(
+          `${process.env.cashfree_testing_url}/pg/orders/${order_id}/settlements`,
+          { headers }
+      );
 
-    const generatedSignature = verifySignature(timestamp, req.body, secretKey);
+      const settlementData = settlementResponse.data;
 
-    if (signature === generatedSignature) {
-      console.log("Webhook signature verified successfully");
+      // Extract settlement details
+      const {
+          cf_payment_id,
+          cf_settlement_id,
+          entity,
+          order_amount,
+          order_currency,
+          order_id: fetched_order_id,
+          payment_time,
+          service_charge,
+          service_tax,
+          settlement_amount,
+          settlement_currency,
+          transfer_id,
+          transfer_time,
+          transfer_utr
+      } = settlementData;
 
-      const webhookData = JSON.parse(req.body.toString());
-      console.log("Webhook data:", webhookData);
+      // Insert data into settlementstatus table
+      await db.query(
+        `INSERT INTO settlementstatus (
+            cf_payment_id, 
+            cf_settlement_id, 
+            entity, 
+            order_amount, 
+            order_currency, 
+            order_id, 
+            payment_time, 
+            service_charge, 
+            service_tax, 
+            settlement_amount, 
+            settlement_currency, 
+            transfer_id, 
+            transfer_time, 
+            transfer_utr
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ON CONFLICT (cf_settlement_id) DO NOTHING`, // Avoid duplicate entries
+        [
+            cf_payment_id,
+            cf_settlement_id,
+            entity,
+            order_amount,
+            order_currency,
+            fetched_order_id,
+            payment_time,
+            service_charge,
+            service_tax,
+            settlement_amount,
+            settlement_currency,
+            transfer_id,
+            transfer_time,
+            transfer_utr
+        ]
+    );
+    
 
-      // Process webhook data here (e.g., update settlement status in DB)
+      console.log('Settlement data inserted successfully');
+      res.status(200).json({ message: 'Settlement data stored successfully', settlementData });
 
-      res.status(200).send("Webhook processed successfully");
-    } else {
-      console.error("Invalid webhook signature");
-      res.status(400).send("Invalid webhook signature");
-    }
-  } catch (err) {
-    console.error("Error in webhook processing:", err.message);
-    res.status(500).send("Error processing webhook");
+  } catch (error) {
+      console.error('Error fetching settlement status:', error.response ? error.response.data : error.message);
+      res.status(500).json({ error: 'Failed to fetch settlement status' });
   }
 };
 
-
-
-function verifySignature(timestamp, rawBody, secretKey) {
-  const signedPayload = timestamp + rawBody;
-  const genSignature = crypto
-    .createHmac('sha256', secretKey)
-    .update(signedPayload)
-    .digest("base64");
-
-  return genSignature;
-}
 
 
 module.exports = {
     sessionIdGenerator,
     getOrderStatus,
     getPaymentStatus,
-    getSettlementWebhook
+    getSettlementStatus,
 };

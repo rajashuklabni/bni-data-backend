@@ -2028,6 +2028,17 @@ const addTraining = async (req, res) => {
   }
 };
 
+// Fetch all active members
+const getSettledPayments = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM settlementstatus");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching settlement transactions:", error);
+    res.status(500).send("Error fetching settlement transactions");
+  }
+};
+
 module.exports = {
   getRegions,
   getChapters,
@@ -2083,4 +2094,5 @@ module.exports = {
   updateTraining,
   deleteTraining,
   addTraining,
+  getSettledPayments,
 };
