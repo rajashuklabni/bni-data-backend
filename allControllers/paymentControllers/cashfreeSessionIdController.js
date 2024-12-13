@@ -23,7 +23,7 @@ app.use(bodyParser.raw({ type: 'application/json' }));
 // Generate Cashfree sessionId and store order details in Orders table
 const sessionIdGenerator = async (req, res) => {
     const data = req.body;
-    // console.log(data, "================body=================");
+    console.log(data, "================body=================");
 
     try {
         const axiosResponse = await axios.post(`${process.env.cashfree_testing_url}/pg/orders`, data, { headers });
@@ -35,10 +35,11 @@ const sessionIdGenerator = async (req, res) => {
         const insertOrderData = async () => {
           try {
               // console.log(data.customer_details, "================== Customer Details =================="); // Log customer details
+              // console.log("order data", responseData);
       
               await db.query(
-                  `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
+                  `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
                   [
                       responseData.order_id,
                       responseData.order_amount,
@@ -61,7 +62,9 @@ const sessionIdGenerator = async (req, res) => {
                       data.customer_details.company, // New field
                       data.customer_details.mobileNumber, // New field
                       data.customer_details.renewalYear, // New field
-                      data.customer_details.payment_note // New field
+                      data.customer_details.payment_note, // New field
+                      data.customer_details.trainingId, // New field
+                      data.customer_details.eventId, // New field
                   ]
               );
               console.log('Order data inserted successfully');
@@ -138,7 +141,7 @@ const getOrderStatus = async (req, res) => {
           payment_group
         ]
       );
-      console.log(getOrderData.data)
+      // console.log(getOrderData.data)
       console.log('Transaction data inserted successfully');
       res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`)
     } else {

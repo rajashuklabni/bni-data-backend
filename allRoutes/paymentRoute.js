@@ -10,6 +10,6 @@ router.get('/orders/:order_id/paymentStatus',getPaymentStatus)
 router.get('/orders/:order_id/settlementStatus', getSettlementStatus);
 router.get('/settlement/:cf_payment_id', getSettlementByCfPaymentId);
 
-
+ 
 
 module.exports = router;
