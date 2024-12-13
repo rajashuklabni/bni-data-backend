@@ -271,6 +271,29 @@ const getSettlementByCfPaymentId = async (req, res) => {
   }
 };
 
+// Fetch settlement data by cf_settlement_id
+const getOrderByTrainingId = async (req, res) => {
+  const { training_id } = req.params;
+
+  try {
+    // Query the database for the settlement record
+    const result = await db.query(
+      `SELECT * FROM orders WHERE training_id = $1`,
+      [training_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: `No orders found with training id: ${training_id}` });
+    }
+
+    res.status(200).json(result.rows);  // Add this line to send the data back
+
+  } catch (error) {
+    console.error('Error fetching order training data:', error.message);
+    res.status(500).json({ error: 'Failed to fetch order training data' });
+  }
+};
+
 
 
 module.exports = {
@@ -279,4 +302,5 @@ module.exports = {
     getPaymentStatus,
     getSettlementStatus,
     getSettlementByCfPaymentId,
+    getOrderByTrainingId,
 };
