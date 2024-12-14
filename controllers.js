@@ -2039,6 +2039,27 @@ const getSettledPayments = async (req, res) => {
   }
 };
 
+const getOrder = async (req, res) => {
+  const { order_id } = req.params; // Get member_id from route parameters
+
+  try {
+    // Use a parameterized query to safely insert member_id into the SQL statement
+    const result = await con.query(
+      "SELECT * FROM orders WHERE order_id = $1",
+      [order_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching Order:", error);
+    res.status(500).send("Error fetching Order");
+  }
+};
+
 module.exports = {
   getRegions,
   getChapters,
@@ -2095,4 +2116,5 @@ module.exports = {
   deleteTraining,
   addTraining,
   getSettledPayments,
+  getOrder,
 };

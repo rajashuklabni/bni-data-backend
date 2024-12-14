@@ -56,6 +56,7 @@ const {
   deleteTraining,
   addTraining,
   getSettledPayments,
+  getOrder,
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -113,6 +114,7 @@ router.put("/updateTraining/:training_id", updateTraining);
 router.put("/deleteTraining/:training_id", deleteTraining);
 router.post("/training", addTraining);
 router.get("/allSettledPayments", getSettledPayments);
+router.get("/getOrder/:order_id", getOrder);
 
 
 
