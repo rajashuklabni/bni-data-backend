@@ -22,17 +22,13 @@ const allowedOrigins = [
     'http://localhost:5173',
     'http://127.0.0.1:5500/',
     'http://127.0.0.1:5500',
-    'https://bni-dashboard-backend.vercel.app/*',
-    'https://bni-dashboard-backend.vercel.app',
-    'https://bnipayments.nidmm.org',
-    'https://bnipayments.nidmm.org/*',
     'http://localhost:3000/',
     'http://localhost:3000',
     'https://bni-xq0f.onrender.com/',
     'https://bni-xq0f.onrender.com',
-    'http://103.169.86.3:5173/',
-    'http://103.169.86.3:5173/',
-    'http://103.169.86.3:5173'
+    'https://bni.nmpinfotech.com/',
+    'https://bni.nmpinfotech.com',
+    'http://bni.nmpinfotech.com/'
 ];
 
 const corsOptions = {
