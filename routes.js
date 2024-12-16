@@ -116,7 +116,7 @@ router.put("/deleteTraining/:training_id", deleteTraining);
 router.post("/training", addTraining);
 router.get("/allSettledPayments", getSettledPayments);
 router.get("/getOrder/:order_id", getOrder);
-router.get("/getMemberId/", getMemberId);
+router.get("/getMemberId/:member_id", getMemberId);
 
 
 

@@ -2062,8 +2062,8 @@ const getOrder = async (req, res) => {
 
 const getMemberId = async (req, res) => {
   try {
-    // Extract member ID from query parameters or request body
-    const memberId = req.query.member_id || req.body.member_id;
+    // Extract member ID from route params
+    const { member_id: memberId } = req.params;
 
     if (!memberId) {
       return res.status(400).json({ message: "Member ID is required" });
