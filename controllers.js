@@ -2060,6 +2060,33 @@ const getOrder = async (req, res) => {
   }
 };
 
+const getMemberId = async (req, res) => {
+  try {
+    // Extract member ID from query parameters or request body
+    const memberId = req.query.member_id || req.body.member_id;
+
+    if (!memberId) {
+      return res.status(400).json({ message: "Member ID is required" });
+    }
+
+    // Query the database to fetch the member
+    const member = await db.query(
+      "SELECT * FROM members WHERE member_id = $1",
+      [memberId]
+    );
+
+    if (member.rows.length === 0) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+
+    res.status(200).json(member.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
 module.exports = {
   getRegions,
   getChapters,
@@ -2117,4 +2144,5 @@ module.exports = {
   addTraining,
   getSettledPayments,
   getOrder,
+  getMemberId,
 };
