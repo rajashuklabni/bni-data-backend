@@ -2070,8 +2070,8 @@ const getMemberId = async (req, res) => {
     }
 
     // Query the database to fetch the member
-    const member = await db.query(
-      "SELECT * FROM members WHERE member_id = $1",
+    const member = await con.query(
+      "SELECT * FROM member WHERE member_id = $1",
       [memberId]
     );
 
