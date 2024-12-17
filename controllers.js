@@ -903,8 +903,9 @@ const updateChapter = async (req, res) => {
         chapter_launched_by = $30,
         chapter_late_fees = $31,
         chapter_membership_fee_two_year = $32,
-        chapter_membership_fee_five_year = $33
-      WHERE chapter_id = $34
+        chapter_membership_fee_five_year = $33,
+        kitty_billing_frequency = $34
+      WHERE chapter_id = $35
       RETURNING *;`;
 
     const values = [
@@ -941,6 +942,7 @@ const updateChapter = async (req, res) => {
       cleanedData.chapter_late_fees,
       cleanedData.chapter_membership_fee_two_year,
       cleanedData.chapter_membership_fee_five_year,
+      cleanedData.billing_frequency,
       chapter_id, // Ensure the chapter_id is used for the WHERE clause
     ];
 
@@ -2064,6 +2066,7 @@ const getMemberId = async (req, res) => {
   try {
     // Extract member ID from route params
     const { member_id: memberId } = req.params;
+    console.log("Member ID from params:", memberId);
 
     if (!memberId) {
       return res.status(400).json({ message: "Member ID is required" });
