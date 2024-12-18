@@ -57,7 +57,9 @@ const {
   addTraining,
   getSettledPayments,
   getOrder,
-  getMemberId
+  getMemberId,
+  addKittyPayment,
+  getKittyPayments
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -117,6 +119,9 @@ router.post("/training", addTraining);
 router.get("/allSettledPayments", getSettledPayments);
 router.get("/getOrder/:order_id", getOrder);
 router.get("/getMemberId/:member_id", getMemberId);
+router.post('/addKittyPayment', addKittyPayment);
+router.get("/getKittyPayments", getKittyPayments);
+
 
 
 module.exports = router;

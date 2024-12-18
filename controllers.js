@@ -2089,6 +2089,40 @@ const getMemberId = async (req, res) => {
   }
 };
 
+const addKittyPayment = async (req, res) => {
+  try {
+      const { chapter_id, date, bill_type, description, total_weeks, total_bill_amount } = req.body;
+
+      if (!chapter_id || !date || !bill_type || !description || !total_weeks || !total_bill_amount) {
+          return res.status(400).json({ message: 'All fields are required.' });
+      }
+
+      const query = `
+          INSERT INTO kittyPaymentChapter 
+          (chapter_id, payment_date, bill_type, description, total_weeks, total_bill_amount) 
+          VALUES ($1, $2, $3, $4, $5, $6)
+      `;
+
+      await con.query(query, [chapter_id, date, bill_type, description, total_weeks, total_bill_amount]);
+
+      res.status(201).json({ message: 'Kitty payment added successfully.' });
+  } catch (error) {
+      console.error('Error adding kitty payment:', error);
+      res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+// Fetch all active members
+const getKittyPayments = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM kittypaymentchapter");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching kitty payments:", error);
+    res.status(500).send("Error fetching kitty payments");
+  }
+};
+
 
 module.exports = {
   getRegions,
@@ -2148,4 +2182,6 @@ module.exports = {
   getSettledPayments,
   getOrder,
   getMemberId,
+  addKittyPayment,
+  getKittyPayments,
 };
