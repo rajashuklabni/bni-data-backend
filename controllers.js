@@ -2093,10 +2093,20 @@ const addKittyPayment = async (req, res) => {
   try {
       const { chapter_id, date, bill_type, description, total_weeks, total_bill_amount } = req.body;
 
+      // Check if all required fields are provided
       if (!chapter_id || !date || !bill_type || !description || !total_weeks || !total_bill_amount) {
           return res.status(400).json({ message: 'All fields are required.' });
       }
 
+      // Check if a payment has already been raised for this chapter_id
+      const checkQuery = 'SELECT * FROM kittyPaymentChapter WHERE chapter_id = $1';
+      const checkResult = await con.query(checkQuery, [chapter_id]);
+
+      if (checkResult.rows.length > 0) {
+          return res.status(400).json({ message: 'Bill already raised for this chapter.' });
+      }
+
+      // If no payment exists for this chapter_id, proceed to insert the new record
       const query = `
           INSERT INTO kittyPaymentChapter 
           (chapter_id, payment_date, bill_type, description, total_weeks, total_bill_amount) 
@@ -2112,6 +2122,7 @@ const addKittyPayment = async (req, res) => {
   }
 };
 
+
 // Fetch all active members
 const getKittyPayments = async (req, res) => {
   try {
@@ -2120,6 +2131,26 @@ const getKittyPayments = async (req, res) => {
   } catch (error) {
     console.error("Error fetching kitty payments:", error);
     res.status(500).send("Error fetching kitty payments");
+  }
+};
+
+const deleteKittyBill = async (req, res) => {
+  const { payment_id } = req.params;
+  try {
+    const result = await con.query(
+      `UPDATE kittypaymentchapter SET delete_status = 1 WHERE payment_id = $1 RETURNING *`,
+      [payment_id]
+    );
+    if (result.rowCount > 0) {
+      res
+        .status(200)
+        .json({ message: "Kitty Bill marked as deleted successfully" });
+    } else {
+      res.status(404).json({ message: "Kitty Bill not found" });
+    }
+  } catch (error) {
+    console.error("Error deleting Kitty bill:", error);
+    res.status(500).json({ message: "Error deleting kitty bill" });
   }
 };
 
@@ -2184,4 +2215,5 @@ module.exports = {
   getMemberId,
   addKittyPayment,
   getKittyPayments,
+  deleteKittyBill,
 };

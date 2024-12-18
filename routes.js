@@ -59,7 +59,8 @@ const {
   getOrder,
   getMemberId,
   addKittyPayment,
-  getKittyPayments
+  getKittyPayments,
+  deleteKittyBill
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -121,6 +122,7 @@ router.get("/getOrder/:order_id", getOrder);
 router.get("/getMemberId/:member_id", getMemberId);
 router.post('/addKittyPayment', addKittyPayment);
 router.get("/getKittyPayments", getKittyPayments);
+router.put("/deleteKittyBill/:payment_id", deleteKittyBill);
 
 
 
