@@ -50,26 +50,26 @@ const loginController = async (req, res) => {
 
             case "chapter":
                 user = await db.query(
-                    "SELECT * FROM chapter WHERE email = $1",
+                    "SELECT * FROM chapter WHERE email_id = $1",
                     [email]
                 );
                 if (!user.rows.length) {
                     return res.status(404).json({
                         success: false,
-                        message: "Chapter not found",
+                        message: "Chapter email ID not found",
                     });
                 }
                 break;
 
             case "member":
                 user = await db.query(
-                    "SELECT * FROM member WHERE email = $1",
+                    "SELECT * FROM member WHERE member_email_address = $1",
                     [email]
                 );
                 if (!user.rows.length) {
                     return res.status(404).json({
                         success: false,
-                        message: "Member not found",
+                        message: "Member email ID not found",
                     });
                 }
                 break;
