@@ -182,6 +182,62 @@ const loginController = async (req, res) => {
     }
 };
 
+const verifyOtpController = async (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!otp) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email and OTP are required',
+    });
+  }
+
+  try {
+    // Get the latest OTP for the email
+    const result = await db.query(
+      "SELECT * FROM otp WHERE email = $1 ORDER BY generated_at DESC LIMIT 1",
+      [email]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'No OTP found for this email',
+      });
+    }
+
+    const storedOtp = result.rows[0];
+
+    // Check OTP and expiration
+    if (storedOtp.otp !== otp) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid OTP',
+      });
+    }
+
+    const currentTime = new Date();
+    if (currentTime > storedOtp.expires_at) {
+      return res.status(401).json({
+        success: false,
+        message: 'OTP has expired',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'OTP verified successfully',
+    });
+  } catch (error) {
+    console.error('Error verifying OTP:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+    });
+  }
+};
+
 module.exports = {
     loginController,
+    verifyOtpController,
 };
