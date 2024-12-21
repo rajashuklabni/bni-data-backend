@@ -1004,8 +1004,9 @@ const updateMember = async (req, res) => {
         member_youtube = $29,
         member_sponsored_by = $30,
         date_of_publishing = $31,
-        member_status = $32
-      WHERE member_id = $33
+        member_status = $32,
+        meeting_opening_balance = $33
+      WHERE member_id = $34
       RETURNING *;`;
 
     // Prepare the values for the SQL query
@@ -1042,6 +1043,7 @@ const updateMember = async (req, res) => {
       memberData.member_sponsored_by,
       memberData.date_of_publishing,
       memberData.member_status,
+      memberData.meeting_opening_balance,
       member_id, // Ensure the member_id is used for the WHERE clause
     ];
 
