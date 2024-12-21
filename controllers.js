@@ -2126,7 +2126,7 @@ const addKittyPayment = async (req, res) => {
 // Fetch all active members
 const getKittyPayments = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM kittypaymentchapter");
+    const result = await con.query("SELECT * FROM kittypaymentchapter where delete_status = 0");
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching kitty payments:", error);
