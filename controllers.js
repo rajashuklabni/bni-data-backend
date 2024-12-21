@@ -2115,6 +2115,15 @@ const addKittyPayment = async (req, res) => {
 
       await con.query(query, [chapter_id, date, bill_type, description, total_weeks, total_bill_amount]);
 
+      // Update the meeting_payable_amount field in the member table for the same chapter_id
+      const updateMemberQuery = `
+          UPDATE member
+          SET meeting_payable_amount = meeting_payable_amount + $1
+          WHERE chapter_id = $2
+      `;
+
+      await con.query(updateMemberQuery, [total_bill_amount, chapter_id]);
+
       res.status(201).json({ message: 'Kitty payment added successfully.' });
   } catch (error) {
       console.error('Error adding kitty payment:', error);
