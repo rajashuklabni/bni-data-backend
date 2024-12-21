@@ -2098,15 +2098,15 @@ const addKittyPayment = async (req, res) => {
           return res.status(400).json({ message: 'All fields are required.' });
       }
 
-      // Check if a payment has already been raised for this chapter_id
-      const checkQuery = 'SELECT * FROM kittyPaymentChapter WHERE chapter_id = $1';
+      // Check if a payment has already been raised for this chapter_id with delete_status = 0
+      const checkQuery = 'SELECT * FROM kittyPaymentChapter WHERE chapter_id = $1 AND delete_status = 0';
       const checkResult = await con.query(checkQuery, [chapter_id]);
 
       if (checkResult.rows.length > 0) {
-          return res.status(400).json({ message: 'Bill already raised for this chapter.' });
+          return res.status(400).json({ message: 'A bill has already been raised for this chapter.' });
       }
 
-      // If no payment exists for this chapter_id, proceed to insert the new record
+      // If no active payment exists for this chapter_id, proceed to insert the new record
       const query = `
           INSERT INTO kittyPaymentChapter 
           (chapter_id, payment_date, bill_type, description, total_weeks, total_bill_amount) 
@@ -2121,6 +2121,7 @@ const addKittyPayment = async (req, res) => {
       res.status(500).json({ message: 'Internal server error.' });
   }
 };
+
 
 
 // Fetch all active members
