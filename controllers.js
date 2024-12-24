@@ -2168,6 +2168,18 @@ const deleteKittyBill = async (req, res) => {
   }
 };
 
+const expenseType = async (req, res) => {
+  try {
+
+    const query = "SELECT * FROM expense_type WHERE delete_status = 0"; // Default query (non-deleted regions)
+    const result = await con.query(query); // Execute the query
+    res.json(result.rows); // Return filtered data
+  } catch (error) {
+    console.error("Error fetching expense types:", error);
+    res.status(500).send("Error fetching expense types");
+  }
+};
+
 
 module.exports = {
   getRegions,
@@ -2230,4 +2242,5 @@ module.exports = {
   addKittyPayment,
   getKittyPayments,
   deleteKittyBill,
+  expenseType,
 };
