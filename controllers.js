@@ -2180,6 +2180,67 @@ const expenseType = async (req, res) => {
   }
 };
 
+// Fetch all active members
+const allExpenses = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM expenses WHERE delete_status = 0");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching expenses:", error);
+    res.status(500).send("Error fetching expenses");
+  }
+};
+
+
+const addExpense = async (req, res) => {
+  const {
+    expense_type,
+    submitted_by,
+    description,
+    amount,
+    payment_status,
+    bill_date,
+    upload_bill,
+    transaction_no,
+    bill_no,
+  } = req.body;
+
+  // Validate accolade_name
+  if (!expense_type) {
+    return res.status(400).json({ message: "Expense Type is required" });
+  }
+
+  try {
+
+    // Insert new expense
+    const result = await con.query(
+      `INSERT INTO expenses (
+        expense_type, submitted_by, description, amount, payment_status, bill_date, upload_bill, transaction_no, bill_no
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9
+        ) RETURNING *`,
+      [
+        expense_type,
+        submitted_by,
+        description,
+        amount,
+        payment_status,
+        bill_date,
+        upload_bill,
+        transaction_no,
+        bill_no,
+      ]
+    );
+
+    res
+      .status(201)
+      .json({ message: "Expense added successfully!", data: result.rows[0] });
+  } catch (error) {
+    console.error("Error adding Expense:", error);
+    res.status(500).json({ message: "Error adding Expense" });
+  }
+};
+
 
 module.exports = {
   getRegions,
@@ -2243,4 +2304,6 @@ module.exports = {
   getKittyPayments,
   deleteKittyBill,
   expenseType,
+  allExpenses,
+  addExpense,
 };

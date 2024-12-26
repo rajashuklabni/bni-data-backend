@@ -61,7 +61,9 @@ const {
   addKittyPayment,
   getKittyPayments,
   deleteKittyBill,
-  expenseType
+  expenseType,
+  allExpenses,
+  addExpense
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -125,6 +127,8 @@ router.post('/addKittyPayment', addKittyPayment);
 router.get("/getKittyPayments", getKittyPayments);
 router.put("/deleteKittyBill/:payment_id", deleteKittyBill);
 router.get("/expenseType", expenseType);
+router.get("/allExpenses", allExpenses);
+router.post("/addExpense", addExpense);
 
 
 
