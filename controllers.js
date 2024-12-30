@@ -1,6 +1,7 @@
 const { Client } = require("pg");
 const xlsx = require('xlsx');
 
+
 // Replace with your Render database credentials
 const con = new Client({
   host: "dpg-cs0d2hi3esus739088bg-a.oregon-postgres.render.com",
@@ -2191,6 +2192,48 @@ const allExpenses = async (req, res) => {
   }
 };
 
+const addExpenseType = async (req, res) => {
+  const { expense_name, expense_status } = req.body;
+console.log("Expense Type:", expense_name, expense_status);
+  // Validate required fields
+  if (!expense_name || !expense_status) {
+    return res.status(400).json({
+      message: "Both expense_name and expense_status are required.",
+    });
+  }
+
+  // Validate expense_status
+  const validStatuses = ['active', 'inactive'];
+  if (!validStatuses.includes(expense_status.toLowerCase())) {
+    return res.status(400).json({
+      message: 'Invalid expense_status. Allowed values are "active" or "inactive".',
+    });
+  }
+
+  try {
+    // Insert the expense type into the database
+    const query = `
+      INSERT INTO expense_type (expense_name, expense_status)
+      VALUES ($1, $2)
+      RETURNING *;
+    `;
+    const values = [expense_name, expense_status.toLowerCase()];
+    const result = await con.query(query, values);
+
+    // Return success response
+    return res.status(201).json({
+      message: "Expense Type added successfully!",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error adding expense type:", error);
+    return res.status(500).json({
+      message: "An error occurred while adding the expense type.",
+      error: error.message,
+    });
+  }
+};
+
 
 const addExpense = async (req, res) => {
   const {
@@ -2200,25 +2243,36 @@ const addExpense = async (req, res) => {
     amount,
     payment_status,
     bill_date,
-    upload_bill,
     transaction_no,
     bill_no,
   } = req.body;
 
-  // Validate accolade_name
-  if (!expense_type) {
-    return res.status(400).json({ message: "Expense Type is required" });
-  }
-
   try {
+    // Log request body and file for debugging
+    console.log("Request Body:", req.body);
+    console.log("Uploaded File:", req.file);
 
-    // Insert new expense
+    // Validate expense_type
+    if (!expense_type) {
+      return res.status(400).json({ message: "Expense Type is required" });
+    }
+
+    // Validate the uploaded file
+    if (!req.file) {
+      return res.status(400).json({ message: "Bill file is required" });
+    }
+
+    // Construct the file path
+    const uploadBillPath = `/uploads/expenses/${req.file.filename}`;
+    console.log("File Path to be Stored:", uploadBillPath);
+
+    // Insert the new expense into the database
     const result = await con.query(
       `INSERT INTO expenses (
         expense_type, submitted_by, description, amount, payment_status, bill_date, upload_bill, transaction_no, bill_no
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9
-        ) RETURNING *`,
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9
+      ) RETURNING *`,
       [
         expense_type,
         submitted_by,
@@ -2226,20 +2280,197 @@ const addExpense = async (req, res) => {
         amount,
         payment_status,
         bill_date,
-        upload_bill,
+        uploadBillPath, // Store the file path as a string
         transaction_no,
         bill_no,
       ]
     );
 
-    res
-      .status(201)
-      .json({ message: "Expense added successfully!", data: result.rows[0] });
+    // Respond with success message and data
+    res.status(201).json({
+      message: "Expense added successfully!",
+      data: result.rows[0],
+    });
   } catch (error) {
+    // Log the error for debugging
     console.error("Error adding Expense:", error);
-    res.status(500).json({ message: "Error adding Expense" });
+
+    res.status(500).json({
+      message: "Error adding Expense",
+      error: error.message,
+    });
   }
 };
+
+
+const getExpenseById = async (req, res) => {
+  const { expense_id } = req.params;  // Extract expense_id from URL parameters
+
+  try {
+    // Query the database for the expense with the given expense_id
+    const result = await con.query('SELECT * FROM expenses WHERE expense_id = $1', [expense_id]);
+
+    if (result.rows.length === 0) {
+      // If no expense found, return a 404
+      return res.status(404).json({ message: 'Expense not found' });
+    }
+
+    // If expense is found, return the data
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    // Log any error and return a 500 response
+    console.error('Error fetching expense:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+const updateExpense = async (req, res) => {
+  const { 
+    expense_type, 
+    submitted_by, 
+    description, 
+    amount, 
+    payment_status, 
+    bill_date, 
+    transaction_no, 
+    bill_no 
+  } = req.body;
+
+  const { expense_id } = req.params; // Get expense_id from URL params
+
+  try {
+    // Log data for debugging
+    console.log("Expense ID:", expense_id);
+    console.log("Request Body:", req.body);
+    console.log("Uploaded File:", req.file);
+
+    // Validate expense_id
+    if (!expense_id) {
+      return res.status(400).json({ message: "Expense ID is required" });
+    }
+
+    // Initialize file path
+    let uploadBillPath = null;
+
+    // If a new file is uploaded, construct the file path
+    if (req.file) {
+      uploadBillPath = `/uploads/expenses/${req.file.filename}`;
+    }
+
+    // Dynamically build the query and values array
+    const query = [];
+    const values = [];
+    let index = 1;
+
+    if (expense_type) {
+      query.push(`expense_type = $${index++}`);
+      values.push(expense_type);
+    }
+    if (submitted_by) {
+      query.push(`submitted_by = $${index++}`);
+      values.push(submitted_by);
+    }
+    if (description) {
+      query.push(`description = $${index++}`);
+      values.push(description);
+    }
+    if (amount) {
+      query.push(`amount = $${index++}`);
+      values.push(amount);
+    }
+    if (payment_status) {
+      query.push(`payment_status = $${index++}`);
+      values.push(payment_status);
+    }
+    if (bill_date) {
+      query.push(`bill_date = $${index++}`);
+      values.push(bill_date);
+    }
+    if (uploadBillPath) {
+      query.push(`upload_bill = $${index++}`);
+      values.push(uploadBillPath);
+    }
+    if (transaction_no) {
+      query.push(`transaction_no = $${index++}`);
+      values.push(transaction_no);
+    }
+    if (bill_no) {
+      query.push(`bill_no = $${index++}`);
+      values.push(bill_no);
+    }
+
+    // Add expense_id to the values array for the WHERE clause
+    values.push(expense_id);
+
+    // Build the update query
+    const updateQuery = `
+      UPDATE expenses
+      SET ${query.join(", ")}
+      WHERE expense_id = $${index}
+      RETURNING *;
+    `;
+
+    // Execute the query
+    const result = await con.query(updateQuery, values);
+
+    // Handle case where no rows are updated
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Expense not found" });
+    }
+
+    // Respond with the updated data
+    res.status(200).json({
+      message: "Expense updated successfully!",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error updating Expense:", error);
+    res.status(500).json({
+      message: "Error updating Expense",
+      error: error.message,
+    });
+  }
+};
+const deleteExpense = async (req, res) => {
+  const { expense_id } = req.params; // Get expense_id from URL params
+
+  try {
+    // Validate expense_id
+    if (!expense_id) {
+      return res.status(400).json({ message: "Expense ID is required" });
+    }
+
+    // Check if the expense exists
+    const fetchQuery = `SELECT * FROM expenses WHERE expense_id = $1 AND delete_status = 0;`;
+    const fetchResult = await con.query(fetchQuery, [expense_id]);
+
+    if (fetchResult.rowCount === 0) {
+      return res.status(404).json({ message: "Expense not found or already deleted" });
+    }
+
+    // Update delete_status to 1 (soft delete)
+    const deleteQuery = `
+      UPDATE expenses
+      SET delete_status = 1
+      WHERE expense_id = $1
+      RETURNING *;
+    `;
+    const deleteResult = await con.query(deleteQuery, [expense_id]);
+
+    // Respond with the updated data
+    res.status(200).json({
+      message: "Expense deleted successfully (soft delete)",
+      data: deleteResult.rows[0],
+    });
+  } catch (error) {
+    console.error("Error deleting Expense:", error);
+    res.status(500).json({
+      message: "Error deleting Expense",
+      error: error.message,
+    });
+  }
+};
+
+
 
 
 module.exports = {
@@ -2306,4 +2537,8 @@ module.exports = {
   expenseType,
   allExpenses,
   addExpense,
+  addExpenseType,
+  getExpenseById,
+  updateExpense,
+  deleteExpense
 };

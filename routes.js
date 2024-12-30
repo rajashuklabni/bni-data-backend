@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const upload = require("./middleware/expenseImagesMiddleware");
 const {
   getRegions,
   getChapters,
@@ -63,7 +64,11 @@ const {
   deleteKittyBill,
   expenseType,
   allExpenses,
-  addExpense
+  addExpense,
+  addExpenseType,
+  getExpenseById,
+  updateExpense,
+  deleteExpense
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -127,9 +132,12 @@ router.post('/addKittyPayment', addKittyPayment);
 router.get("/getKittyPayments", getKittyPayments);
 router.put("/deleteKittyBill/:payment_id", deleteKittyBill);
 router.get("/expenseType", expenseType);
+router.post("/expenseType", addExpenseType)
 router.get("/allExpenses", allExpenses);
-router.post("/addExpense", addExpense);
-
+router.get("/expense/:expense_id", getExpenseById);
+router.post("/addExpense",upload.single("upload_bill"),addExpense);
+router.put("/expense/:expense_id", upload.single("upload_bill"), updateExpense)
+router.delete("/expense/:expense_id", deleteExpense);
 
 
 module.exports = router;
