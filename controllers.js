@@ -2470,6 +2470,78 @@ const deleteExpense = async (req, res) => {
   }
 };
 
+const updateMemberSettings = async (req, res) => {
+  try {
+      console.log('Received update request:', req.body);
+
+      const {
+          member_email_address,
+          member_phone_number,
+          member_company_address,
+          member_company_name,
+          member_company_logo,
+          member_gst_number,
+          member_facebook,      // Added social media fields
+          member_instagram,
+          member_linkedin,
+          member_youtube
+      } = req.body;
+
+      // Validate email
+      if (!member_email_address) {
+          console.log('Email validation failed');
+          return res.status(400).json({ message: 'Email address is required' });
+      }
+
+      // Create the SQL query with social media fields
+      const query = `
+          UPDATE member 
+          SET 
+              member_phone_number = $1,
+              member_company_address = $2,
+              member_company_name = $3,
+              member_company_logo = $4,
+              member_gst_number = $5,
+              member_facebook = $6,
+              member_instagram = $7,
+              member_linkedin = $8,
+              member_youtube = $9
+          WHERE member_email_address = $10
+          RETURNING *`;
+
+      const result = await con.query(query, [
+          member_phone_number,
+          member_company_address,
+          member_company_name,
+          member_company_logo,
+          member_gst_number,
+          member_facebook,      // Added social media values
+          member_instagram,
+          member_linkedin,
+          member_youtube,
+          member_email_address
+      ]);
+
+      if (result.rows.length === 0) {
+          console.log('No member found with email:', member_email_address);
+          return res.status(404).json({ message: 'Member not found with this email' });
+      }
+
+      console.log('Update successful');
+      res.json({
+          message: "Member settings updated successfully",
+          data: result.rows[0]
+      });
+
+  } catch (error) {
+      console.error('Error in updateMemberSettings:', error);
+      res.status(500).json({ 
+          message: "Error updating member settings",
+          error: error.message 
+      });
+  }
+};
+
 
 
 
@@ -2540,5 +2612,6 @@ module.exports = {
   addExpenseType,
   getExpenseById,
   updateExpense,
-  deleteExpense
+  deleteExpense,
+  updateMemberSettings
 };
