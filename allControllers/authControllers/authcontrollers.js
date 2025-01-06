@@ -5,18 +5,19 @@ const db = require("../../database/db"); // Ensure this is correctly configured 
 
 // Create a transporter for Hostinger's SMTP service
 const transporter = nodemailer.createTransport({
-  host: 'smtp.hostinger.com',  // Hostinger SMTP server
-  port: 465,                   // SSL port
-  secure: true,                // Use true for SSL
+  service: "gmail",
+  host: "smtp.gmail.com",
+  port:  587,
+  secure: false, // Use `true` for port 465, `false` for all other ports
   auth: {
-      user: 'sprince@nationalmarketingprojects.com',  // Your email
-      pass: '#@%/Sprince9708'   // Your app password or correct email password
-  }
+    user: "as9467665000@gmail.com",
+    pass: "ddle kjkt haxu vfmz",
+  },
 });
 
 const sendOtpEmail = (email, otp) => {
   const mailOptions = {
-      from: 'sprince@nationalmarketingprojects.com',
+      from: 'api',
       to: email,
       subject: 'Your OTP Code',
       text: `Your OTP code is: ${otp}`,

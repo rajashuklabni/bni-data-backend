@@ -49,7 +49,7 @@ const sessionIdGenerator = async (req, res) => {
                       data.customer_details.chapter_id, // Use chapter_id from customer_details
                       data.customer_details.region_id, // Use region_id from customer_details
                       data.customer_details.universal_link_id, // Ensure this is available
-                      data.customer_details.ulid_id, // Ensure this is available
+                      data.customer_details.ulid_id, // Ensure this is   available
                       responseData.order_status,
                       responseData.payment_session_id,
                       data.customer_details.one_time_registration_fee, // New field
@@ -84,21 +84,44 @@ const sessionIdGenerator = async (req, res) => {
 
 const getOrderStatus = async (req, res) => {
   const { order_id } = req.params;
-  console.log(order_id)
+
+  console.log("Order ID:", order_id);
 
   try {
-    // Check if the order_id exists in the Orders table before proceeding
+    // Check if the order_id exists in the Orders table
     const orderCheck = await db.query('SELECT * FROM Orders WHERE order_id = $1', [order_id]);
     if (orderCheck.rowCount === 0) {
       console.error("Order ID does not exist in Orders table");
       return res.status(400).json({ error: "Order ID does not exist in Orders table" });
     }
 
+    // Fetch order data from Cashfree API
     const getOrderData = await axios.get(
       `${process.env.cashfree_testing_url}/pg/orders/${order_id}/payments`,
       { headers }
     );
+
+    console.log(getOrderData.data);
+    
+    if (!Array.isArray(getOrderData.data) || getOrderData.data.length === 0) {
+      console.error("No payment details found for the order");
+      return res.status(404).json({ error: "No payment details found for the order" });
+    }
+
     const paymentDetails = getOrderData.data[0];
+    const existingTransaction = await db.query(
+      `SELECT * FROM Transactions WHERE cf_payment_id = $1`,
+      [getOrderData.data[0].cf_payment_id]
+    );
+
+    if (existingTransaction.rowCount > 0) {
+      console.log("Transaction already exists for the order");
+      return res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`);
+    }
+
+
+
+console.log("paymentDetails==============================",paymentDetails);
     if (paymentDetails) {
       const {
         cf_payment_id,
@@ -138,22 +161,25 @@ const getOrderStatus = async (req, res) => {
           JSON.stringify(error_details),
           gateway_order_id,
           gateway_payment_id,
-          payment_group
+          payment_group,
         ]
       );
-      // console.log(getOrderData.data)
-      console.log('Transaction data inserted successfully');
-      res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`)
-    } else {
-      res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`)
 
+      console.log('Transaction data inserted successfully');
+      return res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`);
+    } else {
+      console.error("Payment details missing");
+      return res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`);
     }
   } catch (error) {
-    console.error("Error fetching order data:", error.message);
-    res.redirect(`${process.env.baseUrl}/payment-status/${getOrderData.data.order_id}`)
-
+   
+    // Fallback if `getOrderData` is not defined
+    // const fallbackOrderId = (error.response && error.response.data && error.response.data.order_id) || order_id;
+console.log(error);
+    return res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`);
   }
 };
+
 
 const getPaymentStatus=async(req,res)=>{
     const { order_id } = req.params;

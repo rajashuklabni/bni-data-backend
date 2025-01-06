@@ -68,7 +68,8 @@ const {
   addExpenseType,
   getExpenseById,
   updateExpense,
-  deleteExpense
+  deleteExpense,
+  getMemberByEmail
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -76,6 +77,7 @@ router.post("/regions", addRegion);
 router.get("/chapters", getChapters);
 router.post("/chapters", addChapter);
 router.get("/members", getMembers);
+router.get("/members/:email", getMemberByEmail);
 router.post("/members", addMember);
 router.get("/accolades", getAccolades);
 router.get("/memberCategory", getMemberCategory);
@@ -135,6 +137,7 @@ router.get("/expenseType", expenseType);
 router.post("/expenseType", addExpenseType)
 router.get("/allExpenses", allExpenses);
 router.get("/expense/:expense_id", getExpenseById);
+
 router.post("/addExpense",upload.single("upload_bill"),addExpense);
 router.put("/expense/:expense_id", upload.single("upload_bill"), updateExpense)
 router.delete("/expense/:expense_id", deleteExpense);
