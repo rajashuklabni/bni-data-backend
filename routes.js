@@ -69,7 +69,8 @@ const {
   getExpenseById,
   updateExpense,
   deleteExpense,
-  updateMemberSettings
+  updateMemberSettings,
+  getDisplayLogo
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -140,5 +141,6 @@ router.post("/addExpense",upload.single("upload_bill"),addExpense);
 router.put("/expense/:expense_id", upload.single("upload_bill"), updateExpense);
 router.delete("/expense/:expense_id", deleteExpense);
 router.put("/updateMemberSettings", updateMemberSettings);
+router.get("/getDisplayLogo", getDisplayLogo);
 
 module.exports = router;

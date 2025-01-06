@@ -1,5 +1,7 @@
 const { Client } = require("pg");
 const xlsx = require('xlsx');
+const fs = require('fs');
+const path = require('path')
 
 
 // Replace with your Render database credentials
@@ -2470,42 +2472,67 @@ const deleteExpense = async (req, res) => {
   }
 };
 
+
+
 const updateMemberSettings = async (req, res) => {
   try {
       console.log('Received update request:', req.body);
-
       const {
           member_email_address,
           member_phone_number,
           member_company_address,
           member_company_name,
-          member_company_logo,
           member_gst_number,
-          member_facebook,      // Added social media fields
+          member_facebook,
           member_instagram,
           member_linkedin,
-          member_youtube
+          member_youtube,
+          member_photo      
       } = req.body;
 
       // Validate email
       if (!member_email_address) {
-          console.log('Email validation failed');
           return res.status(400).json({ message: 'Email address is required' });
       }
 
-      // Create the SQL query with social media fields
+      // Handle member photo
+      let photoFileName = '';
+      if (member_photo) {
+          // Create directory if it doesn't exist
+          const uploadDir = path.join(__dirname, './public/assets/memberProfileImage');
+          if (!fs.existsSync(uploadDir)) {
+              fs.mkdirSync(uploadDir, { recursive: true });
+          }
+
+          // Generate filename (without full path for database storage)
+          const timestamp = Date.now();
+          photoFileName = `member_${timestamp}.jpg`;
+          
+          // Full path for saving the file
+          const fullPath = path.join(uploadDir, photoFileName);
+          
+          // Remove the data:image/jpeg;base64 prefix if it exists
+          const base64Data = member_photo.replace(/^data:image\/\w+;base64,/, '');
+          
+          // Save the file
+          fs.writeFileSync(fullPath, base64Data, { encoding: 'base64' });
+          
+          console.log('Photo saved as:', photoFileName);
+      }
+
+      // Update query with relative path for member_photo
       const query = `
           UPDATE member 
           SET 
               member_phone_number = $1,
               member_company_address = $2,
               member_company_name = $3,
-              member_company_logo = $4,
-              member_gst_number = $5,
-              member_facebook = $6,
-              member_instagram = $7,
-              member_linkedin = $8,
-              member_youtube = $9
+              member_gst_number = $4,
+              member_facebook = $5,
+              member_instagram = $6,
+              member_linkedin = $7,
+              member_youtube = $8,
+              member_photo = $9
           WHERE member_email_address = $10
           RETURNING *`;
 
@@ -2513,12 +2540,12 @@ const updateMemberSettings = async (req, res) => {
           member_phone_number,
           member_company_address,
           member_company_name,
-          member_company_logo,
           member_gst_number,
-          member_facebook,      // Added social media values
+          member_facebook,
           member_instagram,
           member_linkedin,
           member_youtube,
+          photoFileName ? `/assets/memberProfileImage/${photoFileName}` : member_photo, // Store relative path
           member_email_address
       ]);
 
@@ -2539,6 +2566,19 @@ const updateMemberSettings = async (req, res) => {
           message: "Error updating member settings",
           error: error.message 
       });
+  }
+};
+
+
+const getDisplayLogo = async (req, res) => {
+  try {
+    const result = await con.query(
+      "SELECT * FROM display_logo"
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching display logo:", error);
+    res.status(500).send("Error fetching display logo");
   }
 };
 
@@ -2613,5 +2653,6 @@ module.exports = {
   getExpenseById,
   updateExpense,
   deleteExpense,
-  updateMemberSettings
+  updateMemberSettings,
+  getDisplayLogo
 };
