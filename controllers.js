@@ -1,5 +1,7 @@
 const { Client } = require("pg");
 const xlsx = require('xlsx');
+const fs = require('fs');
+const path = require('path');
 
 
 // Replace with your Render database credentials
@@ -235,8 +237,8 @@ const addRegion = async (req, res) => {
           social_instagram, social_linkedin, social_youtube, website_link, region_launched_by, 
           date_of_publishing
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 
-          $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 
+          $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
         ) RETURNING *`,
       [
         region_name,
@@ -2470,6 +2472,102 @@ const deleteExpense = async (req, res) => {
   }
 };
 
+const updateMemberSettings = async (req, res) => {
+    try {
+        console.log('Received update request:', req.body);
+        const {
+            member_email_address,
+            member_phone_number,
+            member_company_address,
+            member_company_name,
+            member_gst_number,
+            member_facebook,
+            member_instagram,
+            member_linkedin,
+            member_youtube,
+            member_photo      
+        } = req.body;
+
+        // Validate email
+        if (!member_email_address) {
+            return res.status(400).json({ message: 'Email address is required' });
+        }
+
+        // Handle member photo
+        let photoFileName = '';
+        if (member_photo) {
+            // Create directory if it doesn't exist
+            const uploadDir = path.join(__dirname, '../bni/public/assets/memberProfileImage');
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+
+            // Generate filename (without full path for database storage)
+            const timestamp = Date.now();
+            photoFileName = `member_${timestamp}.jpg`;
+            
+            // Full path for saving the file
+            const fullPath = path.join(uploadDir, photoFileName);
+            
+            // Remove the data:image/jpeg;base64 prefix if it exists
+            const base64Data = member_photo.replace(/^data:image\/\w+;base64,/, '');
+            
+            // Save the file
+            fs.writeFileSync(fullPath, base64Data, { encoding: 'base64' });
+            
+            console.log('Photo saved as:', photoFileName);
+        }
+
+        // Update query with relative path for member_photo
+        const query = `
+            UPDATE member 
+            SET 
+                member_phone_number = $1,
+                member_company_address = $2,
+                member_company_name = $3,
+                member_gst_number = $4,
+                member_facebook = $5,
+                member_instagram = $6,
+                member_linkedin = $7,
+                member_youtube = $8,
+                member_photo = $9
+            WHERE member_email_address = $10
+            RETURNING *`;
+
+        const result = await con.query(query, [
+            member_phone_number,
+            member_company_address,
+            member_company_name,
+            member_gst_number,
+            member_facebook,
+            member_instagram,
+            member_linkedin,
+            member_youtube,
+            photoFileName ? `/assets/memberProfileImage/${photoFileName}` : member_photo, // Store relative path
+            member_email_address
+        ]);
+
+        if (result.rows.length === 0) {
+            console.log('No member found with email:', member_email_address);
+            return res.status(404).json({ message: 'Member not found with this email' });
+        }
+
+        console.log('Update successful');
+        res.json({
+            message: "Member settings updated successfully",
+            data: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('Error in updateMemberSettings:', error);
+        res.status(500).json({ 
+            message: "Error updating member settings",
+            error: error.message 
+        });
+    }
+};
+
+
 
 
 
@@ -2540,5 +2638,6 @@ module.exports = {
   addExpenseType,
   getExpenseById,
   updateExpense,
-  deleteExpense
+  deleteExpense,
+  updateMemberSettings
 };
