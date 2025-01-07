@@ -63,6 +63,30 @@ const getMember = async (req, res) => {
   }
 };
 
+const getMemberByEmail = async (req, res) => {
+  const { email } = req.params; // Get email from route parameters
+console.log(email)
+  try {
+    // Use a parameterized query to safely insert the email into the SQL statement
+    const result = await con.query(
+      "SELECT * FROM member WHERE member_email_address = $1",
+      [email.toLowerCase()] // Convert email to lowercase to handle case-insensitivity
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching member:", error);
+    res.status(500).send("Error fetching member");
+  }
+};
+
+module.exports = getMemberByEmail;
+
+
 const getChapter = async (req, res) => {
   const { chapter_id } = req.params; // Get member_id from route parameters
 
@@ -2675,6 +2699,7 @@ module.exports = {
   getExpenseById,
   updateExpense,
   deleteExpense,
+  getMemberByEmail,
   updateMemberSettings,
   getDisplayLogo,
   getGstType,
