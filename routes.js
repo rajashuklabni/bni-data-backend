@@ -70,7 +70,9 @@ const {
   updateExpense,
   deleteExpense,
   updateMemberSettings,
-  getDisplayLogo
+  getDisplayLogo,
+  getGstType,
+  getGstTypeValues
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -142,5 +144,7 @@ router.put("/expense/:expense_id", upload.single("upload_bill"), updateExpense);
 router.delete("/expense/:expense_id", deleteExpense);
 router.put("/updateMemberSettings", updateMemberSettings);
 router.get("/getDisplayLogo", getDisplayLogo);
+router.get("/getGstType", getGstType);
+router.get("/getGstTypeValues", getGstTypeValues);
 
 module.exports = router;

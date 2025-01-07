@@ -2582,7 +2582,29 @@ const getDisplayLogo = async (req, res) => {
   }
 };
 
+const getGstType = async (req, res) => {
+  try {
+    const result = await con.query(
+      "SELECT * FROM gst_type where active_status = 'active' "
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching gst type:", error);
+    res.status(500).send("Error fetching gst type");
+  }
+};
 
+const getGstTypeValues = async (req, res) => {
+  try {
+    const result = await con.query(
+      "SELECT * FROM gst_type_values where active_status = 'active' "
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching gst type values:", error);
+    res.status(500).send("Error fetching gst type values");
+  }
+};
 
 
 module.exports = {
@@ -2654,5 +2676,7 @@ module.exports = {
   updateExpense,
   deleteExpense,
   updateMemberSettings,
-  getDisplayLogo
+  getDisplayLogo,
+  getGstType,
+  getGstTypeValues
 };
