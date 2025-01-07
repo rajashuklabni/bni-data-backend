@@ -2621,7 +2621,7 @@ const getGstType = async (req, res) => {
 const getGstTypeValues = async (req, res) => {
   try {
     const result = await con.query(
-      "SELECT * FROM gst_type_values where active_status = 'active' "
+      "SELECT * FROM gst_type_values "
     );
     res.json(result.rows);
   } catch (error) {
