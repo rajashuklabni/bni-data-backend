@@ -2776,6 +2776,42 @@ const updateUserPassword = async (req, res) => {
   }
 };
 
+const getDisplayLogo = async (req, res) => {
+  try {
+    const result = await con.query(
+      "SELECT * FROM display_logo"
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching display logo:", error);
+    res.status(500).send("Error fetching display logo");
+  }
+};
+
+const getGstType = async (req, res) => {
+  try {
+    const result = await con.query(
+      "SELECT * FROM gst_type where active_status = 'active' "
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching gst type:", error);
+    res.status(500).send("Error fetching gst type");
+  }
+};
+
+const getGstTypeValues = async (req, res) => {
+  try {
+    const result = await con.query(
+      "SELECT * FROM gst_type_values "
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching gst type values:", error);
+    res.status(500).send("Error fetching gst type values");
+  }
+};
+
 module.exports = {
   getRegions,
   getChapters,
@@ -2849,4 +2885,7 @@ module.exports = {
   updateLogo,
   updateGstTypeValues,
   updateUserPassword,
+  getDisplayLogo,
+  getGstType,
+  getGstTypeValues
 };
