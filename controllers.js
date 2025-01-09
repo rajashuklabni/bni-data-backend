@@ -2,6 +2,7 @@ const { Client } = require("pg");
 const xlsx = require('xlsx');
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcrypt');
 
 
 // Replace with your Render database credentials
@@ -2472,8 +2473,308 @@ const deleteExpense = async (req, res) => {
   }
 };
 
+const updateMemberSettings = async (req, res) => {
+    try {
+        console.log('Received update request:', req.body);
+        const {
+            member_email_address,
+            member_phone_number,
+            member_company_address,
+            member_company_name,
+            member_gst_number,
+            member_facebook,
+            member_instagram,
+            member_linkedin,
+            member_youtube,
+            member_photo      
+        } = req.body;
 
+        // Validate email
+        if (!member_email_address) {
+            return res.status(400).json({ message: 'Email address is required' });
+        }
 
+        // Handle member photo
+        let photoFileName = '';
+        if (member_photo) {
+            // Create directory if it doesn't exist
+            const uploadDir = path.join(__dirname, '../bni/public/assets/memberProfileImage');
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+
+            // Generate filename (without full path for database storage)
+            const timestamp = Date.now();
+            photoFileName = `member_${timestamp}.jpg`;
+            
+            // Full path for saving the file
+            const fullPath = path.join(uploadDir, photoFileName);
+            
+            // Remove the data:image/jpeg;base64 prefix if it exists
+            const base64Data = member_photo.replace(/^data:image\/\w+;base64,/, '');
+            
+            // Save the file
+            fs.writeFileSync(fullPath, base64Data, { encoding: 'base64' });
+            
+            console.log('Photo saved as:', photoFileName);
+        }
+
+        // Update query with relative path for member_photo
+        const query = `
+            UPDATE member 
+            SET 
+                member_phone_number = $1,
+                member_company_address = $2,
+                member_company_name = $3,
+                member_gst_number = $4,
+                member_facebook = $5,
+                member_instagram = $6,
+                member_linkedin = $7,
+                member_youtube = $8,
+                member_photo = $9
+            WHERE member_email_address = $10
+            RETURNING *`;
+
+        const result = await con.query(query, [
+            member_phone_number,
+            member_company_address,
+            member_company_name,
+            member_gst_number,
+            member_facebook,
+            member_instagram,
+            member_linkedin,
+            member_youtube,
+            photoFileName ? `/assets/memberProfileImage/${photoFileName}` : member_photo, // Store relative path
+            member_email_address
+        ]);
+
+        if (result.rows.length === 0) {
+            console.log('No member found with email:', member_email_address);
+            return res.status(404).json({ message: 'Member not found with this email' });
+        }
+
+        console.log('Update successful');
+        res.json({
+            message: "Member settings updated successfully",
+            data: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('Error in updateMemberSettings:', error);
+        res.status(500).json({ 
+            message: "Error updating member settings",
+            error: error.message 
+        });
+    }
+};
+
+const updateUserSettings = async (req, res) => {
+    try {
+        const {
+            company_name,
+            company_address,
+            company_gst,
+            company_email,
+            company_phone,
+            company_account_number,
+            company_ifsc_code,
+            company_bank_branch,
+            company_facebook,
+            company_twitter,
+            company_youtube,
+            company_instagram
+        } = req.body;
+
+        // Update query
+        const updateQuery = `
+            UPDATE company 
+            SET 
+                company_name = $1,
+                company_address = $2,
+                company_gst = $3,
+                company_email = $4,
+                company_phone = $5,
+                company_account_number = $6,
+                company_ifsc_code = $7,
+                company_bank_branch = $8,
+                company_facebook = $9,
+                company_twitter = $10,
+                company_youtube = $11,
+                company_instagram = $12
+            WHERE company_id = 1
+            RETURNING *
+        `;
+
+        const result = await con.query(updateQuery, [
+            company_name,
+            company_address,
+            company_gst,
+            company_email,
+            company_phone,
+            company_account_number,
+            company_ifsc_code,
+            company_bank_branch,
+            company_facebook || null,    // If empty, save as null
+            company_twitter || null,     // If empty, save as null
+            company_youtube || null,     // If empty, save as null
+            company_instagram || null    // If empty, save as null
+        ]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Company not found' });
+        }
+
+        res.json({
+            message: 'Company settings updated successfully',
+            data: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('Error updating company settings:', error);
+        res.status(400).json({
+            message: 'Error updating company settings',
+            error: error.toString()
+        });
+    }
+};
+
+const updateLogo = async (req, res) => {
+    try {
+        console.log('Received logo update request:', req.body);
+        const {
+            display_image_name,
+            display_status,
+            added_by
+        } = req.body;
+
+        // Update query - since there's only one record, we don't need an ID
+        const query = `
+            UPDATE display_logo 
+            SET 
+                display_image_name = $1,
+                display_status = $2,
+                added_by = $3,
+                added_on = CURRENT_TIMESTAMP
+            WHERE display_id = 1
+            RETURNING *`;
+
+        const result = await con.query(query, [
+            display_image_name,
+            display_status,
+            added_by
+        ]);
+
+        if (result.rows.length === 0) {
+            console.log('No logo settings found');
+            return res.status(404).json({ message: 'Logo settings not found' });
+        }
+
+        console.log('Logo update successful');
+        res.json({
+            message: "Logo settings updated successfully",
+            data: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('Error in updateLogo:', error);
+        res.status(500).json({ 
+            message: "Error updating logo settings",
+            error: error.message 
+        });
+    }
+};
+
+const updateGstTypeValues = async (req, res) => {
+    try {
+        console.log('Received GST type values update request:', req.body);
+        const { gst_value_id, vat_value_id } = req.body;
+
+        // First, update all GST values (type_id = 1) to inactive
+        await con.query(`
+            UPDATE gst_type_values 
+            SET active_status = 'inactive' 
+            WHERE gst_type_name_id = 1
+        `);
+
+        // Then set only the selected GST value to active
+        await con.query(`
+            UPDATE gst_type_values 
+            SET active_status = 'active' 
+            WHERE gst_value_id = $1
+        `, [gst_value_id]);
+
+        // Next, update all VAT values (type_id = 2) to inactive
+        await con.query(`
+            UPDATE gst_type_values 
+            SET active_status = 'inactive' 
+            WHERE gst_type_name_id = 2
+        `);
+
+        // Finally, set only the selected VAT value to active
+        await con.query(`
+            UPDATE gst_type_values 
+            SET active_status = 'active' 
+            WHERE gst_value_id = $1
+        `, [vat_value_id]);
+
+        // Fetch the updated values to return in response
+        const result = await con.query(`
+            SELECT * FROM gst_type_values 
+            WHERE gst_type_name_id IN (1, 2)
+            ORDER BY gst_type_name_id, gst_value_id
+        `);
+
+        console.log('Update successful');
+        res.json({
+            message: "GST type values updated successfully",
+            data: result.rows
+        });
+
+    } catch (error) {
+        console.error('Error in updateGstTypeValues:', error);
+        res.status(500).json({ 
+            message: "Error updating GST type values",
+            error: error.message 
+        });
+    }
+};
+
+const updateUserPassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  try {
+    // Get the current password hash
+    const userResult = await con.query(
+      'SELECT password_hash FROM users WHERE is_active = true'
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'No active user found' });
+    }
+
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    // Hash the new password
+    const saltRounds = 6;
+    const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update the password for active user
+    await con.query(
+      'UPDATE users SET password_hash = $1 WHERE is_active = true',
+      [newPasswordHash]
+    );
+
+    res.status(200).json({ message: 'Password updated successfully' });
+
+  } catch (error) {
+    console.error('Error updating password:', error);
+    res.status(500).json({ message: 'Error updating password' });
+  }
+};
 
 module.exports = {
   getRegions,
@@ -2543,5 +2844,9 @@ module.exports = {
   getExpenseById,
   updateExpense,
   deleteExpense,
-  updateMemberSettings
+  updateMemberSettings,
+  updateUserSettings,
+  updateLogo,
+  updateGstTypeValues,
+  updateUserPassword,
 };

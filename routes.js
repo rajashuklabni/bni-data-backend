@@ -69,7 +69,11 @@ const {
   getExpenseById,
   updateExpense,
   deleteExpense,
-  updateMemberSettings
+  updateMemberSettings,
+  updateUserSettings,
+  updateLogo,
+  updateGstTypeValues,
+  updateUserPassword
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -140,6 +144,10 @@ router.post("/addExpense",upload.single("upload_bill"),addExpense);
 router.put("/expense/:expense_id", upload.single("upload_bill"), updateExpense);
 router.delete("/expense/:expense_id", deleteExpense);
 router.put("/updateMemberSettings", updateMemberSettings);
+router.put("/updateUserSettings", updateUserSettings);
+router.put("/updateLogo", updateLogo);
+router.put('/updateGstTypeValues', updateGstTypeValues);
+router.put('/updateUserPassword', updateUserPassword);
 
 
 module.exports = router;
