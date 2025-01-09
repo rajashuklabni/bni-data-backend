@@ -73,12 +73,12 @@ const {
   updateUserSettings,
   updateLogo,
   updateGstTypeValues,
-  updateUserPassword
+  updateUserPassword,
   getMemberByEmail,
-  updateMemberSettings,
   getDisplayLogo,
   getGstType,
-  getGstTypeValues
+  getGstTypeValues,
+  sendQrCodeByEmail
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -155,6 +155,12 @@ router.put("/updateUserSettings", updateUserSettings);
 router.put("/updateLogo", updateLogo);
 router.put('/updateGstTypeValues', updateGstTypeValues);
 router.put('/updateUserPassword', updateUserPassword);
+router.get('/getDisplayLogo', getDisplayLogo);
+router.get('/getGstType', getGstType);
+router.get('/getGstTypeValues', getGstTypeValues);
+router.post('/send-qr-code', sendQrCodeByEmail);
+
+
 
 
 module.exports = router;

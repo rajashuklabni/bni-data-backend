@@ -3,7 +3,13 @@ const xlsx = require('xlsx');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
+const nodemailer = require('nodemailer'); // Ensure you have nodemailer installed
 
+// Instead of this:
+// const fetch = require('node-fetch');
+
+// Use this:
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 // Replace with your Render database credentials
 const con = new Client({
@@ -2811,6 +2817,84 @@ const getGstTypeValues = async (req, res) => {
     res.status(500).send("Error fetching gst type values");
   }
 };
+const getMemberByEmail = async (req, res) => {
+  const { email } = req.params; // Get email from route parameters
+console.log(email)
+  try {
+    // Use a parameterized query to safely insert the email into the SQL statement
+    const result = await con.query(
+      "SELECT * FROM member WHERE member_email_address = $1",
+      [email.toLowerCase()] // Convert email to lowercase to handle case-insensitivity
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching member:", error);
+    res.status(500).send("Error fetching member");
+  }
+};
+
+// Function to send QR code via email
+const sendQrCodeByEmail = async (req, res) => {
+    const { orderId, qrCodeImage } = req.body; // Get orderId and QR code image from request body
+
+    console.log("Received request to send QR code:", { orderId, qrCodeImage });
+
+    try {
+        // Fetch order details to get customer email
+        const orderResponse = await fetch(`https://bni-data-backend.onrender.com/api/allOrders`);
+        const orders = await orderResponse.json();
+        
+        // Find the order by orderId
+        const order = orders.find(o => o.order_id === orderId);
+        
+        if (!order) {
+            console.error("Order not found for ID:", orderId);
+            return res.status(404).json({ message: "Order not found" });
+        }
+
+        const customerEmail = order.customer_email;
+        if (!customerEmail) {
+            console.error("Customer email not found for order ID:", orderId);
+            return res.status(404).json({ message: "Customer email not found" });
+        }
+
+        console.log("Customer email found:", customerEmail);
+
+        // Set up nodemailer transporter
+        const transporter = nodemailer.createTransport({
+            service: 'gmail', // Use your email service
+            auth: {
+                user: 'as9467665000@gmail.com', // Your email
+                pass: 'ddle kjkt haxu vfmz' // Your email password
+            }
+        });
+
+        // Email options
+        const mailOptions = {
+            from: 'your-email@gmail.com',
+            to: customerEmail,
+            subject: 'Your Generated QR Code',
+            html: `<p>Here is your generated QR code:</p><img src="${qrCodeImage}" alt="QR Code" width="200" height="200">`
+        };
+
+        // Send email
+        await transporter.sendMail(mailOptions);
+        console.log("QR code sent to:", customerEmail);
+
+        // Respond with success
+        return res.status(200).json({ message: "QR code sent successfully" });
+    } catch (error) {
+        console.error("Error sending QR code:", error);
+        return res.status(500).json({ message: "Error sending QR code" });
+    }
+};
+
+ 
 
 module.exports = {
   getRegions,
@@ -2887,5 +2971,7 @@ module.exports = {
   updateUserPassword,
   getDisplayLogo,
   getGstType,
-  getGstTypeValues
+  getGstTypeValues,
+  getMemberByEmail,
+  sendQrCodeByEmail,
 };
