@@ -3023,6 +3023,33 @@ const generateQRCode = async (data) => {
   }
 };
 
+const markAttendence = async (req, res) => {
+  const { transaction_id, orderId, training_id } = req.body;
+
+  console.log(req.body);
+
+  if (!transaction_id) {
+    return res.status(400).json({ success: false, message: "Transaction ID is required." });
+  }
+
+  try {
+    // Update the `checked_in` field to true where transaction_id matches
+    const result = await con.query(
+      "UPDATE training_checkin SET checked_in = true WHERE transaction_id = $1 RETURNING *",
+      [transaction_id]
+    );
+
+    if (result.rowCount > 0) {
+      res.json({ success: true, message: "Attendance marked successfully." });
+    } else {
+      res.status(404).json({ success: false, message: "Transaction not found." });
+    }
+  } catch (error) {
+    console.error("Error updating attendance:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
 
 module.exports = {
   getRegions,
@@ -3102,4 +3129,5 @@ module.exports = {
   getGstTypeValues,
   getMemberByEmail,
   sendQrCodeByEmail,
+  markAttendence,
 };

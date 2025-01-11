@@ -78,7 +78,8 @@ const {
   getDisplayLogo,
   getGstType,
   getGstTypeValues,
-  sendQrCodeByEmail
+  sendQrCodeByEmail,
+  markAttendence
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -159,6 +160,7 @@ router.get('/getDisplayLogo', getDisplayLogo);
 router.get('/getGstType', getGstType);
 router.get('/getGstTypeValues', getGstTypeValues);
 router.post('/send-qr-code', sendQrCodeByEmail);
+router.post('/markAttendence', markAttendence);
 
 
 
