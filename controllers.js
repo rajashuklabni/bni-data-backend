@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer'); // Ensure you have nodemailer installed
+const QRCode = require('qrcode'); // Import the qrcode library
+const PDFDocument = require("pdfkit");
 
 // Instead of this:
 // const fetch = require('node-fetch');
@@ -2838,63 +2840,189 @@ console.log(email)
   }
 };
 
-// Function to send QR code via email
+
+// Function to send QR code by email
 const sendQrCodeByEmail = async (req, res) => {
-    const { orderId, qrCodeImage } = req.body; // Get orderId and QR code image from request body
+  const {
+    orderId,
+    cfPaymentId,
+    page_title,
+    training_name,
+    training_venue,
+    training_ticket_price,
+    training_date,
+    training_published_by,
+    training_id,
+  } = req.body;
 
-    console.log("Received request to send QR code:", { orderId, qrCodeImage });
+  console.log("Received request to send QR code for orderId:", orderId, "and cfPaymentId:", cfPaymentId);
 
-    try {
-        // Fetch order details to get customer email
-        const orderResponse = await fetch(`https://bni-data-backend.onrender.com/api/allOrders`);
-        const orders = await orderResponse.json();
-        
-        // Find the order by orderId
-        const order = orders.find(o => o.order_id === orderId);
-        
-        if (!order) {
-            console.error("Order not found for ID:", orderId);
-            return res.status(404).json({ message: "Order not found" });
-        }
+  try {
+    // Fetch order details to get customer email
+    const orderResponse = await fetch(`https://bni-data-backend.onrender.com/api/allOrders`);
+    const orders = await orderResponse.json();
 
-        const customerEmail = order.customer_email;
-        if (!customerEmail) {
-            console.error("Customer email not found for order ID:", orderId);
-            return res.status(404).json({ message: "Customer email not found" });
-        }
+    // Find the order by orderId
+    const order = orders.find((o) => o.order_id === orderId);
 
-        console.log("Customer email found:", customerEmail);
-
-        // Set up nodemailer transporter
-        const transporter = nodemailer.createTransport({
-            service: 'gmail', // Use your email service
-            auth: {
-                user: 'as9467665000@gmail.com', // Your email
-                pass: 'ddle kjkt haxu vfmz' // Your email password
-            }
-        });
-
-        // Email options
-        const mailOptions = {
-            from: 'your-email@gmail.com',
-            to: customerEmail,
-            subject: 'Your Generated QR Code',
-            html: `<p>Here is your generated QR code:</p><img src="${qrCodeImage}" alt="QR Code" width="200" height="200">`
-        };
-
-        // Send email
-        await transporter.sendMail(mailOptions);
-        console.log("QR code sent to:", customerEmail);
-
-        // Respond with success
-        return res.status(200).json({ message: "QR code sent successfully" });
-    } catch (error) {
-        console.error("Error sending QR code:", error);
-        return res.status(500).json({ message: "Error sending QR code" });
+    if (!order) {
+      console.error("Order not found for ID:", orderId);
+      return res.status(404).json({ message: "Order not found" });
     }
+
+    const customerEmail = order.customer_email;
+    if (!customerEmail) {
+      console.error("Customer email not found for order ID:", orderId);
+      return res.status(404).json({ message: "Customer email not found" });
+    }
+
+    console.log("Customer email found:", customerEmail);
+
+    // Generate the QR code and save it as a temporary file
+    const qrCodeImagePath = path.join(__dirname, "checkinTrainings", `qr_code_${orderId}.png`);
+    await QRCode.toFile(qrCodeImagePath, cfPaymentId); // Generate QR code as a file
+
+    // Define PDF path within checkinTrainings folder
+    const pdfFolderPath = path.join(__dirname, "checkinTrainings");
+    const pdfPath = path.join(pdfFolderPath, `training_${orderId}.pdf`);
+    console.log("PDF will be saved at:", pdfPath);
+
+    // Create PDF with QR code and training details
+    const doc = new PDFDocument();
+    const pdfWriteStream = fs.createWriteStream(pdfPath);
+    doc.pipe(pdfWriteStream);
+
+    doc
+      .fontSize(20)
+      .text(page_title, { align: "center" })
+      .moveDown();
+
+    doc
+      .fontSize(14)
+      .text(`Training Name: ${training_name}`)
+      .text(`Venue: ${training_venue}`)
+      .text(`Ticket Price: ${training_ticket_price}`)
+      .text(`Date: ${training_date}`)
+      .text(`Training By: ${training_published_by}`)
+      .moveDown();
+
+    doc.text("QR Code:", { align: "left" });
+
+    // Embed the QR code image in the PDF
+    doc.image(qrCodeImagePath, { width: 200, height: 200, align: "center" });
+
+    // Finish and close the PDF document
+    doc.end();
+
+    // Wait for the PDF file to be fully written before checking its existence
+    pdfWriteStream.on('finish', () => {
+      console.log("PDF created successfully:", pdfPath);
+
+      // Check if the PDF exists after the file is fully written
+      if (!fs.existsSync(pdfPath)) {
+        console.error("PDF file does not exist at path:", pdfPath);
+        return res.status(500).json({ message: "PDF file does not exist" });
+      }
+
+      // Set up nodemailer transporter
+      const transporter = nodemailer.createTransport({
+        service: "gmail", // Use your email service
+        auth: {
+          user: "as9467665000@gmail.com", // Your email
+          pass: "ddle kjkt haxu vfmz", // Your email password
+        },
+      });
+
+      // Format the training details into the email
+      const emailContent = `
+        <h2>${page_title}</h2>
+        <p><strong>Training Name:</strong> ${training_name}</p>
+        <p><strong>Venue:</strong> ${training_venue}</p>
+        <p><strong>Ticket Price:</strong> ${training_ticket_price}</p>
+        <p><strong>Date:</strong> ${training_date}</p>
+        <p><strong>Training By:</strong> ${training_published_by}</p>
+        <p>Here is your generated QR code:</p>
+        <img src="cid:qr_code_image" alt="QR Code" width="200" height="200">
+        <p>Attached is a PDF with the QR code and training details.</p>
+      `;
+
+      // Email options
+      const mailOptions = {
+        from: "as9467665000@gmail.com",
+        to: customerEmail,
+        subject: `Training Details & QR Code for ${training_name}`,
+        html: emailContent,
+        attachments: [
+          {
+            filename: `training_${orderId}.pdf`,
+            path: pdfPath,
+          },
+          {
+            filename: `qr_code_${orderId}.png`,
+            path: qrCodeImagePath,
+            cid: "qr_code_image", // This is used to embed the image in the email body
+          },
+        ],
+      };
+
+      // Send email and handle errors
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error("Error sending email:", error);
+          return res.status(500).json({ message: "Error sending email" });
+        } else {
+          console.log("Email sent successfully:", info.response);
+
+          // Clean up temporary QR code and PDF files after confirming email is sent
+          fs.unlinkSync(qrCodeImagePath);
+          fs.unlinkSync(pdfPath);
+          console.log("Temporary files removed after sending.");
+
+          return res.status(200).json({
+            message: "QR code and training details sent successfully",
+          });
+        }
+      });
+    });
+
+    // Insert record into the training_checkin table
+    const query = `
+      INSERT INTO training_checkin (
+        training_id, order_id, transaction_id, qr_code_generated, qr_code_generated_on, checked_in
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING checkin_id
+    `;
+
+    const values = [
+      training_id,
+      orderId,
+      cfPaymentId,
+      true, // qr_code_generated
+      new Date(), // qr_code_generated_on
+      false, // checked_in
+    ];
+
+    const result = await con.query(query, values);
+    console.log("Details stored in training_checkin table with checkin_id:", result.rows[0].checkin_id);
+
+  } catch (error) {
+    console.error("Error sending QR code and training details:", error);
+    return res.status(500).json({ message: "Error sending QR code and training details" });
+  }
 };
 
- 
+
+// Function to generate QR code
+const generateQRCode = async (data) => {
+  try {
+      const qrCodeImage = await QRCode.toDataURL(data); // Generates a QR code as a data URL
+      return qrCodeImage;
+  } catch (error) {
+      console.error("Error generating QR code:", error);
+      throw error;
+  }
+};
+
 
 module.exports = {
   getRegions,
