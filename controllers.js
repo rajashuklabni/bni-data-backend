@@ -4,9 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer'); // Ensure you have nodemailer installed
+const QRCode = require('qrcode'); // Import the qrcode library
 
-// Instead of this:
-// const fetch = require('node-fetch');
 
 // Use this:
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
@@ -2784,13 +2783,23 @@ const updateUserPassword = async (req, res) => {
 
 const getDisplayLogo = async (req, res) => {
   try {
+    console.log("Fetching display logo...");
+    
     const result = await con.query(
-      "SELECT * FROM display_logo"
+      "SELECT display_id, display_image_name, display_status, added_by, added_on FROM display_logo WHERE display_status = 'active' ORDER BY display_id DESC LIMIT 1"
     );
-    res.json(result.rows);
+    
+    console.log("Query result:", result.rows);
+    
+    if (result.rows.length > 0) {
+      res.json(result.rows);
+    } else {
+      console.log("No active logo found");
+      res.json([]);
+    }
   } catch (error) {
     console.error("Error fetching display logo:", error);
-    res.status(500).send("Error fetching display logo");
+    res.status(500).json({ error: "Error fetching display logo" });
   }
 };
 
@@ -2838,11 +2847,11 @@ console.log(email)
   }
 };
 
-// Function to send QR code via email
+// Function to send QR code by email
 const sendQrCodeByEmail = async (req, res) => {
-    const { orderId, qrCodeImage } = req.body; // Get orderId and QR code image from request body
+    const { orderId, cfPaymentId } = req.body; // Get orderId and cf_payment_id from request body
 
-    console.log("Received request to send QR code:", { orderId, qrCodeImage });
+    console.log("Received request to send QR code for orderId:", orderId, "and cf_payment_id:", cfPaymentId);
 
     try {
         // Fetch order details to get customer email
@@ -2865,6 +2874,9 @@ const sendQrCodeByEmail = async (req, res) => {
 
         console.log("Customer email found:", customerEmail);
 
+        // Generate the QR code using the cf_payment_id
+        const qrCodeImage = await generateQRCode(cfPaymentId); // Generate QR code
+
         // Set up nodemailer transporter
         const transporter = nodemailer.createTransport({
             service: 'gmail', // Use your email service
@@ -2876,7 +2888,7 @@ const sendQrCodeByEmail = async (req, res) => {
 
         // Email options
         const mailOptions = {
-            from: 'your-email@gmail.com',
+            from: 'as9467665000@gmail.com',
             to: customerEmail,
             subject: 'Your Generated QR Code',
             html: `<p>Here is your generated QR code:</p><img src="${qrCodeImage}" alt="QR Code" width="200" height="200">`
@@ -2894,7 +2906,16 @@ const sendQrCodeByEmail = async (req, res) => {
     }
 };
 
- 
+// Function to generate QR code
+const generateQRCode = async (data) => {
+    try {
+        const qrCodeImage = await QRCode.toDataURL(data); // Generates a QR code as a data URL
+        return qrCodeImage;
+    } catch (error) {
+        console.error("Error generating QR code:", error);
+        throw error;
+    }
+};
 
 module.exports = {
   getRegions,

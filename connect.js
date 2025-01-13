@@ -11,7 +11,7 @@ const { request } = require('http');
 const dotEnv = require('dotenv')
 dotEnv.config();
 const app = express();
-
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const upload = multer({ dest: 'uploads/' });
 
 app.use(express.json());
