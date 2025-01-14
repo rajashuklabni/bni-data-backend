@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer'); // Ensure you have nodemailer installed
 const QRCode = require('qrcode'); // Import the qrcode library
 const PDFDocument = require("pdfkit");
+const { QueryTypes } = require('sequelize'); // If using Sequelize
 
 // Instead of this:
 // const fetch = require('node-fetch');
@@ -2853,9 +2854,11 @@ const sendQrCodeByEmail = async (req, res) => {
     training_date,
     training_published_by,
     training_id,
+    customerId,
   } = req.body;
 
   console.log("Received request to send QR code for orderId:", orderId, "and cfPaymentId:", cfPaymentId);
+  console.log(req.body);
 
   try {
     // Fetch order details to get customer email
@@ -3024,31 +3027,137 @@ const generateQRCode = async (data) => {
 };
 
 const markAttendence = async (req, res) => {
-  const { transaction_id, orderId, training_id } = req.body;
+  const { transaction_id, training_id, orderId, customerId } = req.body;
 
-  console.log(req.body);
+  console.log("Request Body:", req.body);
 
   if (!transaction_id) {
     return res.status(400).json({ success: false, message: "Transaction ID is required." });
   }
 
   try {
-    // Update the `checked_in` field to true where transaction_id matches
-    const result = await con.query(
-      "UPDATE training_checkin SET checked_in = true WHERE transaction_id = $1 RETURNING *",
-      [transaction_id]
-    );
+    // Check if the transaction exists and fetch the `checked_in` status
+    const checkQuery = "SELECT checked_in FROM training_checkin WHERE transaction_id = $1";
+    const checkResult = await con.query(checkQuery, [transaction_id]);
 
-    if (result.rowCount > 0) {
-      res.json({ success: true, message: "Attendance marked successfully." });
+    console.log("Check Query Result:", checkResult.rows);
+
+    if (checkResult.rows.length === 0) {
+      // Transaction not found, insert a new record
+      const insertQuery = `
+        INSERT INTO training_checkin (
+          order_id, transaction_id, member_id, training_id, qr_code_generated, qr_code_generated_on, checked_in
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`;
+      const insertResult = await con.query(insertQuery, [
+        orderId,
+        transaction_id,
+        customerId,
+        training_id,
+        false, // qr_code_generated
+        null,  // qr_code_generated_on
+        true,  // checked_in
+      ]);
+
+      console.log("Insert Query Result:", insertResult.rows);
+
+      return res.status(201).json({
+        success: true,
+        message: "Attendance marked successfully. Transaction was not previously found, so it was created.",
+        data: insertResult.rows[0],
+      });
+    }
+
+    // Fetch the `checked_in` status
+    const isCheckedIn = checkResult.rows[0].checked_in;
+
+    console.log("Checked In Status:", isCheckedIn);
+
+    // If `checked_in` is true, return an error message
+    if (isCheckedIn === true) {
+      return res.status(400).json({ success: false, message: "Member has already checked in." });
+    }
+
+    // Update the `checked_in` field to true
+    const updateQuery = "UPDATE training_checkin SET checked_in = true WHERE transaction_id = $1 RETURNING *";
+    const updateResult = await con.query(updateQuery, [transaction_id]);
+
+    console.log("Update Query Result:", updateResult.rows);
+
+    if (updateResult.rowCount > 0) {
+      return res.json({ success: true, message: "Attendance marked successfully." });
     } else {
-      res.status(404).json({ success: false, message: "Transaction not found." });
+      return res.status(500).json({ success: false, message: "Failed to mark attendance." });
     }
   } catch (error) {
     console.error("Error updating attendance:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
+    return res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
+
+const verifyQrCode = async (req, res) => {
+  const { cfPaymentId, confirmAttendance } = req.body;
+  const loggedInEmail = req.headers["loggedin-email"]; // Pass this from the frontend
+  const loginType = req.headers["login-type"]; // Pass this from the frontend
+
+  if (loginType !== "ro_admin") {
+    return res
+      .status(403)
+      .json({ message: "Unauthorized: You are not allowed to scan QR codes." });
+  }
+
+  try {
+    // Fetch the transaction from the `training_checkin` table
+    const transactionQuery = "SELECT * FROM training_checkin WHERE transaction_id = $1";
+    const transactionResult = await con.query(transactionQuery, [cfPaymentId]);
+
+    if (transactionResult.rows.length === 0) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    const transaction = transactionResult.rows[0];
+
+    // Check if the member is already checked in
+    if (transaction.checked_in) {
+      return res
+        .status(400)
+        .json({ message: "Member has already checked in." });
+    }
+
+    // If only verifying the QR code without marking attendance
+    if (!confirmAttendance) {
+      return res
+        .status(200)
+        .json({ message: "QR code verified", transaction });
+    }
+
+    // Mark attendance if confirmation is provided
+    const updateQuery =
+      "UPDATE training_checkin SET checked_in = true WHERE transaction_id = $1";
+    await con.query(updateQuery, [cfPaymentId]);
+
+    res.status(200).json({ message: "Attendance marked successfully" });
+  } catch (error) {
+    console.error("Error verifying QR code:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+// Backend: Adjusted to filter based on query parameter
+const allCheckins = async (req, res) => {
+  try {
+
+    const query = "SELECT * FROM training_checkin"; // Default query (non-deleted regions)
+
+    const result = await con.query(query); // Execute the query
+    res.json(result.rows); // Return filtered data
+  } catch (error) {
+    console.error("Error fetching regions:", error);
+    res.status(500).send("Error fetching regions");
+  }
+};
+
+
 
 
 module.exports = {
@@ -3130,4 +3239,6 @@ module.exports = {
   getMemberByEmail,
   sendQrCodeByEmail,
   markAttendence,
+  verifyQrCode,
+  allCheckins,
 };

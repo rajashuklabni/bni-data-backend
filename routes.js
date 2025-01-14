@@ -79,7 +79,9 @@ const {
   getGstType,
   getGstTypeValues,
   sendQrCodeByEmail,
-  markAttendence
+  markAttendence,
+  verifyQrCode,
+  allCheckins
 } = require("./controllers");
 
 router.get("/regions", getRegions);
@@ -161,6 +163,8 @@ router.get('/getGstType', getGstType);
 router.get('/getGstTypeValues', getGstTypeValues);
 router.post('/send-qr-code', sendQrCodeByEmail);
 router.post('/markAttendence', markAttendence);
+router.post("/verify-qr-code", verifyQrCode);
+router.get('/allCheckins', allCheckins);
 
 
 
