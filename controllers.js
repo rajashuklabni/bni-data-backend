@@ -2787,23 +2787,13 @@ const updateUserPassword = async (req, res) => {
 
 const getDisplayLogo = async (req, res) => {
   try {
-    console.log("Fetching display logo...");
-    
     const result = await con.query(
-      "SELECT display_id, display_image_name, display_status, added_by, added_on FROM display_logo WHERE display_status = 'active' ORDER BY display_id DESC LIMIT 1"
+      "SELECT * FROM display_logo"
     );
-    
-    console.log("Query result:", result.rows);
-    
-    if (result.rows.length > 0) {
-      res.json(result.rows);
-    } else {
-      console.log("No active logo found");
-      res.json([]);
-    }
+    res.json(result.rows);
   } catch (error) {
     console.error("Error fetching display logo:", error);
-    res.status(500).json({ error: "Error fetching display logo" });
+    res.status(500).send("Error fetching display logo");
   }
 };
 
