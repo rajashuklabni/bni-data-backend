@@ -2,6 +2,8 @@ const bcrypt = require("bcrypt");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const db = require("../../database/db"); // Ensure this is correctly configured for PostgreSQL
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 // Create a transporter for Hostinger's SMTP service
 const transporter = nodemailer.createTransport({
@@ -184,99 +186,83 @@ const loginController = async (req, res) => {
 };
 
 const verifyOtpController = async (req, res) => {
+    console.log('Starting OTP verification process');
+    const { email, otp, login_type } = req.body;
+
     try {
-      const { email, otp, login_type } = req.body;
-      console.log('Step 1 - Incoming verification request:', {
-        email,
-        typedOtp: otp,
-        login_type,
-      });
-  
-      if (!otp || !email) {
-        console.log('Step 2 - Validation failed: Missing required fields');
-        return res.status(400).json({
-          success: false,
-          message: 'Email and OTP are required',
+        // Verify OTP from database
+        const otpRecord = await db.query(
+            "SELECT * FROM otp WHERE email = $1 AND otp = $2 AND login_type = $3 AND expires_at > NOW() ORDER BY generated_at DESC LIMIT 1",
+            [email, otp, login_type]
+        );
+
+        if (!otpRecord.rows.length) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid or expired OTP"
+            });
+        }
+
+        // Verify user exists based on login_type
+        let userExists;
+        switch (login_type) {
+            case 'ro_admin':
+                userExists = await db.query("SELECT * FROM users WHERE email = $1", [email]);
+                break;
+            case 'chapter':
+                userExists = await db.query("SELECT * FROM chapter WHERE email_id = $1", [email]);
+                break;
+            case 'member':
+                userExists = await db.query("SELECT * FROM member WHERE member_email_address = $1", [email]);
+                break;
+            default:
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid login type"
+                });
+        }
+
+        if (!userExists.rows.length) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { 
+                email: email,
+                login_type: login_type,
+            }, 
+            process.env.JWT_SECRET,
+            { 
+                expiresIn: '24h'
+            }
+        );
+
+        // Delete used OTP
+        await db.query(
+            "DELETE FROM otp WHERE email = $1 AND otp = $2",
+            [email, otp]
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "OTP verified successfully",
+            token: token
         });
-      }
-  
-      // Get the most recent valid OTP
-      const storedOtpResult = await db.query(
-        `SELECT * FROM otp 
-         WHERE email = $1 
-         AND expires_at > NOW()  /* Only get non-expired OTPs */
-         ORDER BY generated_at DESC 
-         LIMIT 1`,
-        [email]
-      );
-  
-      const storedOtp = storedOtpResult.rows[0];
-  
-      // Log OTP comparison
-      console.log('Step 3 - Latest OTP Comparison:', {
-        typedOtp: otp,
-        storedOtp: storedOtp?.otp,
-        isMatch: storedOtp?.otp === otp,
-        generatedAt: storedOtp?.generated_at,
-        expiresAt: storedOtp?.expires_at,
-        currentTime: new Date()
-      });
-  
-      if (!storedOtp) {
-        console.log('Step 4 - No valid OTP found for email:', email);
-        return res.status(401).json({
-          success: false,
-          message: 'No valid OTP found. Please request a new OTP.',
-        });
-      }
-  
-      // Check if OTP matches
-      if (storedOtp.otp !== otp) {
-        console.log('Step 4 - OTP mismatch:', {
-          typedOtp: otp,
-          storedOtp: storedOtp.otp,
-          email: email,
-          expiresAt: storedOtp.expires_at
-        });
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid OTP. Please check and try again.',
-        });
-      }
-  
-      // Clean up all expired and old OTPs for this email
-      await db.query(
-        `DELETE FROM otp 
-         WHERE email = $1 
-         AND (expires_at <= NOW() OR generated_at < $2)`,
-        [email, storedOtp.generated_at]
-      );
-  
-      // Success!
-      console.log('Step 5 - OTP verified successfully:', {
-        email: email,
-        login_type: storedOtp.login_type
-      });
-      
-      return res.status(200).json({
-        success: true,
-        message: 'OTP verified successfully',
-        login_type: storedOtp.login_type
-      });
-  
+
     } catch (error) {
-      console.error('Error in verification:', {
-        error: error.message,
-        typedOtp: req.body.otp
-      });
-      res.status(500).json({
-        success: false,
-        message: 'Server error during OTP verification'
-      });
+        console.error('Error in OTP verification:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Error verifying OTP"
+        });
     }
-  };
+};
 
 module.exports = {
     loginController,
-    verifyOtpController,
+    verifyOtpController
 };

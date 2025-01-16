@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("./middleware/expenseImagesMiddleware");
+const { Client } = require('pg');
 const {
   getRegions,
   getChapters,
@@ -83,6 +84,99 @@ const {
   verifyQrCode,
   allCheckins
 } = require("./controllers");
+
+const path = require("path");
+const multer = require("multer");
+const fs = require("fs");
+const con = new Client({
+  host: "dpg-cs0d2hi3esus739088bg-a.oregon-postgres.render.com",
+  user: "bni_dashboard_backend_database_user",
+  port: 5432,
+  password: "8UGkmCixOpO5Gb89BSBI8aPPapoAW6fD",
+  database: "bni_dashboard_backend_database",
+  ssl: {
+    rejectUnauthorized: false, // Required for secure connections to Render
+  },
+});
+
+con.connect().then(() => console.log("Connected to the database"));
+
+// Configure multer storage
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const logoDir = path.join(__dirname, "uploads", "dynamicLogo");
+    if (!fs.existsSync(logoDir)) {
+      fs.mkdirSync(logoDir, { recursive: true });
+    }
+    cb(null, logoDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueName = Date.now() + "-" + file.originalname;
+    cb(null, uniqueName);
+  },
+});
+
+const uploadLogo = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: function (req, file, cb) {
+    const filetypes = /jpeg|jpg|png|gif|svg/;
+    const mimetype = filetypes.test(file.mimetype);
+    const extname = filetypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
+    if (mimetype && extname) {
+      return cb(null, true);
+    }
+    cb(new Error("Only image files are allowed!"));
+  },
+});
+
+// Route to handle logo upload
+router.post("/uploadLogo", (req, res) => {
+  uploadLogo.single("logo")(req, res, async function (err) {
+    if (err instanceof multer.MulterError) {
+      console.log("Multer error uploading logo:", err);
+      return res.status(400).json({ message: err.message });
+    } else if (err) {
+      console.log("Error uploading logo:", err);
+      return res.status(400).json({ message: err.message });
+    }
+
+    if (!req.file) {
+      console.log("No file uploaded");
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    try {
+      console.log("File uploaded successfully:", req.file.filename);
+      
+      // First deactivate all existing logos
+      await con.query(
+        "UPDATE display_logo SET display_status = 'inactive' WHERE display_status = 'active'"
+      );
+      console.log("Deactivated existing logos");
+
+      // Insert new logo record
+      const result = await con.query(
+        `INSERT INTO display_logo 
+         (display_image_name, display_status, added_by) 
+         VALUES ($1, 'active', 'Admin') 
+         RETURNING *`,
+        [req.file.filename]
+      );
+      console.log("Inserted new logo record:", result.rows[0]);
+
+      res.json({ 
+        message: "Logo uploaded successfully", 
+        imageName: req.file.filename 
+      });
+    } catch (error) {
+      console.error("Error saving logo to database:", error);
+      res.status(500).json({ message: "Error saving logo information" });
+    }
+  });
+});
 
 router.get("/regions", getRegions);
 router.post("/regions", addRegion);

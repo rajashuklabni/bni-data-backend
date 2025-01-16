@@ -2749,51 +2749,87 @@ const updateGstTypeValues = async (req, res) => {
 };
 
 const updateUserPassword = async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
+    console.log('Starting password update process in backend');
+    const { currentPassword, newPassword, email } = req.body;
+    
+    try {
+        console.log('Checking for user with email:', email);
+        
+        // Get the current password hash for the specific user
+        const userResult = await con.query(
+            'SELECT password_hash FROM users WHERE email = $1 AND is_active = true',
+            [email]
+        );
 
-  try {
-    // Get the current password hash
-    const userResult = await con.query(
-      'SELECT password_hash FROM users WHERE is_active = true'
-    );
+        console.log('User query result:', userResult.rows.length > 0 ? 'User found' : 'User not found');
 
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ message: 'No active user found' });
+        if (userResult.rows.length === 0) {
+            console.error('No active user found with email:', email);
+            return res.status(404).json({ 
+                success: false, 
+                message: 'No active user found' 
+            });
+        }
+
+        // Verify current password
+        console.log('Verifying current password');
+        const isPasswordValid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
+        console.log('Password verification result:', isPasswordValid);
+
+        if (!isPasswordValid) {
+            console.error('Current password is incorrect');
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Current password is incorrect' 
+            });
+        }
+
+        // Hash the new password
+        console.log('Hashing new password');
+        const saltRounds = 6;
+        const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+
+        // Update the password for the specific user
+        console.log('Updating password in database');
+        await con.query(
+            'UPDATE users SET password_hash = $1 WHERE email = $2 AND is_active = true',
+            [newPasswordHash, email]
+        );
+
+        console.log('Password updated successfully');
+        return res.status(200).json({
+            success: true,
+            message: 'Password updated successfully'
+        });
+
+    } catch (error) {
+        console.error('Error in updateUserPassword:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error updating password'
+        });
     }
-
-    // Verify current password
-    const isPasswordValid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Current password is incorrect' });
-    }
-
-    // Hash the new password
-    const saltRounds = 6;
-    const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
-
-    // Update the password for active user
-    await con.query(
-      'UPDATE users SET password_hash = $1 WHERE is_active = true',
-      [newPasswordHash]
-    );
-
-    res.status(200).json({ message: 'Password updated successfully' });
-
-  } catch (error) {
-    console.error('Error updating password:', error);
-    res.status(500).json({ message: 'Error updating password' });
-  }
 };
 
 const getDisplayLogo = async (req, res) => {
   try {
+    console.log("Fetching display logo...");
+    
     const result = await con.query(
-      "SELECT * FROM display_logo"
+      "SELECT display_id, display_image_name, display_status, added_by, added_on FROM display_logo WHERE display_status = 'active' ORDER BY display_id DESC LIMIT 1"
     );
-    res.json(result.rows);
+    
+    console.log("Query result:", result.rows);
+    
+    if (result.rows.length > 0) {
+      res.json(result.rows);
+    } else {
+      console.log("No active logo found");
+      res.json([]);
+    }
   } catch (error) {
     console.error("Error fetching display logo:", error);
-    res.status(500).send("Error fetching display logo");
+    res.status(500).json({ error: "Error fetching display logo" });
   }
 };
 

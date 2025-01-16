@@ -9,6 +9,7 @@ const routes = require('./routes');
 const cors = require('cors');
 const { request } = require('http');
 const dotEnv = require('dotenv')
+const jwt = require('jsonwebtoken');
 dotEnv.config();
 const app = express();
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -181,6 +182,39 @@ app.post('/generate-cashfree-session',async (req, res)=>{
   
     res.send("Server is running.")
 })
+
+// Middleware for token verification
+const verifyToken = (req, res, next) => {
+  // Get token from Authorization header (Bearer token)
+  const token = req.headers['authorization']?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(403).json({ 
+      success: false, 
+      message: "Access denied. No token provided." 
+    });
+  }
+
+  try {
+    // Verify token using your JWT_SECRET
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded; // Add decoded user info to request object
+    next();
+  } catch (err) {
+    return res.status(401).json({ 
+      success: false, 
+      message: "Invalid token." 
+    });
+  }
+};
+
+// Public routes (no token needed)
+app.use('/api', authRoutes); // Login and OTP verification routes
+
+// Protected routes (token required)
+app.use('/api', verifyToken, paymentRoutes);
+app.use('/api', verifyToken, routes);
+
 app.listen(5000, () => {
     console.log("Server is running on port 5000");
 });
