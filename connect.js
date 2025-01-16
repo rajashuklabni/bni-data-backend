@@ -23,11 +23,12 @@ const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:3000/',
     'http://localhost:3000',
-    'https://bni-xq0f.onrender.com/',
-    'https://bni-xq0f.onrender.com',
     'https://bninewdelhi.com/',
     'https://bninewdelhi.com',
-    'http://bninewdelhi.com/'
+    'http://bninewdelhi.com/',
+    'https://bni-dashboard-2pga.onrender.com/',
+    'https://bni-dashboard-2pga.onrender.com',
+    'http://bni-dashboard-2pga.onrender.com/'
 ];
 
 const corsOptions = {
