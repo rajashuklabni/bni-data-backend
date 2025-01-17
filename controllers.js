@@ -2135,11 +2135,12 @@ const addKittyPayment = async (req, res) => {
       // Update the meeting_payable_amount field in the member table for the same chapter_id
       const updateMemberQuery = `
           UPDATE member
-          SET meeting_payable_amount = meeting_payable_amount + $1
+          SET meeting_payable_amount = $1
           WHERE chapter_id = $2
       `;
 
       await con.query(updateMemberQuery, [total_bill_amount, chapter_id]);
+      console.log(updateMemberQuery);
 
       res.status(201).json({ message: 'Kitty payment added successfully.' });
   } catch (error) {
@@ -2147,8 +2148,6 @@ const addKittyPayment = async (req, res) => {
       res.status(500).json({ message: 'Internal server error.' });
   }
 };
-
-
 
 // Fetch all active members
 const getKittyPayments = async (req, res) => {
