@@ -28,7 +28,10 @@ const allowedOrigins = [
     'http://bninewdelhi.com/',
     'https://bni-dashboard-2pga.onrender.com/',
     'https://bni-dashboard-2pga.onrender.com',
-    'http://bni-dashboard-2pga.onrender.com/'
+    'http://bni-dashboard-2pga.onrender.com/',
+    'https://www.bninewdelhi.com/',
+    'https://www.bninewdelhi.com',
+    'http://www.bninewdelhi.com/'
 ];
 
 const corsOptions = {
