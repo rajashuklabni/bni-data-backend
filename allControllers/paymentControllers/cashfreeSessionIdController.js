@@ -38,8 +38,8 @@ const sessionIdGenerator = async (req, res) => {
               // console.log("order data", responseData);
       
               await db.query(
-                  `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
+                  `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
                   [
                       responseData.order_id,
                       responseData.order_amount,
@@ -65,6 +65,7 @@ const sessionIdGenerator = async (req, res) => {
                       data.customer_details.payment_note, // New field
                       data.customer_details.trainingId, // New field
                       data.customer_details.eventId, // New field
+                      data.kitty_bill_id,
                   ]
               );
               console.log('Order data inserted successfully');
