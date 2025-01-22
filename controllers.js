@@ -3192,6 +3192,17 @@ const allCheckins = async (req, res) => {
   }
 };
 
+// Fetch all active members
+const getAllKittyPayments = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM kittypaymentchapter");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching all kitty payments:", error);
+    res.status(500).send("Error fetching all kitty payments");
+  }
+};
+
 
 
 
@@ -3276,4 +3287,5 @@ module.exports = {
   markAttendence,
   verifyQrCode,
   allCheckins,
+  getAllKittyPayments,
 };
