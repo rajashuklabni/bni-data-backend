@@ -82,7 +82,8 @@ const {
   sendQrCodeByEmail,
   markAttendence,
   verifyQrCode,
-  allCheckins
+  allCheckins,
+  getAllKittyPayments
 } = require("./controllers");
 
 const path = require("path");
@@ -259,8 +260,6 @@ router.post('/send-qr-code', sendQrCodeByEmail);
 router.post('/markAttendence', markAttendence);
 router.post("/verify-qr-code", verifyQrCode);
 router.get('/allCheckins', allCheckins);
-
-
-
+router.get("/getAllKittyPayments", getAllKittyPayments);
 
 module.exports = router;
