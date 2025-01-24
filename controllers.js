@@ -225,9 +225,9 @@ const addRegion = async (req, res) => {
   }
 
   try {
-
+    // Check if the region name already exists (case-insensitive)
     const checkDuplicate = await con.query(
-      `SELECT * FROM region WHERE region_name = $1`,
+      `SELECT * FROM region WHERE LOWER(region_name) = LOWER($1) AND delete_status = 0`,
       [region_name]
     );
 
@@ -237,7 +237,7 @@ const addRegion = async (req, res) => {
       });
     }
 
-
+    // Insert new region
     const result = await con.query(
       `INSERT INTO region (
           region_name, contact_person, contact_number, email_id, days_of_chapter, region_status,
@@ -247,8 +247,8 @@ const addRegion = async (req, res) => {
           social_instagram, social_linkedin, social_youtube, website_link, region_launched_by, 
           date_of_publishing
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 
-          $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 
+          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
         ) RETURNING *`,
       [
         region_name,
@@ -467,6 +467,15 @@ const addMember = async (req, res) => {
       message:
         "Member first name, email address, region ID, and chapter ID are required.",
     });
+  }
+
+  // Add GST number format validation
+  if (member_gst_number) {
+    if (!/^[A-Z0-9]{15}$/.test(member_gst_number)) {
+      return res.status(400).json({
+        message: "GST number must be exactly 15 characters (letters and numbers).",
+      });
+    }
   }
 
   try {
@@ -1916,8 +1925,8 @@ const getTraining = async (req, res) => {
 };
 
 const updateTraining = async (req, res) => {
-  const { training_id } = req.params; // Get id from URL parameter
-  const linkData = req.body; // Get the updated data from the request body
+  const { training_id } = req.params; 
+  const linkData = req.body;
 
   console.log("Updating training with ID:", training_id);
   console.log("Received data:", linkData);
@@ -1999,36 +2008,56 @@ const addTraining = async (req, res) => {
     training_published_by,
   } = req.body;
 
-  console.log(req.body);
+  console.log("Received training data:", req.body);
 
-  // Validate accolade_name
+  // Validate required fields
   if (!training_name) {
     return res.status(400).json({ message: "Training name is required" });
   }
 
+  // Ensure billing_company is a number
+  const billing_company_id = parseInt(billing_company);
+  if (isNaN(billing_company_id)) {
+    return res.status(400).json({ 
+      message: "Invalid billing company ID. Must be a number." 
+    });
+  }
+
   try {
-    // Check if accolade_name already exists
+    // Check if training with same name and date already exists
     const checkDuplicate = await con.query(
-      `SELECT * FROM training WHERE training_name = $1`,
-      [training_name]
+      `SELECT * FROM training 
+       WHERE training_name = $1 
+       AND training_date = $2 
+       AND delete_status = 0`,
+      [training_name, training_date]
     );
+
+    console.log("Duplicate check result:", checkDuplicate.rows);
 
     if (checkDuplicate.rows.length > 0) {
       return res.status(409).json({
-        message: "Training name already exists",
+        message: "Training with this name and date already exists",
       });
     }
 
-    // Insert new accolade
+    // Insert new training with validated billing_company_id
     const result = await con.query(
       `INSERT INTO training (
-        training_name, billing_company, training_status, training_venue, training_price, training_date, training_note, training_published_by
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8
-        ) RETURNING *`,
+        training_name, 
+        billing_company, 
+        training_status, 
+        training_venue, 
+        training_price, 
+        training_date, 
+        training_note, 
+        training_published_by
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8
+      ) RETURNING *`,
       [
         training_name,
-        billing_company,
+        billing_company_id, // Using the parsed integer value
         training_status,
         training_venue,
         training_ticket_price,
@@ -2038,12 +2067,18 @@ const addTraining = async (req, res) => {
       ]
     );
 
-    res
-      .status(201)
-      .json({ message: "Training added successfully!", data: result.rows[0] });
+    console.log("Successfully added training:", result.rows[0]);
+
+    res.status(201).json({ 
+      message: "Training added successfully!", 
+      data: result.rows[0] 
+    });
   } catch (error) {
     console.error("Error adding Training:", error);
-    res.status(500).json({ message: "Error adding Training" });
+    res.status(500).json({ 
+      message: "Error adding Training",
+      error: error.message 
+    });
   }
 };
 
