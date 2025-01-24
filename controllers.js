@@ -2162,9 +2162,10 @@ const getKittyPayments = async (req, res) => {
 
 const deleteKittyBill = async (req, res) => {
   const { payment_id } = req.params;
+  console.log("payment id", payment_id)
   try {
     const result = await con.query(
-      `UPDATE kittypaymentchapter SET delete_status = 1 WHERE payment_id = $1 RETURNING *`,
+      `UPDATE kittypaymentchapter SET delete_status = 1 WHERE kitty_bill_id = $1 RETURNING *`,
       [payment_id]
     );
     if (result.rowCount > 0) {
