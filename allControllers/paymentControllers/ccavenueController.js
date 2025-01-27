@@ -27,6 +27,11 @@ function decrypt(encText, workingKey) {
 }
 
 const generateCCAvenueOrder = async (req, res) => {
+  // Add CORS headers
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+
   try {
     const orderData = req.body;
 
