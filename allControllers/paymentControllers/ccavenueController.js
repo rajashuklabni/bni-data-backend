@@ -1,4 +1,4 @@
-const crypto = require("crypto");
+const ccav = require("../../CC-Avenue-Kit/ccavutil.js");
 const db = require("../../database/db");
 
 // CCAvenue encryption function
@@ -42,14 +42,14 @@ const generateCCAvenueOrder = async (req, res) => {
       .toString(36)
       .substr(2, 5)}`;
 
-    // Prepare data for CCAvenue in their expected format
-    const merchantData = {
+    // Prepare merchant parameters
+    const merchantParams = {
       merchant_id: process.env.CCAVENUE_MERCHANT_ID,
       order_id: orderId,
       currency: "INR",
       amount: orderData.order_amount,
-      redirect_url: `${process.env.FRONTEND_URL}/api/ccavenue-response`,
-      cancel_url: `${process.env.FRONTEND_URL}/cancel`,
+      redirect_url: `${process.env.BACKEND_URL}/api/ccavenue-response`,
+      cancel_url: `${process.env.BACKEND_URL}/api/ccavenue-response`,
       language: "EN",
       billing_name: orderData.customer_details.Customer_name,
       billing_address: orderData.customer_details.address || "NA",
@@ -60,16 +60,18 @@ const generateCCAvenueOrder = async (req, res) => {
       billing_tel: orderData.customer_details.customer_phone,
       billing_email: orderData.customer_details.customer_email,
       merchant_param1: JSON.stringify(orderData.customer_details),
+      integration_type: "iframe_normal",
+      response_type: "JSON",
     };
 
-    // Convert merchantData to string format expected by CCAvenue
-    const merchantDataString = Object.entries(merchantData)
-      .map(([key, value]) => `${key}=${value}`)
+    // Convert to query string
+    const merchantData = Object.entries(merchantParams)
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
       .join("&");
 
-    // Encrypt the merchant data using CCAvenue's encryption
-    const encryptedData = encrypt(
-      merchantDataString,
+    // Encrypt the data
+    const encryptedData = ccav.encrypt(
+      merchantData,
       process.env.CCAVENUE_WORKING_KEY
     );
 
@@ -86,14 +88,12 @@ const generateCCAvenueOrder = async (req, res) => {
       ]
     );
 
-    // Return the encrypted data and access code
     res.json({
       success: true,
       encryptedData,
       accessCode: process.env.CCAVENUE_ACCESS_CODE,
       orderId,
-      redirectUrl:
-        "https://secure.ccavenue.com/transaction/transaction.do?command=initiateTransaction",
+      redirectUrl: process.env.CCAVENUE_TRANSACTION_URL,
     });
   } catch (error) {
     console.error("Error generating CCAvenue order:", error);
