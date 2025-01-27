@@ -1,4 +1,5 @@
 const ccav = require("../../CC-Avenue-Kit/ccavutil.js");
+const crypto = require("crypto");
 const db = require("../../database/db");
 
 // CCAvenue encryption function
@@ -27,7 +28,6 @@ function decrypt(encText, workingKey) {
 
 const generateCCAvenueOrder = async (req, res) => {
   try {
-    // Token validation is handled by middleware
     const orderData = req.body;
 
     // Validate the request data
@@ -43,14 +43,14 @@ const generateCCAvenueOrder = async (req, res) => {
       .toString(36)
       .substr(2, 5)}`;
 
-    // Prepare merchant parameters
+    // Prepare merchant parameters according to CCAvenue format
     const merchantParams = {
       merchant_id: process.env.CCAVENUE_MERCHANT_ID,
       order_id: orderId,
       currency: "INR",
       amount: orderData.order_amount,
-      redirect_url: `${process.env.BACKEND_URL}/api/ccavenue-response`,
-      cancel_url: `${process.env.BACKEND_URL}/api/ccavenue-response`,
+      redirect_url: `${process.env.FRONTEND_URL}/api/ccavenue-response`,
+      cancel_url: `${process.env.FRONTEND_URL}/api/ccavenue-response`,
       language: "EN",
       billing_name: orderData.customer_details.Customer_name,
       billing_address: orderData.customer_details.address || "NA",
@@ -61,7 +61,6 @@ const generateCCAvenueOrder = async (req, res) => {
       billing_tel: orderData.customer_details.customer_phone,
       billing_email: orderData.customer_details.customer_email,
       merchant_param1: JSON.stringify(orderData.customer_details),
-      integration_type: "iframe_normal",
     };
 
     // Convert to query string
@@ -70,12 +69,10 @@ const generateCCAvenueOrder = async (req, res) => {
       .join("&");
 
     // Encrypt the data using CCAvenue encryption
-    const encryptedData = ccav.encrypt(
-      merchantData,
-      process.env.CCAVENUE_WORKING_KEY
-    );
+    const workingKey = process.env.CCAVENUE_WORKING_KEY;
+    const encryptedData = ccav.encrypt(merchantData, workingKey);
 
-    // Save order details to database
+    // Save initial order details
     await db.query(
       `INSERT INTO orders (order_id, amount, customer_details, payment_gateway, status) 
        VALUES ($1, $2, $3, $4, $5)`,
@@ -88,12 +85,11 @@ const generateCCAvenueOrder = async (req, res) => {
       ]
     );
 
+    // Send response
     res.json({
       success: true,
       encryptedData,
       accessCode: process.env.CCAVENUE_ACCESS_CODE,
-      redirectUrl:
-        "https://secure.ccavenue.com/transaction/transaction.do?command=initiateTransaction",
       orderId,
     });
   } catch (error) {
