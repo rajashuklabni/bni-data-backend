@@ -27,48 +27,18 @@ function decrypt(encText, workingKey) {
 }
 
 const generateCCAvenueOrder = async (req, res) => {
-  // Add CORS headers
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, merchant-id, access-code"
-  );
-
   try {
-    // Validate merchant credentials
-    const merchantId = req.headers["merchant-id"] || req.body.merchant_id;
-    const accessCode = req.headers["access-code"] || req.body.access_code;
-
-    if (
-      !merchantId ||
-      !accessCode ||
-      merchantId !== process.env.CCAVENUE_MERCHANT_ID ||
-      accessCode !== process.env.CCAVENUE_ACCESS_CODE
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "Invalid merchant credentials",
-      });
-    }
-
     const orderData = req.body;
+    const workingKey = process.env.CCAVENUE_WORKING_KEY;
+    const accessCode = process.env.CCAVENUE_ACCESS_CODE;
 
-    // Validate the request data
-    if (!orderData || !orderData.order_amount || !orderData.customer_details) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid request data",
-      });
-    }
-
-    // Generate a unique order ID
+    // Generate order ID
     const orderId = `CCAV${Date.now()}${Math.random()
       .toString(36)
       .substr(2, 5)}`;
 
-    // Prepare merchant parameters
-    const merchantParams = {
+    // Prepare merchant data string (following CCAvenue format)
+    const merchantData = {
       merchant_id: process.env.CCAVENUE_MERCHANT_ID,
       order_id: orderId,
       currency: "INR",
@@ -77,10 +47,10 @@ const generateCCAvenueOrder = async (req, res) => {
       cancel_url: `${process.env.FRONTEND_URL}/api/ccavenue-response`,
       language: "EN",
       billing_name: orderData.customer_details.Customer_name,
-      billing_address: orderData.customer_details.address || "NA",
-      billing_city: orderData.customer_details.city || "NA",
-      billing_state: orderData.customer_details.state || "NA",
-      billing_zip: orderData.customer_details.pincode || "000000",
+      billing_address: orderData.customer_details.address,
+      billing_city: orderData.customer_details.city,
+      billing_state: orderData.customer_details.state,
+      billing_zip: orderData.customer_details.pincode,
       billing_country: "India",
       billing_tel: orderData.customer_details.customer_phone,
       billing_email: orderData.customer_details.customer_email,
@@ -88,13 +58,12 @@ const generateCCAvenueOrder = async (req, res) => {
     };
 
     // Convert to query string
-    const merchantData = Object.entries(merchantParams)
+    const merchantDataString = Object.entries(merchantData)
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
       .join("&");
 
-    // Encrypt the data
-    const workingKey = process.env.CCAVENUE_WORKING_KEY;
-    const encryptedData = ccav.encrypt(merchantData, workingKey);
+    // Encrypt data using CCAvenue's encryption method
+    const encRequest = ccav.encrypt(merchantDataString, workingKey);
 
     // Save order details
     await db.query(
@@ -109,11 +78,12 @@ const generateCCAvenueOrder = async (req, res) => {
       ]
     );
 
+    // Send response
     res.json({
       success: true,
-      encryptedData,
-      accessCode: process.env.CCAVENUE_ACCESS_CODE,
-      orderId,
+      encRequest,
+      access_code: accessCode,
+      order_id: orderId,
     });
   } catch (error) {
     console.error("Error generating CCAvenue order:", error);

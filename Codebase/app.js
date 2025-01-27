@@ -5,15 +5,9 @@ const app = express();
 // CORS configuration
 app.use(
   cors({
-    origin: ["https://www.bninewdelhi.com", "http://localhost:5173"],
+    origin: "*", // Be more permissive during testing
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "merchant-id",
-      "access-code",
-    ],
-    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
   })
 );
 
