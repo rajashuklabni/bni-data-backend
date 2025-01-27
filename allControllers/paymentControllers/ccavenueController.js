@@ -27,6 +27,7 @@ function decrypt(encText, workingKey) {
 
 const generateCCAvenueOrder = async (req, res) => {
   try {
+    // Token validation is handled by middleware
     const orderData = req.body;
 
     // Validate the request data
@@ -61,7 +62,6 @@ const generateCCAvenueOrder = async (req, res) => {
       billing_email: orderData.customer_details.customer_email,
       merchant_param1: JSON.stringify(orderData.customer_details),
       integration_type: "iframe_normal",
-      response_type: "JSON",
     };
 
     // Convert to query string
@@ -69,7 +69,7 @@ const generateCCAvenueOrder = async (req, res) => {
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
       .join("&");
 
-    // Encrypt the data
+    // Encrypt the data using CCAvenue encryption
     const encryptedData = ccav.encrypt(
       merchantData,
       process.env.CCAVENUE_WORKING_KEY
@@ -92,8 +92,9 @@ const generateCCAvenueOrder = async (req, res) => {
       success: true,
       encryptedData,
       accessCode: process.env.CCAVENUE_ACCESS_CODE,
+      redirectUrl:
+        "https://secure.ccavenue.com/transaction/transaction.do?command=initiateTransaction",
       orderId,
-      redirectUrl: process.env.CCAVENUE_TRANSACTION_URL,
     });
   } catch (error) {
     console.error("Error generating CCAvenue order:", error);
