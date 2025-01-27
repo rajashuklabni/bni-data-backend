@@ -30,9 +30,28 @@ const generateCCAvenueOrder = async (req, res) => {
   // Add CORS headers
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, merchant-id, access-code"
+  );
 
   try {
+    // Validate merchant credentials
+    const merchantId = req.headers["merchant-id"] || req.body.merchant_id;
+    const accessCode = req.headers["access-code"] || req.body.access_code;
+
+    if (
+      !merchantId ||
+      !accessCode ||
+      merchantId !== process.env.CCAVENUE_MERCHANT_ID ||
+      accessCode !== process.env.CCAVENUE_ACCESS_CODE
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Invalid merchant credentials",
+      });
+    }
+
     const orderData = req.body;
 
     // Validate the request data
@@ -48,7 +67,7 @@ const generateCCAvenueOrder = async (req, res) => {
       .toString(36)
       .substr(2, 5)}`;
 
-    // Prepare merchant parameters according to CCAvenue format
+    // Prepare merchant parameters
     const merchantParams = {
       merchant_id: process.env.CCAVENUE_MERCHANT_ID,
       order_id: orderId,
@@ -73,11 +92,11 @@ const generateCCAvenueOrder = async (req, res) => {
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
       .join("&");
 
-    // Encrypt the data using CCAvenue encryption
+    // Encrypt the data
     const workingKey = process.env.CCAVENUE_WORKING_KEY;
     const encryptedData = ccav.encrypt(merchantData, workingKey);
 
-    // Save initial order details
+    // Save order details
     await db.query(
       `INSERT INTO orders (order_id, amount, customer_details, payment_gateway, status) 
        VALUES ($1, $2, $3, $4, $5)`,
@@ -90,7 +109,6 @@ const generateCCAvenueOrder = async (req, res) => {
       ]
     );
 
-    // Send response
     res.json({
       success: true,
       encryptedData,

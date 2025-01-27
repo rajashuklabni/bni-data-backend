@@ -7,7 +7,12 @@ app.use(
   cors({
     origin: ["https://www.bninewdelhi.com", "http://localhost:5173"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "merchant-id",
+      "access-code",
+    ],
     credentials: true,
   })
 );
