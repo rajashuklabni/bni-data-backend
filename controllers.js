@@ -3240,9 +3240,112 @@ const getAllKittyPayments = async (req, res) => {
 };
 
 
+// added by vasusri
+const addPendingAmount =async (req, res)=>{
+  const { 
+    kitty_id,
+    member_id,
+    chapter_id, 
+    pending_balance,
+    date_of_update
+  } = req.body;
+  try {
+    
+    console.log(kitty_id,
+      member_id,
+      chapter_id, 
+      pending_balance, date_of_update);
+
+    // Validate required fields
+    if (!kitty_id || !chapter_id || !member_id) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Missing required fields: kitty_id, chapter_id and member_id are required" 
+      });
+    }
+
+    // Generate a unique transaction ID (you can modify this as per your requirements)
+    // const transaction_id = `TR${Date.now()}`;
+
+    const query = `
+      INSERT INTO sample_transaction (
+        kitty_id,
+      member_id,
+      chapter_id, 
+      pending_balance,
+      date_of_update
+      ) 
+      VALUES ($1, $2, $3, $4, $5) 
+      RETURNING *`;
+
+    const values = [
+      kitty_id,
+      member_id,
+      chapter_id, 
+      pending_balance,
+      date_of_update
+    ];
+
+    const result = await con.query(query, values);
+
+    res.status(201).json({
+      success: true,
+      message: "Balance added successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Error adding pending amount:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error adding Pending amount",
+      error: error.message
+    });
+  }
+}
+
+// create by vasu Sri
+const getPendingAmount = async (req, res) => {
+  const { member_id, chapter_id, kitty_id } = req.body;
+  console.log("member_id, chapter_id, kitty_id",member_id, chapter_id, kitty_id);
+  try {
+    const result = await con.query(
+          "SELECT * FROM sample_transaction WHERE member_id = $1 AND chapter_id = $2 AND kitty_id = $3",
+  [member_id, chapter_id, kitty_id]
+        );
+
+    // const result = await con.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No Pending balance data found"
+      });
+    }
+
+    res.json({
+      success: true,
+      count: result.rows.length,
+      data: result.rows
+    });
+
+  } catch (error) {
+    console.error("Error fetching pending balance:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching pending balance",
+      error: error.message
+    });
+  }
+};
+
+
+
 
 
 module.exports = {
+  getPendingAmount,
+  addPendingAmount,
   getRegions,
   getChapters,
   getMembers,

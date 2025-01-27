@@ -3,6 +3,8 @@ const router = express.Router();
 const upload = require("./middleware/expenseImagesMiddleware");
 const { Client } = require('pg');
 const {
+  addPendingAmount,
+  getPendingAmount,
   getRegions,
   getChapters,
   getMembers,
@@ -261,5 +263,9 @@ router.post('/markAttendence', markAttendence);
 router.post("/verify-qr-code", verifyQrCode);
 router.get('/allCheckins', allCheckins);
 router.get("/getAllKittyPayments", getAllKittyPayments);
+
+// added by vasusri
+router.post('/addPendingAmount',addPendingAmount);
+router.get('/getPendingAmount',getPendingAmount);
 
 module.exports = router;
