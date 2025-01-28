@@ -3322,17 +3322,18 @@ const getAllKittyPayments = async (req, res) => {
 // added by vasusri
 const addPendingAmount =async (req, res)=>{
   const { 
-    kitty_id,
+    chapter_id,
     member_id,
-    chapter_id, 
-    pending_balance,
-    date_of_update,
-    total_bill,
-    gst
+    kitty_id,
+    member_pending_balance,
+    total_amount_paid,
+    tax,
+    date_of_update
   } = req.body;
   try {
+    console.log("add Pending controller runs");
     
-    console.log(kitty_id, member_id, chapter_id, pending_balance, date_of_update, total_bill, gst);
+    console.log(chapter_id, member_id, kitty_id, member_pending_balance, total_amount_paid, tax, date_of_update);
 
     // Validate required fields
     if (!kitty_id || !chapter_id || !member_id) {
@@ -3346,26 +3347,26 @@ const addPendingAmount =async (req, res)=>{
     // const transaction_id = `TR${Date.now()}`;
 
     const query = `
-      INSERT INTO sample_transaction (
-        kitty_id,
+      INSERT INTO memberpendingkittyopeningbalance (
+      chapter_id,
       member_id,
-      chapter_id, 
-      pending_balance,
-      date_of_update,
-      total_bill,
-      gst
+      kitty_id,
+      member_pending_balance,
+      total_amount_paid,
+      tax,
+      date_of_update
       ) 
-      VALUES ($1, $2, $3, $4, $5) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7) 
       RETURNING *`;
 
     const values = [
-      kitty_id,
+      chapter_id,
       member_id,
-      chapter_id, 
-      pending_balance,
-      date_of_update,
-      total_bill,
-      gst
+      kitty_id,
+      member_pending_balance,
+      total_amount_paid,
+      tax,
+      date_of_update
     ];
 
     const result = await con.query(query, values);
@@ -3392,7 +3393,7 @@ const getPendingAmount = async (req, res) => {
   console.log("member_id, chapter_id, kitty_id",member_id, chapter_id, kitty_id);
   try {
     const result = await con.query(
-          "SELECT * FROM sample_transaction WHERE member_id = $1 AND chapter_id = $2 AND kitty_id = $3",
+          "SELECT * FROM memberpendingkittyopeningbalance WHERE member_id = $1 AND chapter_id = $2 AND kitty_id = $3",
   [member_id, chapter_id, kitty_id]
         );
 
