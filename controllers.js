@@ -1,18 +1,19 @@
 const { Client } = require("pg");
-const xlsx = require('xlsx');
-const fs = require('fs');
-const path = require('path');
-const bcrypt = require('bcrypt');
-const nodemailer = require('nodemailer'); // Ensure you have nodemailer installed
-const QRCode = require('qrcode'); // Import the qrcode library
+const xlsx = require("xlsx");
+const fs = require("fs");
+const path = require("path");
+const bcrypt = require("bcrypt");
+const nodemailer = require("nodemailer"); // Ensure you have nodemailer installed
+const QRCode = require("qrcode"); // Import the qrcode library
 const PDFDocument = require("pdfkit");
-const { QueryTypes } = require('sequelize'); // If using Sequelize
+const { QueryTypes } = require("sequelize"); // If using Sequelize
 
 // Instead of this:
 // const fetch = require('node-fetch');
 
 // Use this:
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const fetch = (...args) =>
+  import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 // Replace with your Render database credentials
 const con = new Client({
@@ -338,7 +339,6 @@ const addChapter = async (req, res) => {
   }
 
   try {
-
     const checkDuplicate = await con.query(
       `SELECT * FROM chapter WHERE chapter_name = $1`,
       [chapter_name]
@@ -349,7 +349,6 @@ const addChapter = async (req, res) => {
         message: "Chapter name already exists",
       });
     }
-
 
     const result = await con.query(
       `INSERT INTO chapter (
@@ -473,7 +472,8 @@ const addMember = async (req, res) => {
   if (member_gst_number) {
     if (!/^[A-Z0-9]{15}$/.test(member_gst_number)) {
       return res.status(400).json({
-        message: "GST number must be exactly 15 characters (letters and numbers).",
+        message:
+          "GST number must be exactly 15 characters (letters and numbers).",
       });
     }
   }
@@ -608,7 +608,7 @@ const getMembers = async (req, res) => {
 const getAccolades = async (req, res) => {
   try {
     const result = await con.query(
-      "SELECT * FROM accolades WHERE delete_status = 0",
+      "SELECT * FROM accolades WHERE delete_status = 0"
     );
     res.json(result.rows);
   } catch (error) {
@@ -689,7 +689,9 @@ const getSupplies = async (req, res) => {
 // Fetch all active members
 const getEvents = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM events WHERE delete_status = 0");
+    const result = await con.query(
+      "SELECT * FROM events WHERE delete_status = 0"
+    );
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching events:", error);
@@ -1235,7 +1237,6 @@ const deleteAccolade = async (req, res) => {
   }
 };
 
-
 const updateAccolade = async (req, res) => {
   const { accolade_id } = req.params; // Get id from URL parameter
   const linkData = req.body; // Get the updated data from the request body
@@ -1312,8 +1313,14 @@ const addAccolade = async (req, res) => {
 
   try {
     // Extract single value from item_type and accolade_type
-    const selectedItemType = typeof item_type === "object" && item_type.length > 0 ? item_type[0] : item_type;
-    const selectedAccoladeType = typeof accolade_type === "object" && accolade_type.length > 0 ? accolade_type[0] : accolade_type;
+    const selectedItemType =
+      typeof item_type === "object" && item_type.length > 0
+        ? item_type[0]
+        : item_type;
+    const selectedAccoladeType =
+      typeof accolade_type === "object" && accolade_type.length > 0
+        ? accolade_type[0]
+        : accolade_type;
 
     // Check if accolade_name already exists
     const checkDuplicate = await con.query(
@@ -1356,9 +1363,6 @@ const addAccolade = async (req, res) => {
   }
 };
 
-
-
-
 // Controller to export regions to Excel
 const exportRegionsToExcel = async (req, res) => {
   try {
@@ -1383,9 +1387,15 @@ const exportRegionsToExcel = async (req, res) => {
       email_id: region.email_id,
       chapter_days: region.days_of_chapter,
       region_status: region.region_status,
-      accolades_config: Array.isArray(region.accolades_config) ? region.accolades_config.join(', ') : region.accolades_config,
-      chapter_status: Array.isArray(region.chapter_status) ? region.chapter_status.join(', ') : region.chapter_status,
-      chapter_type: Array.isArray(region.chapter_type) ? region.chapter_type.join(', ') : region.chapter_type,
+      accolades_config: Array.isArray(region.accolades_config)
+        ? region.accolades_config.join(", ")
+        : region.accolades_config,
+      chapter_status: Array.isArray(region.chapter_status)
+        ? region.chapter_status.join(", ")
+        : region.chapter_status,
+      chapter_type: Array.isArray(region.chapter_type)
+        ? region.chapter_type.join(", ")
+        : region.chapter_type,
       mission: region.mission,
       vision: region.vision,
       region_logo: region.region_logo,
@@ -1414,21 +1424,24 @@ const exportRegionsToExcel = async (req, res) => {
     const ws = xlsx.utils.json_to_sheet(regions);
 
     // Append the sheet to the workbook
-    xlsx.utils.book_append_sheet(wb, ws, 'Regions');
+    xlsx.utils.book_append_sheet(wb, ws, "Regions");
 
     // Set the file name for the Excel download
-    const filename = 'regions.xlsx';
+    const filename = "regions.xlsx";
 
     // Set headers to prompt the download of the file
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
 
     // Write the Excel file to the response
-    const fileBuffer = xlsx.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    const fileBuffer = xlsx.write(wb, { bookType: "xlsx", type: "buffer" });
     res.end(fileBuffer);
   } catch (error) {
-    console.error('Error exporting regions:', error);
-    res.status(500).send('Error exporting regions');
+    console.error("Error exporting regions:", error);
+    res.status(500).send("Error exporting regions");
   }
 };
 
@@ -1465,7 +1478,8 @@ const exportChaptersToExcel = async (req, res) => {
       member_app_link: chapter.member_app_link,
       meeting_hotel_name: chapter.meeting_hotel_name,
       chapter_membership_fee_two_year: chapter.chapter_membership_fee_two_year,
-      chapter_membership_fee_five_year: chapter.chapter_membership_fee_five_year,
+      chapter_membership_fee_five_year:
+        chapter.chapter_membership_fee_five_year,
       contact_number: chapter.contact_number,
       contact_person: chapter.contact_person,
       chapter_mission: chapter.chapter_mission,
@@ -1493,26 +1507,28 @@ const exportChaptersToExcel = async (req, res) => {
     const ws = xlsx.utils.json_to_sheet(chapters);
 
     // Append the sheet to the workbook
-    xlsx.utils.book_append_sheet(wb, ws, 'Chapters');
+    xlsx.utils.book_append_sheet(wb, ws, "Chapters");
 
     // Set the file name for the Excel download
-    const filename = 'chapters.xlsx';
+    const filename = "chapters.xlsx";
 
     // Set headers to prompt the download of the file
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
 
     // Write the Excel file to the response buffer
-    const fileBuffer = xlsx.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    const fileBuffer = xlsx.write(wb, { bookType: "xlsx", type: "buffer" });
 
     // Send the file buffer in the response
     res.end(fileBuffer);
   } catch (error) {
-    console.error('Error exporting chapters:', error);
-    res.status(500).send('Error exporting chapters');
+    console.error("Error exporting chapters:", error);
+    res.status(500).send("Error exporting chapters");
   }
 };
-
 
 const exportMembersToExcel = async (req, res) => {
   try {
@@ -1572,7 +1588,7 @@ const exportMembersToExcel = async (req, res) => {
       address_state: member.address_state,
       region_id: member.region_id,
       chapter_id: member.chapter_id,
-      accolades_id: member.accolades_id ? member.accolades_id.join(', ') : '',
+      accolades_id: member.accolades_id ? member.accolades_id.join(", ") : "",
       category_id: member.category_id,
       member_induction_date: member.member_induction_date,
       member_current_membership: member.member_current_membership,
@@ -1605,28 +1621,31 @@ const exportMembersToExcel = async (req, res) => {
     const ws = xlsx.utils.json_to_sheet(members);
 
     // Append the sheet to the workbook
-    xlsx.utils.book_append_sheet(wb, ws, 'Members');
+    xlsx.utils.book_append_sheet(wb, ws, "Members");
 
     // Set the file name for the Excel download
-    const filename = 'members.xlsx';
+    const filename = "members.xlsx";
 
     // Set headers to prompt the download of the file
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
 
     // Write the Excel file to the response
-    const buffer = xlsx.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    const buffer = xlsx.write(wb, { bookType: "xlsx", type: "buffer" });
     res.send(buffer);
   } catch (error) {
-    console.error('Error exporting members:', error);
-    res.status(500).send('Error exporting members');
+    console.error("Error exporting members:", error);
+    res.status(500).send("Error exporting members");
   }
 };
 
 const exportOrdersToExcel = async (req, res) => {
   try {
     // Fetch all orders from the database
-    const result = await con.query('SELECT * FROM Orders');
+    const result = await con.query("SELECT * FROM Orders");
 
     // Prepare data for Excel
     const orders = result.rows.map((order) => ({
@@ -1661,24 +1680,24 @@ const exportOrdersToExcel = async (req, res) => {
     const ws = xlsx.utils.json_to_sheet(orders);
 
     // Append the sheet to the workbook
-    xlsx.utils.book_append_sheet(wb, ws, 'Orders');
+    xlsx.utils.book_append_sheet(wb, ws, "Orders");
 
     // Set the file name
-    const filename = 'orders.xlsx';
+    const filename = "orders.xlsx";
 
     // Set headers for the file download
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
     res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
 
     // Write the Excel file to the response
-    const buffer = xlsx.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    const buffer = xlsx.write(wb, { bookType: "xlsx", type: "buffer" });
     res.send(buffer);
   } catch (error) {
-    console.error('Error exporting orders:', error);
-    res.status(500).send('Error exporting orders');
+    console.error("Error exporting orders:", error);
+    res.status(500).send("Error exporting orders");
   }
 };
 
@@ -1698,7 +1717,7 @@ const exportTransactionsToExcel = async (req, res) => {
       const parseJSONSafely = (value) => {
         try {
           // If the value is a valid JSON string, parse it, otherwise return the value as is
-          if (typeof value === 'string' && value.startsWith('{')) {
+          if (typeof value === "string" && value.startsWith("{")) {
             return JSON.parse(value);
           }
           return value;
@@ -1719,8 +1738,8 @@ const exportTransactionsToExcel = async (req, res) => {
         payment_completion_time: transaction.payment_completion_time,
         bank_reference: transaction.bank_reference,
         auth_id: transaction.auth_id,
-        payment_method: parseJSONSafely(transaction.payment_method),  // Safely parse JSON
-        error_details: parseJSONSafely(transaction.error_details),  // Safely parse JSON
+        payment_method: parseJSONSafely(transaction.payment_method), // Safely parse JSON
+        error_details: parseJSONSafely(transaction.error_details), // Safely parse JSON
         gateway_order_id: transaction.gateway_order_id,
         gateway_payment_id: transaction.gateway_payment_id,
         payment_group: transaction.payment_group,
@@ -1732,21 +1751,24 @@ const exportTransactionsToExcel = async (req, res) => {
     const ws = xlsx.utils.json_to_sheet(transactions);
 
     // Append the sheet to the workbook
-    xlsx.utils.book_append_sheet(wb, ws, 'Transactions');
+    xlsx.utils.book_append_sheet(wb, ws, "Transactions");
 
     // Set the file name for the Excel download
-    const filename = 'transactions.xlsx';
+    const filename = "transactions.xlsx";
 
     // Set headers to prompt the download of the file
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
 
     // Write the Excel file to the response
-    const excelFile = xlsx.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    const excelFile = xlsx.write(wb, { bookType: "xlsx", type: "buffer" });
     res.end(excelFile);
   } catch (error) {
-    console.error('Error exporting transactions:', error);
-    res.status(500).send('Error exporting transactions');
+    console.error("Error exporting transactions:", error);
+    res.status(500).send("Error exporting transactions");
   }
 };
 
@@ -1758,9 +1780,7 @@ const deleteEvent = async (req, res) => {
       [event_id]
     );
     if (result.rowCount > 0) {
-      res
-        .status(200)
-        .json({ message: "Event marked as deleted successfully" });
+      res.status(200).json({ message: "Event marked as deleted successfully" });
     } else {
       res.status(404).json({ message: "Event not found" });
     }
@@ -1775,10 +1795,9 @@ const getEvent = async (req, res) => {
 
   try {
     // Use a parameterized query to safely insert member_id into the SQL statement
-    const result = await con.query(
-      "SELECT * FROM events WHERE event_id = $1",
-      [event_id]
-    );
+    const result = await con.query("SELECT * FROM events WHERE event_id = $1", [
+      event_id,
+    ]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Event not found" });
@@ -1790,7 +1809,6 @@ const getEvent = async (req, res) => {
     res.status(500).send("Error fetching Event");
   }
 };
-
 
 const updateEvent = async (req, res) => {
   const { event_id } = req.params; // Get id from URL parameter
@@ -1895,7 +1913,9 @@ const addEvent = async (req, res) => {
 // Fetch all active members
 const getTrainings = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM training WHERE delete_status = 0");
+    const result = await con.query(
+      "SELECT * FROM training WHERE delete_status = 0"
+    );
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching trainings:", error);
@@ -1925,7 +1945,7 @@ const getTraining = async (req, res) => {
 };
 
 const updateTraining = async (req, res) => {
-  const { training_id } = req.params; 
+  const { training_id } = req.params;
   const linkData = req.body;
 
   console.log("Updating training with ID:", training_id);
@@ -2018,8 +2038,8 @@ const addTraining = async (req, res) => {
   // Ensure billing_company is a number
   const billing_company_id = parseInt(billing_company);
   if (isNaN(billing_company_id)) {
-    return res.status(400).json({ 
-      message: "Invalid billing company ID. Must be a number." 
+    return res.status(400).json({
+      message: "Invalid billing company ID. Must be a number.",
     });
   }
 
@@ -2069,15 +2089,15 @@ const addTraining = async (req, res) => {
 
     console.log("Successfully added training:", result.rows[0]);
 
-    res.status(201).json({ 
-      message: "Training added successfully!", 
-      data: result.rows[0] 
+    res.status(201).json({
+      message: "Training added successfully!",
+      data: result.rows[0],
     });
   } catch (error) {
     console.error("Error adding Training:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: "Error adding Training",
-      error: error.message 
+      error: error.message,
     });
   }
 };
@@ -2098,10 +2118,9 @@ const getOrder = async (req, res) => {
 
   try {
     // Use a parameterized query to safely insert member_id into the SQL statement
-    const result = await con.query(
-      "SELECT * FROM orders WHERE order_id = $1",
-      [order_id]
-    );
+    const result = await con.query("SELECT * FROM orders WHERE order_id = $1", [
+      order_id,
+    ]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Order not found" });
@@ -2143,51 +2162,77 @@ const getMemberId = async (req, res) => {
 
 const addKittyPayment = async (req, res) => {
   try {
-      const { chapter_id, date, bill_type, description, total_weeks, total_bill_amount } = req.body;
+    const {
+      chapter_id,
+      date,
+      bill_type,
+      description,
+      total_weeks,
+      total_bill_amount,
+    } = req.body;
 
-      // Check if all required fields are provided
-      if (!chapter_id || !date || !bill_type || !description || !total_weeks || !total_bill_amount) {
-          return res.status(400).json({ message: 'All fields are required.' });
-      }
+    // Check if all required fields are provided
+    if (
+      !chapter_id ||
+      !date ||
+      !bill_type ||
+      !description ||
+      !total_weeks ||
+      !total_bill_amount
+    ) {
+      return res.status(400).json({ message: "All fields are required." });
+    }
 
-      // Check if a payment has already been raised for this chapter_id with delete_status = 0
-      const checkQuery = 'SELECT * FROM kittyPaymentChapter WHERE chapter_id = $1 AND delete_status = 0';
-      const checkResult = await con.query(checkQuery, [chapter_id]);
+    // Check if a payment has already been raised for this chapter_id with delete_status = 0
+    const checkQuery =
+      "SELECT * FROM kittyPaymentChapter WHERE chapter_id = $1 AND delete_status = 0";
+    const checkResult = await con.query(checkQuery, [chapter_id]);
 
-      if (checkResult.rows.length > 0) {
-          return res.status(400).json({ message: 'A bill has already been raised for this chapter.' });
-      }
+    if (checkResult.rows.length > 0) {
+      return res
+        .status(400)
+        .json({ message: "A bill has already been raised for this chapter." });
+    }
 
-      // If no active payment exists for this chapter_id, proceed to insert the new record
-      const query = `
+    // If no active payment exists for this chapter_id, proceed to insert the new record
+    const query = `
           INSERT INTO kittyPaymentChapter 
           (chapter_id, payment_date, bill_type, description, total_weeks, total_bill_amount) 
           VALUES ($1, $2, $3, $4, $5, $6)
       `;
 
-      await con.query(query, [chapter_id, date, bill_type, description, total_weeks, total_bill_amount]);
+    await con.query(query, [
+      chapter_id,
+      date,
+      bill_type,
+      description,
+      total_weeks,
+      total_bill_amount,
+    ]);
 
-      // Update the meeting_payable_amount field in the member table for the same chapter_id
-      const updateMemberQuery = `
+    // Update the meeting_payable_amount field in the member table for the same chapter_id
+    const updateMemberQuery = `
           UPDATE member
           SET meeting_payable_amount = $1
           WHERE chapter_id = $2
       `;
 
-      await con.query(updateMemberQuery, [total_bill_amount, chapter_id]);
-      console.log(updateMemberQuery);
+    await con.query(updateMemberQuery, [total_bill_amount, chapter_id]);
+    console.log(updateMemberQuery);
 
-      res.status(201).json({ message: 'Kitty payment added successfully.' });
+    res.status(201).json({ message: "Kitty payment added successfully." });
   } catch (error) {
-      console.error('Error adding kitty payment:', error);
-      res.status(500).json({ message: 'Internal server error.' });
+    console.error("Error adding kitty payment:", error);
+    res.status(500).json({ message: "Internal server error." });
   }
 };
 
 // Fetch all active members
 const getKittyPayments = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM kittypaymentchapter where delete_status = 0");
+    const result = await con.query(
+      "SELECT * FROM kittypaymentchapter where delete_status = 0"
+    );
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching kitty payments:", error);
@@ -2197,9 +2242,10 @@ const getKittyPayments = async (req, res) => {
 
 const deleteKittyBill = async (req, res) => {
   const { payment_id } = req.params;
+  console.log("payment id", payment_id);
   try {
     const result = await con.query(
-      `UPDATE kittypaymentchapter SET delete_status = 1 WHERE payment_id = $1 RETURNING *`,
+      `UPDATE kittypaymentchapter SET delete_status = 1 WHERE kitty_bill_id = $1 RETURNING *`,
       [payment_id]
     );
     if (result.rowCount > 0) {
@@ -2217,7 +2263,6 @@ const deleteKittyBill = async (req, res) => {
 
 const expenseType = async (req, res) => {
   try {
-
     const query = "SELECT * FROM expense_type WHERE delete_status = 0"; // Default query (non-deleted regions)
     const result = await con.query(query); // Execute the query
     res.json(result.rows); // Return filtered data
@@ -2230,7 +2275,9 @@ const expenseType = async (req, res) => {
 // Fetch all active members
 const allExpenses = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM expenses WHERE delete_status = 0");
+    const result = await con.query(
+      "SELECT * FROM expenses WHERE delete_status = 0"
+    );
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching expenses:", error);
@@ -2240,7 +2287,7 @@ const allExpenses = async (req, res) => {
 
 const addExpenseType = async (req, res) => {
   const { expense_name, expense_status } = req.body;
-console.log("Expense Type:", expense_name, expense_status);
+  console.log("Expense Type:", expense_name, expense_status);
   // Validate required fields
   if (!expense_name || !expense_status) {
     return res.status(400).json({
@@ -2249,10 +2296,11 @@ console.log("Expense Type:", expense_name, expense_status);
   }
 
   // Validate expense_status
-  const validStatuses = ['active', 'inactive'];
+  const validStatuses = ["active", "inactive"];
   if (!validStatuses.includes(expense_status.toLowerCase())) {
     return res.status(400).json({
-      message: 'Invalid expense_status. Allowed values are "active" or "inactive".',
+      message:
+        'Invalid expense_status. Allowed values are "active" or "inactive".',
     });
   }
 
@@ -2279,7 +2327,6 @@ console.log("Expense Type:", expense_name, expense_status);
     });
   }
 };
-
 
 const addExpense = async (req, res) => {
   const {
@@ -2348,37 +2395,39 @@ const addExpense = async (req, res) => {
   }
 };
 
-
 const getExpenseById = async (req, res) => {
-  const { expense_id } = req.params;  // Extract expense_id from URL parameters
+  const { expense_id } = req.params; // Extract expense_id from URL parameters
 
   try {
     // Query the database for the expense with the given expense_id
-    const result = await con.query('SELECT * FROM expenses WHERE expense_id = $1', [expense_id]);
+    const result = await con.query(
+      "SELECT * FROM expenses WHERE expense_id = $1",
+      [expense_id]
+    );
 
     if (result.rows.length === 0) {
       // If no expense found, return a 404
-      return res.status(404).json({ message: 'Expense not found' });
+      return res.status(404).json({ message: "Expense not found" });
     }
 
     // If expense is found, return the data
     return res.status(200).json(result.rows[0]);
   } catch (error) {
     // Log any error and return a 500 response
-    console.error('Error fetching expense:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    console.error("Error fetching expense:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 const updateExpense = async (req, res) => {
-  const { 
-    expense_type, 
-    submitted_by, 
-    description, 
-    amount, 
-    payment_status, 
-    bill_date, 
-    transaction_no, 
-    bill_no 
+  const {
+    expense_type,
+    submitted_by,
+    description,
+    amount,
+    payment_status,
+    bill_date,
+    transaction_no,
+    bill_no,
   } = req.body;
 
   const { expense_id } = req.params; // Get expense_id from URL params
@@ -2490,7 +2539,9 @@ const deleteExpense = async (req, res) => {
     const fetchResult = await con.query(fetchQuery, [expense_id]);
 
     if (fetchResult.rowCount === 0) {
-      return res.status(404).json({ message: "Expense not found or already deleted" });
+      return res
+        .status(404)
+        .json({ message: "Expense not found or already deleted" });
     }
 
     // Update delete_status to 1 (soft delete)
@@ -2517,53 +2568,56 @@ const deleteExpense = async (req, res) => {
 };
 
 const updateMemberSettings = async (req, res) => {
-    try {
-        console.log('Received update request:', req.body);
-        const {
-            member_email_address,
-            member_phone_number,
-            member_company_address,
-            member_company_name,
-            member_gst_number,
-            member_facebook,
-            member_instagram,
-            member_linkedin,
-            member_youtube,
-            member_photo      
-        } = req.body;
+  try {
+    console.log("Received update request:", req.body);
+    const {
+      member_email_address,
+      member_phone_number,
+      member_company_address,
+      member_company_name,
+      member_gst_number,
+      member_facebook,
+      member_instagram,
+      member_linkedin,
+      member_youtube,
+      member_photo,
+    } = req.body;
 
-        // Validate email
-        if (!member_email_address) {
-            return res.status(400).json({ message: 'Email address is required' });
-        }
+    // Validate email
+    if (!member_email_address) {
+      return res.status(400).json({ message: "Email address is required" });
+    }
 
-        // Handle member photo
-        let photoFileName = '';
-        if (member_photo) {
-            // Create directory if it doesn't exist
-            const uploadDir = path.join(__dirname, '../bni/public/assets/memberProfileImage');
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-            }
+    // Handle member photo
+    let photoFileName = "";
+    if (member_photo) {
+      // Create directory if it doesn't exist
+      const uploadDir = path.join(
+        __dirname,
+        "../bni/public/assets/memberProfileImage"
+      );
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
 
-            // Generate filename (without full path for database storage)
-            const timestamp = Date.now();
-            photoFileName = `member_${timestamp}.jpg`;
-            
-            // Full path for saving the file
-            const fullPath = path.join(uploadDir, photoFileName);
-            
-            // Remove the data:image/jpeg;base64 prefix if it exists
-            const base64Data = member_photo.replace(/^data:image\/\w+;base64,/, '');
-            
-            // Save the file
-            fs.writeFileSync(fullPath, base64Data, { encoding: 'base64' });
-            
-            console.log('Photo saved as:', photoFileName);
-        }
+      // Generate filename (without full path for database storage)
+      const timestamp = Date.now();
+      photoFileName = `member_${timestamp}.jpg`;
 
-        // Update query with relative path for member_photo
-        const query = `
+      // Full path for saving the file
+      const fullPath = path.join(uploadDir, photoFileName);
+
+      // Remove the data:image/jpeg;base64 prefix if it exists
+      const base64Data = member_photo.replace(/^data:image\/\w+;base64,/, "");
+
+      // Save the file
+      fs.writeFileSync(fullPath, base64Data, { encoding: "base64" });
+
+      console.log("Photo saved as:", photoFileName);
+    }
+
+    // Update query with relative path for member_photo
+    const query = `
             UPDATE member 
             SET 
                 member_phone_number = $1,
@@ -2578,58 +2632,61 @@ const updateMemberSettings = async (req, res) => {
             WHERE member_email_address = $10
             RETURNING *`;
 
-        const result = await con.query(query, [
-            member_phone_number,
-            member_company_address,
-            member_company_name,
-            member_gst_number,
-            member_facebook,
-            member_instagram,
-            member_linkedin,
-            member_youtube,
-            photoFileName ? `/assets/memberProfileImage/${photoFileName}` : member_photo, // Store relative path
-            member_email_address
-        ]);
+    const result = await con.query(query, [
+      member_phone_number,
+      member_company_address,
+      member_company_name,
+      member_gst_number,
+      member_facebook,
+      member_instagram,
+      member_linkedin,
+      member_youtube,
+      photoFileName
+        ? `/assets/memberProfileImage/${photoFileName}`
+        : member_photo, // Store relative path
+      member_email_address,
+    ]);
 
-        if (result.rows.length === 0) {
-            console.log('No member found with email:', member_email_address);
-            return res.status(404).json({ message: 'Member not found with this email' });
-        }
-
-        console.log('Update successful');
-        res.json({
-            message: "Member settings updated successfully",
-            data: result.rows[0]
-        });
-
-    } catch (error) {
-        console.error('Error in updateMemberSettings:', error);
-        res.status(500).json({ 
-            message: "Error updating member settings",
-            error: error.message 
-        });
+    if (result.rows.length === 0) {
+      console.log("No member found with email:", member_email_address);
+      return res
+        .status(404)
+        .json({ message: "Member not found with this email" });
     }
+
+    console.log("Update successful");
+    res.json({
+      message: "Member settings updated successfully",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error in updateMemberSettings:", error);
+    res.status(500).json({
+      message: "Error updating member settings",
+      error: error.message,
+    });
+  }
 };
 
 const updateUserSettings = async (req, res) => {
-    try {
-        const {
-            company_name,
-            company_address,
-            company_gst,
-            company_email,
-            company_phone,
-            company_account_number,
-            company_ifsc_code,
-            company_bank_branch,
-            company_facebook,
-            company_twitter,
-            company_youtube,
-            company_instagram
-        } = req.body;
+  try {
+    const {
+      company_name,
+      company_address,
+      company_gst,
+      company_email,
+      company_phone,
+      company_account_number,
+      company_ifsc_code,
+      company_bank_branch,
+      company_facebook,
+      company_twitter,
+      company_youtube,
+      company_instagram,
+    } = req.body;
 
-        // Update query
-        const updateQuery = `
+    // Update query
+    const updateQuery = `
             UPDATE company 
             SET 
                 company_name = $1,
@@ -2648,50 +2705,45 @@ const updateUserSettings = async (req, res) => {
             RETURNING *
         `;
 
-        const result = await con.query(updateQuery, [
-            company_name,
-            company_address,
-            company_gst,
-            company_email,
-            company_phone,
-            company_account_number,
-            company_ifsc_code,
-            company_bank_branch,
-            company_facebook || null,    // If empty, save as null
-            company_twitter || null,     // If empty, save as null
-            company_youtube || null,     // If empty, save as null
-            company_instagram || null    // If empty, save as null
-        ]);
+    const result = await con.query(updateQuery, [
+      company_name,
+      company_address,
+      company_gst,
+      company_email,
+      company_phone,
+      company_account_number,
+      company_ifsc_code,
+      company_bank_branch,
+      company_facebook || null, // If empty, save as null
+      company_twitter || null, // If empty, save as null
+      company_youtube || null, // If empty, save as null
+      company_instagram || null, // If empty, save as null
+    ]);
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ message: 'Company not found' });
-        }
-
-        res.json({
-            message: 'Company settings updated successfully',
-            data: result.rows[0]
-        });
-
-    } catch (error) {
-        console.error('Error updating company settings:', error);
-        res.status(400).json({
-            message: 'Error updating company settings',
-            error: error.toString()
-        });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Company not found" });
     }
+
+    res.json({
+      message: "Company settings updated successfully",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error updating company settings:", error);
+    res.status(400).json({
+      message: "Error updating company settings",
+      error: error.toString(),
+    });
+  }
 };
 
 const updateLogo = async (req, res) => {
-    try {
-        console.log('Received logo update request:', req.body);
-        const {
-            display_image_name,
-            display_status,
-            added_by
-        } = req.body;
+  try {
+    console.log("Received logo update request:", req.body);
+    const { display_image_name, display_status, added_by } = req.body;
 
-        // Update query - since there's only one record, we don't need an ID
-        const query = `
+    // Update query - since there's only one record, we don't need an ID
+    const query = `
             UPDATE display_logo 
             SET 
                 display_image_name = $1,
@@ -2701,160 +2753,169 @@ const updateLogo = async (req, res) => {
             WHERE display_id = 1
             RETURNING *`;
 
-        const result = await con.query(query, [
-            display_image_name,
-            display_status,
-            added_by
-        ]);
+    const result = await con.query(query, [
+      display_image_name,
+      display_status,
+      added_by,
+    ]);
 
-        if (result.rows.length === 0) {
-            console.log('No logo settings found');
-            return res.status(404).json({ message: 'Logo settings not found' });
-        }
-
-        console.log('Logo update successful');
-        res.json({
-            message: "Logo settings updated successfully",
-            data: result.rows[0]
-        });
-
-    } catch (error) {
-        console.error('Error in updateLogo:', error);
-        res.status(500).json({ 
-            message: "Error updating logo settings",
-            error: error.message 
-        });
+    if (result.rows.length === 0) {
+      console.log("No logo settings found");
+      return res.status(404).json({ message: "Logo settings not found" });
     }
+
+    console.log("Logo update successful");
+    res.json({
+      message: "Logo settings updated successfully",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error in updateLogo:", error);
+    res.status(500).json({
+      message: "Error updating logo settings",
+      error: error.message,
+    });
+  }
 };
 
 const updateGstTypeValues = async (req, res) => {
-    try {
-        console.log('Received GST type values update request:', req.body);
-        const { gst_value_id, vat_value_id } = req.body;
+  try {
+    console.log("Received GST type values update request:", req.body);
+    const { gst_value_id, vat_value_id } = req.body;
 
-        // First, update all GST values (type_id = 1) to inactive
-        await con.query(`
+    // First, update all GST values (type_id = 1) to inactive
+    await con.query(`
             UPDATE gst_type_values 
             SET active_status = 'inactive' 
             WHERE gst_type_name_id = 1
         `);
 
-        // Then set only the selected GST value to active
-        await con.query(`
+    // Then set only the selected GST value to active
+    await con.query(
+      `
             UPDATE gst_type_values 
             SET active_status = 'active' 
             WHERE gst_value_id = $1
-        `, [gst_value_id]);
+        `,
+      [gst_value_id]
+    );
 
-        // Next, update all VAT values (type_id = 2) to inactive
-        await con.query(`
+    // Next, update all VAT values (type_id = 2) to inactive
+    await con.query(`
             UPDATE gst_type_values 
             SET active_status = 'inactive' 
             WHERE gst_type_name_id = 2
         `);
 
-        // Finally, set only the selected VAT value to active
-        await con.query(`
+    // Finally, set only the selected VAT value to active
+    await con.query(
+      `
             UPDATE gst_type_values 
             SET active_status = 'active' 
             WHERE gst_value_id = $1
-        `, [vat_value_id]);
+        `,
+      [vat_value_id]
+    );
 
-        // Fetch the updated values to return in response
-        const result = await con.query(`
+    // Fetch the updated values to return in response
+    const result = await con.query(`
             SELECT * FROM gst_type_values 
             WHERE gst_type_name_id IN (1, 2)
             ORDER BY gst_type_name_id, gst_value_id
         `);
 
-        console.log('Update successful');
-        res.json({
-            message: "GST type values updated successfully",
-            data: result.rows
-        });
-
-    } catch (error) {
-        console.error('Error in updateGstTypeValues:', error);
-        res.status(500).json({ 
-            message: "Error updating GST type values",
-            error: error.message 
-        });
-    }
+    console.log("Update successful");
+    res.json({
+      message: "GST type values updated successfully",
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error("Error in updateGstTypeValues:", error);
+    res.status(500).json({
+      message: "Error updating GST type values",
+      error: error.message,
+    });
+  }
 };
 
 const updateUserPassword = async (req, res) => {
-    console.log('Starting password update process in backend');
-    const { currentPassword, newPassword, email } = req.body;
-    
-    try {
-        console.log('Checking for user with email:', email);
-        
-        // Get the current password hash for the specific user
-        const userResult = await con.query(
-            'SELECT password_hash FROM users WHERE email = $1 AND is_active = true',
-            [email]
-        );
+  console.log("Starting password update process in backend");
+  const { currentPassword, newPassword, email } = req.body;
 
-        console.log('User query result:', userResult.rows.length > 0 ? 'User found' : 'User not found');
+  try {
+    console.log("Checking for user with email:", email);
 
-        if (userResult.rows.length === 0) {
-            console.error('No active user found with email:', email);
-            return res.status(404).json({ 
-                success: false, 
-                message: 'No active user found' 
-            });
-        }
+    // Get the current password hash for the specific user
+    const userResult = await con.query(
+      "SELECT password_hash FROM users WHERE email = $1 AND is_active = true",
+      [email]
+    );
 
-        // Verify current password
-        console.log('Verifying current password');
-        const isPasswordValid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
-        console.log('Password verification result:', isPasswordValid);
+    console.log(
+      "User query result:",
+      userResult.rows.length > 0 ? "User found" : "User not found"
+    );
 
-        if (!isPasswordValid) {
-            console.error('Current password is incorrect');
-            return res.status(401).json({ 
-                success: false, 
-                message: 'Current password is incorrect' 
-            });
-        }
-
-        // Hash the new password
-        console.log('Hashing new password');
-        const saltRounds = 6;
-        const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
-
-        // Update the password for the specific user
-        console.log('Updating password in database');
-        await con.query(
-            'UPDATE users SET password_hash = $1 WHERE email = $2 AND is_active = true',
-            [newPasswordHash, email]
-        );
-
-        console.log('Password updated successfully');
-        return res.status(200).json({
-            success: true,
-            message: 'Password updated successfully'
-        });
-
-    } catch (error) {
-        console.error('Error in updateUserPassword:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Error updating password'
-        });
+    if (userResult.rows.length === 0) {
+      console.error("No active user found with email:", email);
+      return res.status(404).json({
+        success: false,
+        message: "No active user found",
+      });
     }
+
+    // Verify current password
+    console.log("Verifying current password");
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      userResult.rows[0].password_hash
+    );
+    console.log("Password verification result:", isPasswordValid);
+
+    if (!isPasswordValid) {
+      console.error("Current password is incorrect");
+      return res.status(401).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    // Hash the new password
+    console.log("Hashing new password");
+    const saltRounds = 6;
+    const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update the password for the specific user
+    console.log("Updating password in database");
+    await con.query(
+      "UPDATE users SET password_hash = $1 WHERE email = $2 AND is_active = true",
+      [newPasswordHash, email]
+    );
+
+    console.log("Password updated successfully");
+    return res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    console.error("Error in updateUserPassword:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error updating password",
+    });
+  }
 };
 
 const getDisplayLogo = async (req, res) => {
   try {
-    console.log("Fetching display logo...");
-    
+    // console.log("Fetching display logo...");
+
     const result = await con.query(
       "SELECT display_id, display_image_name, display_status, added_by, added_on FROM display_logo WHERE display_status = 'active' ORDER BY display_id DESC LIMIT 1"
     );
-    
-    console.log("Query result:", result.rows);
-    
+
+    // console.log("Query result:", result.rows);
+
     if (result.rows.length > 0) {
       res.json(result.rows);
     } else {
@@ -2881,9 +2942,7 @@ const getGstType = async (req, res) => {
 
 const getGstTypeValues = async (req, res) => {
   try {
-    const result = await con.query(
-      "SELECT * FROM gst_type_values "
-    );
+    const result = await con.query("SELECT * FROM gst_type_values ");
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching gst type values:", error);
@@ -2892,7 +2951,7 @@ const getGstTypeValues = async (req, res) => {
 };
 const getMemberByEmail = async (req, res) => {
   const { email } = req.params; // Get email from route parameters
-console.log(email)
+  console.log(email);
   try {
     // Use a parameterized query to safely insert the email into the SQL statement
     const result = await con.query(
@@ -2911,7 +2970,6 @@ console.log(email)
   }
 };
 
-
 // Function to send QR code by email
 const sendQrCodeByEmail = async (req, res) => {
   const {
@@ -2927,12 +2985,19 @@ const sendQrCodeByEmail = async (req, res) => {
     customerId,
   } = req.body;
 
-  console.log("Received request to send QR code for orderId:", orderId, "and cfPaymentId:", cfPaymentId);
+  console.log(
+    "Received request to send QR code for orderId:",
+    orderId,
+    "and cfPaymentId:",
+    cfPaymentId
+  );
   console.log(req.body);
 
   try {
     // Fetch order details to get customer email
-    const orderResponse = await fetch(`https://bni-data-backend.onrender.com/api/allOrders`);
+    const orderResponse = await fetch(
+      `https://bni-data-backend.onrender.com/api/allOrders`
+    );
     const orders = await orderResponse.json();
 
     // Find the order by orderId
@@ -2952,7 +3017,11 @@ const sendQrCodeByEmail = async (req, res) => {
     console.log("Customer email found:", customerEmail);
 
     // Generate the QR code and save it as a temporary file
-    const qrCodeImagePath = path.join(__dirname, "checkinTrainings", `qr_code_${orderId}.png`);
+    const qrCodeImagePath = path.join(
+      __dirname,
+      "checkinTrainings",
+      `qr_code_${orderId}.png`
+    );
     await QRCode.toFile(qrCodeImagePath, cfPaymentId); // Generate QR code as a file
 
     // Define PDF path within checkinTrainings folder
@@ -2965,10 +3034,7 @@ const sendQrCodeByEmail = async (req, res) => {
     const pdfWriteStream = fs.createWriteStream(pdfPath);
     doc.pipe(pdfWriteStream);
 
-    doc
-      .fontSize(20)
-      .text(page_title, { align: "center" })
-      .moveDown();
+    doc.fontSize(20).text(page_title, { align: "center" }).moveDown();
 
     doc
       .fontSize(14)
@@ -2988,7 +3054,7 @@ const sendQrCodeByEmail = async (req, res) => {
     doc.end();
 
     // Wait for the PDF file to be fully written before checking its existence
-    pdfWriteStream.on('finish', () => {
+    pdfWriteStream.on("finish", () => {
       console.log("PDF created successfully:", pdfPath);
 
       // Check if the PDF exists after the file is fully written
@@ -3076,23 +3142,26 @@ const sendQrCodeByEmail = async (req, res) => {
     ];
 
     const result = await con.query(query, values);
-    console.log("Details stored in training_checkin table with checkin_id:", result.rows[0].checkin_id);
-
+    console.log(
+      "Details stored in training_checkin table with checkin_id:",
+      result.rows[0].checkin_id
+    );
   } catch (error) {
     console.error("Error sending QR code and training details:", error);
-    return res.status(500).json({ message: "Error sending QR code and training details" });
+    return res
+      .status(500)
+      .json({ message: "Error sending QR code and training details" });
   }
 };
-
 
 // Function to generate QR code
 const generateQRCode = async (data) => {
   try {
-      const qrCodeImage = await QRCode.toDataURL(data); // Generates a QR code as a data URL
-      return qrCodeImage;
+    const qrCodeImage = await QRCode.toDataURL(data); // Generates a QR code as a data URL
+    return qrCodeImage;
   } catch (error) {
-      console.error("Error generating QR code:", error);
-      throw error;
+    console.error("Error generating QR code:", error);
+    throw error;
   }
 };
 
@@ -3102,12 +3171,15 @@ const markAttendence = async (req, res) => {
   console.log("Request Body:", req.body);
 
   if (!transaction_id) {
-    return res.status(400).json({ success: false, message: "Transaction ID is required." });
+    return res
+      .status(400)
+      .json({ success: false, message: "Transaction ID is required." });
   }
 
   try {
     // Check if the transaction exists and fetch the `checked_in` status
-    const checkQuery = "SELECT checked_in FROM training_checkin WHERE transaction_id = $1";
+    const checkQuery =
+      "SELECT checked_in FROM training_checkin WHERE transaction_id = $1";
     const checkResult = await con.query(checkQuery, [transaction_id]);
 
     console.log("Check Query Result:", checkResult.rows);
@@ -3124,15 +3196,16 @@ const markAttendence = async (req, res) => {
         customerId,
         training_id,
         false, // qr_code_generated
-        null,  // qr_code_generated_on
-        true,  // checked_in
+        null, // qr_code_generated_on
+        true, // checked_in
       ]);
 
       console.log("Insert Query Result:", insertResult.rows);
 
       return res.status(201).json({
         success: true,
-        message: "Attendance marked successfully. Transaction was not previously found, so it was created.",
+        message:
+          "Attendance marked successfully. Transaction was not previously found, so it was created.",
         data: insertResult.rows[0],
       });
     }
@@ -3144,23 +3217,33 @@ const markAttendence = async (req, res) => {
 
     // If `checked_in` is true, return an error message
     if (isCheckedIn === true) {
-      return res.status(400).json({ success: false, message: "Member has already checked in." });
+      return res
+        .status(400)
+        .json({ success: false, message: "Member has already checked in." });
     }
 
     // Update the `checked_in` field to true
-    const updateQuery = "UPDATE training_checkin SET checked_in = true WHERE transaction_id = $1 RETURNING *";
+    const updateQuery =
+      "UPDATE training_checkin SET checked_in = true WHERE transaction_id = $1 RETURNING *";
     const updateResult = await con.query(updateQuery, [transaction_id]);
 
     console.log("Update Query Result:", updateResult.rows);
 
     if (updateResult.rowCount > 0) {
-      return res.json({ success: true, message: "Attendance marked successfully." });
+      return res.json({
+        success: true,
+        message: "Attendance marked successfully.",
+      });
     } else {
-      return res.status(500).json({ success: false, message: "Failed to mark attendance." });
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to mark attendance." });
     }
   } catch (error) {
     console.error("Error updating attendance:", error);
-    return res.status(500).json({ success: false, message: "Internal server error." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error." });
   }
 };
 
@@ -3177,7 +3260,8 @@ const verifyQrCode = async (req, res) => {
 
   try {
     // Fetch the transaction from the `training_checkin` table
-    const transactionQuery = "SELECT * FROM training_checkin WHERE transaction_id = $1";
+    const transactionQuery =
+      "SELECT * FROM training_checkin WHERE transaction_id = $1";
     const transactionResult = await con.query(transactionQuery, [cfPaymentId]);
 
     if (transactionResult.rows.length === 0) {
@@ -3195,9 +3279,7 @@ const verifyQrCode = async (req, res) => {
 
     // If only verifying the QR code without marking attendance
     if (!confirmAttendance) {
-      return res
-        .status(200)
-        .json({ message: "QR code verified", transaction });
+      return res.status(200).json({ message: "QR code verified", transaction });
     }
 
     // Mark attendance if confirmation is provided
@@ -3212,11 +3294,9 @@ const verifyQrCode = async (req, res) => {
   }
 };
 
-
 // Backend: Adjusted to filter based on query parameter
 const allCheckins = async (req, res) => {
   try {
-
     const query = "SELECT * FROM training_checkin"; // Default query (non-deleted regions)
 
     const result = await con.query(query); // Execute the query
@@ -3242,6 +3322,7 @@ const updatePaymentGatewayStatus = async (req, res) => {
   const { gateway_id } = req.params;
   const { status } = req.body;
 
+<<<<<<< HEAD
   try {
     // Validate status
     if (!['active', 'inactive'].includes(status)) {
@@ -3249,6 +3330,123 @@ const updatePaymentGatewayStatus = async (req, res) => {
         message: "Status must be either 'active' or 'inactive'" 
       });
     }
+=======
+// added by vasusri
+const addPendingAmount =async (req, res)=>{
+  const { 
+    kitty_id,
+    member_id,
+    chapter_id, 
+    pending_balance,
+    date_of_update,
+    total_bill,
+    gst
+  } = req.body;
+  try {
+    
+    console.log(kitty_id, member_id, chapter_id, pending_balance, date_of_update, total_bill, gst);
+
+    // Validate required fields
+    if (!kitty_id || !chapter_id || !member_id) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Missing required fields: kitty_id, chapter_id and member_id are required" 
+      });
+    }
+
+    // Generate a unique transaction ID (you can modify this as per your requirements)
+    // const transaction_id = `TR${Date.now()}`;
+
+    const query = `
+      INSERT INTO sample_transaction (
+        kitty_id,
+      member_id,
+      chapter_id, 
+      pending_balance,
+      date_of_update,
+      total_bill,
+      gst
+      ) 
+      VALUES ($1, $2, $3, $4, $5) 
+      RETURNING *`;
+
+    const values = [
+      kitty_id,
+      member_id,
+      chapter_id, 
+      pending_balance,
+      date_of_update,
+      total_bill,
+      gst
+    ];
+
+    const result = await con.query(query, values);
+
+    res.status(201).json({
+      success: true,
+      message: "Balance added successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Error adding pending amount:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error adding Pending amount",
+      error: error.message
+    });
+  }
+}
+
+// create by vasu Sri
+const getPendingAmount = async (req, res) => {
+  const { member_id, chapter_id, kitty_id } = req.body;
+  console.log("member_id, chapter_id, kitty_id",member_id, chapter_id, kitty_id);
+  try {
+    const result = await con.query(
+          "SELECT * FROM sample_transaction WHERE member_id = $1 AND chapter_id = $2 AND kitty_id = $3",
+  [member_id, chapter_id, kitty_id]
+        );
+
+    // const result = await con.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No Pending balance data found"
+      });
+    }
+
+    res.json({
+      success: true,
+      count: result.rows.length,
+      data: result.rows
+    });
+
+  } catch (error) {
+    console.error("Error fetching pending balance:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching pending balance",
+      error: error.message
+    });
+  }
+};
+
+
+
+// Fetch all active members
+const memberPendingKittyOpeningBalance = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM memberpendingkittyopeningbalance");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching all memberpendingkittyopeningbalance:", error);
+    res.status(500).send("Error fetching all memberpendingkittyopeningbalance");
+  }
+};
+
+>>>>>>> 96404259d0717a29a8ee0b67dce262925f31426e
 
     // If setting to active, first set all gateways to inactive
     if (status === 'active') {
@@ -3286,6 +3484,8 @@ const updatePaymentGatewayStatus = async (req, res) => {
 };
 
 module.exports = {
+  getPendingAmount,
+  addPendingAmount,
   getRegions,
   getChapters,
   getMembers,
@@ -3367,8 +3567,12 @@ module.exports = {
   verifyQrCode,
   allCheckins,
   getAllKittyPayments,
+<<<<<<< HEAD
   addSampleTransaction,
  
   getSampleTransaction,
   updatePaymentGatewayStatus
+=======
+  memberPendingKittyOpeningBalance,
+>>>>>>> 96404259d0717a29a8ee0b67dce262925f31426e
 };
