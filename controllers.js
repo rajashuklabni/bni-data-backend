@@ -3318,43 +3318,6 @@ const getAllKittyPayments = async (req, res) => {
   }
 };
 
-// Add this new controller function
-const getAllOrdersAscending = async (req, res) => {
-  try {
-    const { sortBy = "order_id" } = req.query; // Default to order_id if no sortBy parameter
-
-    // List of allowed columns to sort by (add more as needed)
-    const allowedSortColumns = [
-      "order_id",
-      "order_amount",
-      "order_status",
-      "payment_session_id",
-      "customer_email",
-      "added_on",
-    ];
-
-    // Validate the sortBy parameter
-    if (!allowedSortColumns.includes(sortBy)) {
-      return res.status(400).json({
-        message: `Invalid sort column. Allowed columns are: ${allowedSortColumns.join(
-          ", "
-        )}`,
-      });
-    }
-
-    const result = await con.query(
-      `SELECT * FROM Orders ORDER BY ${sortBy} ASC`
-    );
-
-    res.json(result.rows);
-  } catch (error) {
-    console.error("Error fetching orders:", error);
-    res.status(500).json({
-      message: "Error fetching orders",
-      error: error.message,
-    });
-  }
-};
 
 module.exports = {
   getRegions,
@@ -3438,5 +3401,4 @@ module.exports = {
   verifyQrCode,
   allCheckins,
   getAllKittyPayments,
-  getAllOrdersAscending,
 };
