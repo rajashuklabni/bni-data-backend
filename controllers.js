@@ -3273,7 +3273,9 @@ const addPendingAmount =async (req, res)=>{
       member_id,
       chapter_id, 
       pending_balance,
-      date_of_update
+      date_of_update,
+      total_bill,
+      gst
       ) 
       VALUES ($1, $2, $3, $4, $5) 
       RETURNING *`;
