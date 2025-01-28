@@ -3247,14 +3247,13 @@ const addPendingAmount =async (req, res)=>{
     member_id,
     chapter_id, 
     pending_balance,
-    date_of_update
+    date_of_update,
+    total_bill,
+    gst
   } = req.body;
   try {
     
-    console.log(kitty_id,
-      member_id,
-      chapter_id, 
-      pending_balance, date_of_update);
+    console.log(kitty_id, member_id, chapter_id, pending_balance, date_of_update, total_bill, gst);
 
     // Validate required fields
     if (!kitty_id || !chapter_id || !member_id) {
@@ -3285,7 +3284,9 @@ const addPendingAmount =async (req, res)=>{
       member_id,
       chapter_id, 
       pending_balance,
-      date_of_update
+      date_of_update,
+      total_bill,
+      gst
     ];
 
     const result = await con.query(query, values);
