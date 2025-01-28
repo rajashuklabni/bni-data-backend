@@ -86,14 +86,8 @@ const {
   verifyQrCode,
   allCheckins,
   getAllKittyPayments,
-<<<<<<< HEAD
-  addSampleTransaction,
-  
-  getSampleTransaction ,
-  updatePaymentGatewayStatus
-=======
   memberPendingKittyOpeningBalance,
->>>>>>> 96404259d0717a29a8ee0b67dce262925f31426e
+  updatePaymentGatewayStatus,
 } = require("./controllers");
 
 const path = require("path");
@@ -250,11 +244,6 @@ router.get("/getMemberId/:member_id", getMemberId);
 router.post("/addKittyPayment", addKittyPayment);
 router.get("/getKittyPayments", getKittyPayments);
 router.put("/deleteKittyBill/:payment_id", deleteKittyBill);
-router.post('/addSampleTransaction', addSampleTransaction);
-
-router.get('/getSampleTransaction/:transaction_id', getSampleTransaction);
-
-
 router.get("/expenseType", expenseType);
 router.post("/expenseType", addExpenseType);
 router.get("/allExpenses", allExpenses);
@@ -275,15 +264,12 @@ router.post("/markAttendence", markAttendence);
 router.post("/verify-qr-code", verifyQrCode);
 router.get("/allCheckins", allCheckins);
 router.get("/getAllKittyPayments", getAllKittyPayments);
-<<<<<<< HEAD
-router.put('/updatePaymentGatewayStatus', updatePaymentGatewayStatus);
-router.put('/payment-gateway/:gateway_id/status', updatePaymentGatewayStatus);
-=======
 router.get("/memberPendingKittyOpeningBalance", memberPendingKittyOpeningBalance);
 
 // added by vasusri
 router.post('/addPendingAmount',addPendingAmount);
 router.get('/getPendingAmount',getPendingAmount);
->>>>>>> 96404259d0717a29a8ee0b67dce262925f31426e
+
+router.put("/payment-gateway/:gateway_id/status", updatePaymentGatewayStatus);
 
 module.exports = router;

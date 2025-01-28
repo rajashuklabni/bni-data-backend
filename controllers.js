@@ -3364,6 +3364,123 @@ const updatePaymentGatewayStatus = async (req, res) => {
     });
   }
 };
+
+// added by vasusri
+const addPendingAmount =async (req, res)=>{
+  const { 
+    chapter_id,
+    member_id,
+    kitty_id,
+    member_pending_balance,
+    total_amount_paid,
+    tax,
+    date_of_update
+  } = req.body;
+  try {
+    console.log("add Pending controller runs");
+    
+    console.log(chapter_id, member_id, kitty_id, member_pending_balance, total_amount_paid, tax, date_of_update);
+
+    // Validate required fields
+    if (!kitty_id || !chapter_id || !member_id) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Missing required fields: kitty_id, chapter_id and member_id are required" 
+      });
+    }
+
+    // Generate a unique transaction ID (you can modify this as per your requirements)
+    // const transaction_id = `TR${Date.now()}`;
+
+    const query = `
+      INSERT INTO memberpendingkittyopeningbalance (
+      chapter_id,
+      member_id,
+      kitty_id,
+      member_pending_balance,
+      total_amount_paid,
+      tax,
+      date_of_update
+      ) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7) 
+      RETURNING *`;
+
+    const values = [
+      chapter_id,
+      member_id,
+      kitty_id,
+      member_pending_balance,
+      total_amount_paid,
+      tax,
+      date_of_update
+    ];
+
+    const result = await con.query(query, values);
+
+    res.status(201).json({
+      success: true,
+      message: "Balance added successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Error adding pending amount:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error adding Pending amount",
+      error: error.message
+    });
+  }
+}
+
+// create by vasu Sri
+const getPendingAmount = async (req, res) => {
+  const { member_id, chapter_id, kitty_id } = req.body;
+  console.log("member_id, chapter_id, kitty_id",member_id, chapter_id, kitty_id);
+  try {
+    const result = await con.query(
+          "SELECT * FROM memberpendingkittyopeningbalance WHERE member_id = $1 AND chapter_id = $2 AND kitty_id = $3",
+  [member_id, chapter_id, kitty_id]
+        );
+
+    // const result = await con.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No Pending balance data found"
+      });
+    }
+
+    res.json({
+      success: true,
+      count: result.rows.length,
+      data: result.rows
+    });
+
+  } catch (error) {
+    console.error("Error fetching pending balance:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching pending balance",
+      error: error.message
+    });
+  }
+};
+
+
+
+// Fetch all active members
+const memberPendingKittyOpeningBalance = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM memberpendingkittyopeningbalance");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching all memberpendingkittyopeningbalance:", error);
+    res.status(500).send("Error fetching all memberpendingkittyopeningbalance");
+  }
+};
+
 module.exports = {
   getPendingAmount,
   addPendingAmount,
@@ -3448,8 +3565,8 @@ module.exports = {
   verifyQrCode,
   allCheckins,
   getAllKittyPayments,
-  addSampleTransaction,
- 
-  getSampleTransaction,
-  updatePaymentGatewayStatus
+  updatePaymentGatewayStatus,
+  memberPendingKittyOpeningBalance,
+  addPendingAmount,
+  getPendingAmount,
 };
