@@ -84,7 +84,7 @@ const {
   verifyQrCode,
   allCheckins,
   getAllKittyPayments,
-  getAllOrdersAscending,
+  memberPendingKittyOpeningBalance,
 } = require("./controllers");
 
 const path = require("path");
@@ -261,5 +261,6 @@ router.post("/markAttendence", markAttendence);
 router.post("/verify-qr-code", verifyQrCode);
 router.get("/allCheckins", allCheckins);
 router.get("/getAllKittyPayments", getAllKittyPayments);
+router.get("/memberPendingKittyOpeningBalance", memberPendingKittyOpeningBalance);
 
 module.exports = router;

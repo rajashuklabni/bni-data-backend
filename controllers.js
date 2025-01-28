@@ -3319,6 +3319,19 @@ const getAllKittyPayments = async (req, res) => {
 };
 
 
+// Fetch all active members
+const memberPendingKittyOpeningBalance = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM memberpendingkittyopeningbalance");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching all memberpendingkittyopeningbalance:", error);
+    res.status(500).send("Error fetching all memberpendingkittyopeningbalance");
+  }
+};
+
+
+
 module.exports = {
   getRegions,
   getChapters,
@@ -3401,4 +3414,5 @@ module.exports = {
   verifyQrCode,
   allCheckins,
   getAllKittyPayments,
+  memberPendingKittyOpeningBalance,
 };
