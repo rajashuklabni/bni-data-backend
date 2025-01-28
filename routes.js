@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("./middleware/expenseImagesMiddleware");
-const { Client } = require('pg');
+const { Client } = require("pg");
 const {
   addPendingAmount,
   getPendingAmount,
@@ -49,7 +49,7 @@ const {
   exportChaptersToExcel,
   exportMembersToExcel,
   exportOrdersToExcel,
-  exportTransactionsToExcel ,
+  exportTransactionsToExcel,
   deleteEvent,
   getEvent,
   updateEvent,
@@ -85,7 +85,8 @@ const {
   markAttendence,
   verifyQrCode,
   allCheckins,
-  getAllKittyPayments
+  getAllKittyPayments,
+  memberPendingKittyOpeningBalance,
 } = require("./controllers");
 
 const path = require("path");
@@ -153,7 +154,7 @@ router.post("/uploadLogo", (req, res) => {
 
     try {
       console.log("File uploaded successfully:", req.file.filename);
-      
+
       // First deactivate all existing logos
       await con.query(
         "UPDATE display_logo SET display_status = 'inactive' WHERE display_status = 'active'"
@@ -170,9 +171,9 @@ router.post("/uploadLogo", (req, res) => {
       );
       console.log("Inserted new logo record:", result.rows[0]);
 
-      res.json({ 
-        message: "Logo uploaded successfully", 
-        imageName: req.file.filename 
+      res.json({
+        message: "Logo uploaded successfully",
+        imageName: req.file.filename,
       });
     } catch (error) {
       console.error("Error saving logo to database:", error);
@@ -222,11 +223,11 @@ router.put("/deleteUniversalLink/:id", deleteUniversalLink);
 router.put("/updateAccolade/:accolade_id", updateAccolade);
 router.put("/deleteAccolade/:accolade_id", deleteAccolade);
 router.post("/accolades", addAccolade);
-router.get('/exportRegions', exportRegionsToExcel);
-router.get('/export-chapters', exportChaptersToExcel);
-router.get('/export-members', exportMembersToExcel);
-router.get('/export-orders', exportOrdersToExcel);
-router.get('/export-transactions', exportTransactionsToExcel );
+router.get("/exportRegions", exportRegionsToExcel);
+router.get("/export-chapters", exportChaptersToExcel);
+router.get("/export-members", exportMembersToExcel);
+router.get("/export-orders", exportOrdersToExcel);
+router.get("/export-transactions", exportTransactionsToExcel);
 router.put("/deleteEvent/:event_id", deleteEvent);
 router.get("/getEvent/:event_id", getEvent);
 router.put("/updateEvent/:event_id", updateEvent);
@@ -239,30 +240,30 @@ router.post("/training", addTraining);
 router.get("/allSettledPayments", getSettledPayments);
 router.get("/getOrder/:order_id", getOrder);
 router.get("/getMemberId/:member_id", getMemberId);
-router.post('/addKittyPayment', addKittyPayment);
+router.post("/addKittyPayment", addKittyPayment);
 router.get("/getKittyPayments", getKittyPayments);
 router.put("/deleteKittyBill/:payment_id", deleteKittyBill);
 router.get("/expenseType", expenseType);
-router.post("/expenseType", addExpenseType)
+router.post("/expenseType", addExpenseType);
 router.get("/allExpenses", allExpenses);
 router.get("/expense/:expense_id", getExpenseById);
-
-router.post("/addExpense",upload.single("upload_bill"),addExpense);
+router.post("/addExpense", upload.single("upload_bill"), addExpense);
 router.put("/expense/:expense_id", upload.single("upload_bill"), updateExpense);
 router.delete("/expense/:expense_id", deleteExpense);
 router.put("/updateMemberSettings", updateMemberSettings);
 router.put("/updateUserSettings", updateUserSettings);
 router.put("/updateLogo", updateLogo);
-router.put('/updateGstTypeValues', updateGstTypeValues);
-router.put('/updateUserPassword', updateUserPassword);
-router.get('/getDisplayLogo', getDisplayLogo);
-router.get('/getGstType', getGstType);
-router.get('/getGstTypeValues', getGstTypeValues);
-router.post('/send-qr-code', sendQrCodeByEmail);
-router.post('/markAttendence', markAttendence);
+router.put("/updateGstTypeValues", updateGstTypeValues);
+router.put("/updateUserPassword", updateUserPassword);
+router.get("/getDisplayLogo", getDisplayLogo);
+router.get("/getGstType", getGstType);
+router.get("/getGstTypeValues", getGstTypeValues);
+router.post("/send-qr-code", sendQrCodeByEmail);
+router.post("/markAttendence", markAttendence);
 router.post("/verify-qr-code", verifyQrCode);
-router.get('/allCheckins', allCheckins);
+router.get("/allCheckins", allCheckins);
 router.get("/getAllKittyPayments", getAllKittyPayments);
+router.get("/memberPendingKittyOpeningBalance", memberPendingKittyOpeningBalance);
 
 // added by vasusri
 router.post('/addPendingAmount',addPendingAmount);
