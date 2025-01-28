@@ -83,7 +83,11 @@ const {
   markAttendence,
   verifyQrCode,
   allCheckins,
-  getAllKittyPayments
+  getAllKittyPayments,
+  addSampleTransaction,
+  
+  getSampleTransaction ,
+  updatePaymentGatewayStatus
 } = require("./controllers");
 
 const path = require("path");
@@ -240,6 +244,11 @@ router.get("/getMemberId/:member_id", getMemberId);
 router.post('/addKittyPayment', addKittyPayment);
 router.get("/getKittyPayments", getKittyPayments);
 router.put("/deleteKittyBill/:payment_id", deleteKittyBill);
+router.post('/addSampleTransaction', addSampleTransaction);
+
+router.get('/getSampleTransaction/:transaction_id', getSampleTransaction);
+
+
 router.get("/expenseType", expenseType);
 router.post("/expenseType", addExpenseType)
 router.get("/allExpenses", allExpenses);
@@ -261,5 +270,7 @@ router.post('/markAttendence', markAttendence);
 router.post("/verify-qr-code", verifyQrCode);
 router.get('/allCheckins', allCheckins);
 router.get("/getAllKittyPayments", getAllKittyPayments);
+router.put('/updatePaymentGatewayStatus', updatePaymentGatewayStatus);
+router.put('/payment-gateway/:gateway_id/status', updatePaymentGatewayStatus);
 
 module.exports = router;
