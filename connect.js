@@ -259,7 +259,7 @@ const verifyToken = (req, res, next) => {
   try {
     // Verify token using your JWT_SECRET
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Add decoded user info to request object
+    req.user = decoded;
     next();
   } catch (err) {
     return res.status(401).json({

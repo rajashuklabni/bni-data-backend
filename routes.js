@@ -87,6 +87,7 @@ const {
   allCheckins,
   getAllKittyPayments,
   memberPendingKittyOpeningBalance,
+  updatePaymentGatewayStatus,
 } = require("./controllers");
 
 const path = require("path");
@@ -268,5 +269,7 @@ router.get("/memberPendingKittyOpeningBalance", memberPendingKittyOpeningBalance
 // added by vasusri
 router.post('/addPendingAmount',addPendingAmount);
 router.get('/getPendingAmount',getPendingAmount);
+
+router.put("/payment-gateway/:gateway_id/status", updatePaymentGatewayStatus);
 
 module.exports = router;

@@ -3318,6 +3318,52 @@ const getAllKittyPayments = async (req, res) => {
   }
 };
 
+const updatePaymentGatewayStatus = async (req, res) => {
+  const { gateway_id } = req.params;
+  const { status } = req.body;
+
+  try {
+    // Validate status
+    if (!['active', 'inactive'].includes(status)) {
+      return res.status(400).json({ 
+        message: "Status must be either 'active' or 'inactive'" 
+      });
+    }
+
+    // If setting to active, first set all gateways to inactive
+    if (status === 'active') {
+      await con.query(
+        "UPDATE paymentgateways SET status = 'inactive'"
+      );
+    }
+
+    // Update the specified gateway
+    const result = await con.query(
+      `UPDATE paymentgateways 
+       SET status = $1 
+       WHERE gateway_id = $2 
+       RETURNING *`,
+      [status, gateway_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        message: "Payment gateway not found" 
+      });
+    }
+
+    res.status(200).json({
+      message: "Payment gateway status updated successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Error updating payment gateway status:", error);
+    res.status(500).json({ 
+      message: "Error updating payment gateway status" 
+    });
+  }
+};
 
 // added by vasusri
 const addPendingAmount =async (req, res)=>{
@@ -3436,8 +3482,6 @@ const memberPendingKittyOpeningBalance = async (req, res) => {
   }
 };
 
-
-
 module.exports = {
   getPendingAmount,
   addPendingAmount,
@@ -3522,5 +3566,8 @@ module.exports = {
   verifyQrCode,
   allCheckins,
   getAllKittyPayments,
+  updatePaymentGatewayStatus,
   memberPendingKittyOpeningBalance,
+  addPendingAmount,
+  getPendingAmount,
 };
