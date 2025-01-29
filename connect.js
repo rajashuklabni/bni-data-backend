@@ -32,6 +32,9 @@ const allowedOrigins = [
   "https://www.bninewdelhi.com/",
   "https://www.bninewdelhi.com",
   "http://www.bninewdelhi.com/",
+  "https://bni-frontend.vercel.app/",
+  "https://bni-frontend.vercel.app",
+  "http://bni-frontend.vercel.app/",
 ];
 
 const corsOptions = {
