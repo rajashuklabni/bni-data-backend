@@ -3389,7 +3389,8 @@ const addPendingAmount =async (req, res)=>{
 
 // create by vasu Sri
 const getPendingAmount = async (req, res) => {
-  const { member_id, chapter_id, kitty_id } = req.body;
+  // const { member_id, chapter_id, kitty_id } = req.body; 
+  const { member_id, chapter_id, kitty_id } = req.query;
   console.log("member_id, chapter_id, kitty_id",member_id, chapter_id, kitty_id);
   try {
     const result = await con.query(
