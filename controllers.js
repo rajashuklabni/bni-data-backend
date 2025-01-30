@@ -988,13 +988,25 @@ const updateChapter = async (req, res) => {
 };
 
 const updateMember = async (req, res) => {
-  const { member_id } = req.params; // Get member_id from URL parameter
-  const memberData = req.body; // Get the updated data from the request body
+  const { member_id } = req.params;
+  const memberData = req.body;
 
   console.log("Updating member with ID:", member_id);
   console.log("Received data:", memberData);
+  console.log("Received file:", req.file);
 
   try {
+    // Handle the photo file if it exists
+    if (req.file) {
+      console.log('Photo file received:', req.file.filename);
+      memberData.member_photo = req.file.filename; // Store only the filename
+    }
+
+    // Handle empty accolades_id - convert empty string to empty array
+    if (memberData.accolades_id === '') {
+      memberData.accolades_id = '{}'; // PostgreSQL empty array syntax
+    }
+
     // Construct the SQL query for updating the member
     const query = `
       UPDATE member
@@ -1012,7 +1024,7 @@ const updateMember = async (req, res) => {
         address_state = $11,
         region_id = $12,
         chapter_id = $13,
-        accolades_id = $14,  -- Assuming accolades are stored in an array or JSON
+        accolades_id = $14::integer[], -- Cast explicitly to integer array
         category_id = $15,
         member_current_membership = $16,
         member_renewal_date = $17,
@@ -1022,7 +1034,7 @@ const updateMember = async (req, res) => {
         member_company_state = $21,
         member_company_city = $22,
         member_company_pincode = $23,
-        member_photo = $24,  -- Assuming member photo is stored in the URL or path
+        member_photo = $24,
         member_website = $25,
         member_facebook = $26,
         member_instagram = $27,
@@ -1050,7 +1062,7 @@ const updateMember = async (req, res) => {
       memberData.address_state,
       memberData.region_id,
       memberData.chapter_id,
-      memberData.accolades_id, // Assuming accolades are stored as JSON
+      memberData.accolades_id, // Now properly handled for empty case
       memberData.category_id,
       memberData.member_current_membership,
       memberData.member_renewal_date,
@@ -1059,7 +1071,7 @@ const updateMember = async (req, res) => {
       memberData.member_company_address,
       memberData.member_company_state,
       memberData.member_company_city,
-      memberData.member_company_pincode,
+      memberData.member_company_pincode || null, // Handle 'null' string
       memberData.member_photo,
       memberData.member_website,
       memberData.member_facebook,
@@ -1070,8 +1082,10 @@ const updateMember = async (req, res) => {
       memberData.date_of_publishing,
       memberData.member_status,
       memberData.meeting_opening_balance,
-      member_id, // Ensure the member_id is used for the WHERE clause
+      member_id,
     ];
+
+    console.log('Executing query with values:', values);
 
     // Execute the query with the provided member data
     const { rows } = await con.query(query, values);
@@ -1081,11 +1095,21 @@ const updateMember = async (req, res) => {
       return res.status(404).json({ message: "Member not found" });
     }
 
+    console.log('Member updated successfully:', rows[0]);
+
     // Return the updated member data
-    res.status(200).json(rows[0]);
+    res.status(200).json({
+      message: "Member updated successfully",
+      data: rows[0],
+      photo_path: req.file ? `/uploads/memberPhotos/${req.file.filename}` : null
+    });
   } catch (error) {
     console.error("Error updating member:", error);
-    res.status(500).json({ message: "Error updating member" });
+    res.status(500).json({ 
+      message: "Error updating member", 
+      error: error.message,
+      details: error.detail || 'No additional details available'
+    });
   }
 };
 
@@ -2570,6 +2594,8 @@ const deleteExpense = async (req, res) => {
 const updateMemberSettings = async (req, res) => {
   try {
     console.log("Received update request:", req.body);
+    console.log("Received file:", req.file);
+
     const {
       member_email_address,
       member_phone_number,
@@ -2580,84 +2606,59 @@ const updateMemberSettings = async (req, res) => {
       member_instagram,
       member_linkedin,
       member_youtube,
-      member_photo,
     } = req.body;
 
-    // Validate email
-    if (!member_email_address) {
-      return res.status(400).json({ message: "Email address is required" });
+    // Get just the original filename if a file was uploaded
+    let photoPath = null;
+    if (req.file) {
+      // Use the original filename directly
+      photoPath = req.file.originalname;
     }
 
-    // Handle member photo
-    let photoFileName = "";
-    if (member_photo) {
-      // Create directory if it doesn't exist
-      const uploadDir = path.join(
-        __dirname,
-        "../bni/public/assets/memberProfileImage"
-      );
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
-      // Generate filename (without full path for database storage)
-      const timestamp = Date.now();
-      photoFileName = `member_${timestamp}.jpg`;
-
-      // Full path for saving the file
-      const fullPath = path.join(uploadDir, photoFileName);
-
-      // Remove the data:image/jpeg;base64 prefix if it exists
-      const base64Data = member_photo.replace(/^data:image\/\w+;base64,/, "");
-
-      // Save the file
-      fs.writeFileSync(fullPath, base64Data, { encoding: "base64" });
-
-      console.log("Photo saved as:", photoFileName);
-    }
-
-    // Update query with relative path for member_photo
+    // Update query
     const query = `
-            UPDATE member 
-            SET 
-                member_phone_number = $1,
-                member_company_address = $2,
-                member_company_name = $3,
-                member_gst_number = $4,
-                member_facebook = $5,
-                member_instagram = $6,
-                member_linkedin = $7,
-                member_youtube = $8,
-                member_photo = $9
-            WHERE member_email_address = $10
-            RETURNING *`;
+      UPDATE member 
+      SET 
+        member_phone_number = $1,
+        member_company_address = $2,
+        member_company_name = $3,
+        member_gst_number = $4,
+        member_facebook = $5,
+        member_instagram = $6,
+        member_linkedin = $7,
+        member_youtube = $8
+        ${photoPath ? ', member_photo = $9' : ''}
+      WHERE member_email_address = ${photoPath ? '$10' : '$9'}
+      RETURNING *`;
 
-    const result = await con.query(query, [
+    const values = [
       member_phone_number,
       member_company_address,
       member_company_name,
       member_gst_number,
-      member_facebook,
-      member_instagram,
-      member_linkedin,
-      member_youtube,
-      photoFileName
-        ? `/assets/memberProfileImage/${photoFileName}`
-        : member_photo, // Store relative path
-      member_email_address,
-    ]);
+      member_facebook || '',
+      member_instagram || '',
+      member_linkedin || '',
+      member_youtube || ''
+    ];
+
+    if (photoPath) {
+      values.push(photoPath);
+    }
+    values.push(member_email_address);
+
+    const result = await con.query(query, values);
 
     if (result.rows.length === 0) {
       console.log("No member found with email:", member_email_address);
-      return res
-        .status(404)
-        .json({ message: "Member not found with this email" });
+      return res.status(404).json({ message: "Member not found with this email" });
     }
 
     console.log("Update successful");
     res.json({
       message: "Member settings updated successfully",
       data: result.rows[0],
+      photo_path: photoPath
     });
   } catch (error) {
     console.error("Error in updateMemberSettings:", error);
@@ -3481,6 +3482,108 @@ const memberPendingKittyOpeningBalance = async (req, res) => {
   }
 };
 
+const updateChapterSettings = async (req, res) => {
+    console.log('Starting updateChapterSettings controller...');
+    
+    try {
+        console.log('Request body:', req.body);
+        const {
+            email_id,
+            contact_number,
+            contact_person,
+            chapter_mission,
+            chapter_vision,
+            meeting_hotel_name,
+            street_address_line,
+            postal_code,
+            chapter_facebook,
+            chapter_instagram,
+            chapter_linkedin,
+            chapter_youtube
+        } = req.body;
+        console.log(email_id, contact_number, contact_person, chapter_mission, chapter_vision, meeting_hotel_name, street_address_line, postal_code, chapter_facebook, chapter_instagram, chapter_linkedin, chapter_youtube);
+
+        if (!email_id) {
+            console.error('Email ID is required');
+            return res.status(400).json({
+                success: false,
+                message: 'Email ID is required'
+            });
+        }
+
+        let updateQuery = `
+            UPDATE chapter 
+            SET 
+                contact_number = COALESCE($1, contact_number),
+                contact_person = COALESCE($2, contact_person),
+                chapter_mission = COALESCE($3, chapter_mission),
+                chapter_vision = COALESCE($4, chapter_vision),
+                meeting_hotel_name = COALESCE($5, meeting_hotel_name),
+                street_address_line = COALESCE($6, street_address_line),
+                postal_code = COALESCE($7, postal_code),
+                chapter_facebook = COALESCE($8, chapter_facebook),
+                chapter_instagram = COALESCE($9, chapter_instagram),
+                chapter_linkedin = COALESCE($10, chapter_linkedin),
+                chapter_youtube = COALESCE($11, chapter_youtube)
+        `;
+
+        const queryParams = [
+            contact_number,
+            contact_person,
+            chapter_mission,
+            chapter_vision,
+            meeting_hotel_name,
+            street_address_line,
+            postal_code,
+            chapter_facebook,
+            chapter_instagram,
+            chapter_linkedin,
+            chapter_youtube
+        ];
+
+        // Handle file upload if present
+        if (req.file) {
+            console.log('File uploaded:', req.file);
+            const photoPath = `${req.file.filename}`;
+            updateQuery += `, chapter_logo = $12`;
+            queryParams.push(photoPath);
+        }
+
+        updateQuery += ` WHERE email_id = $${queryParams.length + 1} RETURNING *`;
+        queryParams.push(email_id);
+
+        console.log('Executing update query:', {
+            query: updateQuery,
+            params: queryParams
+        });
+
+        const result = await con.query(updateQuery, queryParams);
+
+        if (result.rows.length === 0) {
+            console.error('No chapter found with email:', email_id);
+            return res.status(404).json({
+                success: false,
+                message: 'Chapter not found'
+            });
+        }
+
+        console.log('Chapter updated successfully:', result.rows[0]);
+        res.status(200).json({
+            success: true,
+            message: 'Chapter settings updated successfully',
+            data: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('Error in updateChapterSettings:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating chapter settings',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
   getPendingAmount,
   addPendingAmount,
@@ -3569,4 +3672,5 @@ module.exports = {
   memberPendingKittyOpeningBalance,
   addPendingAmount,
   getPendingAmount,
+  updateChapterSettings
 };

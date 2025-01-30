@@ -88,6 +88,7 @@ const {
   getAllKittyPayments,
   memberPendingKittyOpeningBalance,
   updatePaymentGatewayStatus,
+  updateChapterSettings,
 } = require("./controllers");
 
 const path = require("path");
@@ -135,6 +136,63 @@ const uploadLogo = multer({
     }
     cb(new Error("Only image files are allowed!"));
   },
+});
+
+// Configure multer storage for member photos
+const memberPhotoStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = './uploads/memberPhotos';
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // Use the original filename without any modifications
+    cb(null, file.originalname);
+  }
+});
+
+const uploadMemberPhoto = multer({
+  storage: memberPhotoStorage,
+  fileFilter: function (req, file, cb) {
+    // Check file type
+    if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+      return cb(new Error('Only image files are allowed!'), false);
+    }
+    cb(null, true);
+  }
+});
+
+// Configure multer storage for chapter logos
+const chapterLogoStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = './uploads/chapterPhotos';
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'chapter-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const uploadChapterLogo = multer({
+    storage: chapterLogoStorage,
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (extname && mimetype) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
+        }
+    }
 });
 
 // Route to handle logo upload
@@ -217,7 +275,7 @@ router.get("/getLoginOtps", getLoginOtps);
 router.get("/getLoginLogs", getLoginLogs);
 router.put("/updateChapter/:chapter_id", updateChapter);
 router.put("/deleteChapter/:chapter_id", deleteChapter);
-router.put("/updateMember/:member_id", updateMember);
+router.put("/updateMember/:member_id", uploadMemberPhoto.single('member_photo'), updateMember);
 router.put("/deleteMember/:member_id", deleteMember);
 router.put("/updateUniversalLink/:id", updateUniversalLink);
 router.put("/deleteUniversalLink/:id", deleteUniversalLink);
@@ -251,7 +309,7 @@ router.get("/expense/:expense_id", getExpenseById);
 router.post("/addExpense", upload.single("upload_bill"), addExpense);
 router.put("/expense/:expense_id", upload.single("upload_bill"), updateExpense);
 router.delete("/expense/:expense_id", deleteExpense);
-router.put("/updateMemberSettings", updateMemberSettings);
+router.put("/updateMemberSettings", uploadMemberPhoto.single('member_photo'), updateMemberSettings);
 router.put("/updateUserSettings", updateUserSettings);
 router.put("/updateLogo", updateLogo);
 router.put("/updateGstTypeValues", updateGstTypeValues);
@@ -271,5 +329,10 @@ router.post('/addPendingAmount',addPendingAmount);
 router.get('/getPendingAmount',getPendingAmount);
 
 router.put("/payment-gateway/:gateway_id/status", updatePaymentGatewayStatus);
+
+router.put("/updateChapterSettings", 
+    uploadChapterLogo.single('chapter_logo'), 
+    updateChapterSettings
+);
 
 module.exports = router;
