@@ -19,15 +19,17 @@ const headers = {
 
 app.use(bodyParser.raw({ type: 'application/json' }));
 
-
+let responseData1;
 // Generate Cashfree sessionId and store order details in Orders table
 const sessionIdGenerator = async (req, res) => {
     const data = req.body;
     console.log(data, "================body=================");
+    responseData1= data;
 
     try {
         const axiosResponse = await axios.post(`${process.env.cashfree_testing_url}/pg/orders`, data, { headers });
         const responseData = axiosResponse.data;
+        
 
         // console.log(responseData, "=============session controller data");
 
@@ -167,6 +169,40 @@ console.log("paymentDetails==============================",paymentDetails);
       );
 
       console.log('Transaction data inserted successfully');
+      // console.log("hereeee testing",responseData1);
+
+      // here added by vasu
+      const balance_data = {
+        chapter_id: responseData1.chapter_id,
+        member_id: responseData1.member_id,
+        kitty_bill_id: responseData1.kitty_bill_id,
+        member_pending_balance: responseData1.member_pending_balance,
+        total_amount_paid:responseData1.total_amount_paid,
+        tax: responseData1.tax,
+        date_of_update:responseData1.date_of_update,
+
+      }
+      console.log("separated data");
+      console.log(balance_data);
+      
+        if(payment_status==='SUCCESS'){
+          // db query
+          console.log("adding in db.....");
+          await db.query(`
+      INSERT INTO memberpendingkittyopeningbalance ( chapter_id, member_id, kitty_id, member_pending_balance, total_amount_paid, tax) 
+      VALUES ($1, $2, $3, $4, $5, $6)`,[
+      balance_data.chapter_id,
+      balance_data.member_id,
+      balance_data.kitty_bill_id,
+      balance_data.member_pending_balance,
+      balance_data.total_amount_paid,
+      balance_data.tax
+    ]);
+    console.log("added in new db");
+
+    
+        }
+      
       return res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`);
     } else {
       console.error("Payment details missing");
