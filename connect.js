@@ -12,6 +12,13 @@ const dotEnv = require("dotenv");
 const jwt = require("jsonwebtoken");
 dotEnv.config();
 const app = express();
+const ccavService = require("./ccavenueService.js");
+
+// const http = require('http'),
+// ccav = require('./ccavutil.js'),
+// qs = require('querystring'),
+// ccavReqHandler = require('./ccavRequestHandler.js'),
+// ccavResHandler = require('./ccavResponseHandler.js');
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const upload = multer({ dest: "uploads/" });
 
@@ -284,6 +291,62 @@ const ccavenueRoutes = require("./allRoutes/ccavenueRoute");
 
 // Add this with other route uses
 app.use("/api", ccavenueRoutes);
+
+// --------------------------------------------------------------------------------
+// app.use(express.static('public'));
+// app.set('views', __dirname + '/public');
+// app.engine('html', require('ejs').renderFile);
+
+// app.get('/about', function (req, res) {
+//   res.sendFile(path.join(__dirname, 'public', 'dataFrom.html'));
+// });
+
+// app.post('/ccavRequestHandler', function (request, response){
+//   console.log("cc avenue trigger");
+// ccavReqHandler.postReq(request, response);
+// });
+
+
+// app.post('/ccavResponseHandler', function (request, response){
+//     ccavResHandler.postRes(request, response);
+// });
+
+app.get("/api/encrypt", (req, res) => {
+  console.log("runnnnn......");
+  const { payload } = req.query;
+  const data = JSON.parse(payload); // Parse the payload to get the order details
+
+  const encryptedData = ccavService.encrypt(data);
+  if (encryptedData) {
+    res.status(200).json({
+      data: encryptedData,
+      status: "SUCCESS",
+    });
+  } else {
+    res.status(400).json({
+      data: null,
+      status: "FAILURE",
+    });
+  }
+});
+
+app.post("/api/handle-response", (req, res) => {
+  const { encResp } = req.body;
+  const paymentStatus = ccavService.decrypt(encResp).responceCode;
+
+  if (paymentStatus === "Success") {
+    res.redirect("/api/payment-success");
+  } else {
+    res.redirect("/api/payment-failure");
+  }
+});
+app.get("/api/payment-success", (req, res) => {
+  res.send("YAY!! Payment Successful...");
+});
+
+app.get("/api/payment-failure", (req, res) => {
+  res.send("OOPS! Payment Failed...");
+});
 
 // Update the protected routes section
 // Protected routes (token required)

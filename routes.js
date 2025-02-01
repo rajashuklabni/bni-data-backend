@@ -327,6 +327,7 @@ router.get("/memberPendingKittyOpeningBalance", memberPendingKittyOpeningBalance
 // added by vasusri
 router.post('/addPendingAmount',addPendingAmount);
 router.get('/getPendingAmount',getPendingAmount);
+// router.post('/ccavResponseHandler',ccavResponseHandler)
 
 router.put("/payment-gateway/:gateway_id/status", updatePaymentGatewayStatus);
 
