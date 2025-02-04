@@ -42,6 +42,9 @@ const allowedOrigins = [
   "https://bni-frontend.vercel.app/",
   "https://bni-frontend.vercel.app",
   "http://bni-frontend.vercel.app/",
+  "http://dashboard.codersgallery.com/",
+  "https://dashboard.codersgallery.com",
+  "https://dashboard.codersgallery.com/",
 ];
 
 const corsOptions = {
