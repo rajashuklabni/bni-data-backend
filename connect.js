@@ -46,6 +46,10 @@ const allowedOrigins = [
   "http://dashboard.codersgallery.com/",
   "https://dashboard.codersgallery.com",
   "https://dashboard.codersgallery.com/",
+  "http://dashboard.bninewdelhi.com",
+  "http://dashboard.bninewdelhi.com/",
+  "https://dashboard.bninewdelhi.com",
+  "https://dashboard.bninewdelhi.com/",
 ];
 
 const corsOptions = {
