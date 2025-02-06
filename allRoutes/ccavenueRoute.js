@@ -4,10 +4,12 @@ const {
   generateCCAvenueOrder,
   handleCCAvenueResponse,
   getCCAvenueOrderStatus,
+  postReq 
 } = require("../allControllers/paymentControllers/ccavenueController");
 
-router.post("/generate-ccavenue-order", generateCCAvenueOrder);
-router.post("/ccavenue-response", handleCCAvenueResponse);
-router.get("/ccavenue-order-status/:order_id", getCCAvenueOrderStatus);
+// router.post("/generate-ccavenue-order", generateCCAvenueOrder);
+// router.post("/ccavResponseHandler",postReq );
+// router.get("/ccavenue-order-status/:order_id", getCCAvenueOrderStatus);
+
 
 module.exports = router;
