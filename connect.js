@@ -50,6 +50,18 @@ const allowedOrigins = [
   "http://dashboard.bninewdelhi.com/",
   "https://dashboard.bninewdelhi.com",
   "https://dashboard.bninewdelhi.com/",
+  "https://54.39.51.161/",
+  "https://54.39.51.161",
+  "http://54.39.51.161",
+  "http://54.39.51.161/",
+  "https://54.39.51.161:3000",
+  "https://54.39.51.161:3000",
+  "http://54.39.51.161:3000",
+  "http://54.39.51.161:3000",
+  "https://54.39.51.161:5000",
+  "https://54.39.51.161:5000",
+  "http://54.39.51.161:5000",
+  "http://54.39.51.161:5000",
 ];
 
 const corsOptions = {

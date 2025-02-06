@@ -3,6 +3,7 @@ const router = express.Router();
 const upload = require("./middleware/expenseImagesMiddleware");
 const { Client } = require("pg");
 const {
+  addInvoiceManually,
   addPendingAmount,
   getPendingAmount,
   getRegions,
@@ -328,6 +329,7 @@ router.get("/memberPendingKittyOpeningBalance", memberPendingKittyOpeningBalance
 router.post('/addPendingAmount',addPendingAmount);
 router.get('/getPendingAmount',getPendingAmount);
 // router.post('/ccavResponseHandler',ccavResponseHandler)
+router.post('/addInvoiceManually',addInvoiceManually)
 
 router.put("/payment-gateway/:gateway_id/status", updatePaymentGatewayStatus);
 
