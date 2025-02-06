@@ -2353,42 +2353,100 @@ const addExpenseType = async (req, res) => {
 };
 
 const addExpense = async (req, res) => {
-  const {
-    expense_type,
-    submitted_by,
-    description,
-    amount,
-    payment_status,
-    bill_date,
-    transaction_no,
-    bill_no,
-  } = req.body;
-
   try {
-    // Log request body and file for debugging
+    // Log complete request details
+    console.log("========= Add Expense Request =========");
     console.log("Request Body:", req.body);
-    console.log("Uploaded File:", req.file);
+    console.log("File Details:", req.file);
+    console.log("Chapter ID received:", req.body.chapter_id);
+    console.log("=======================================");
+
+    const {
+      expense_type,
+      submitted_by,
+      description,
+      amount,
+      payment_status,
+      bill_date,
+      transaction_no,
+      bill_no,
+      chapter_id,
+    } = req.body;
 
     // Validate expense_type
     if (!expense_type) {
+      console.log("Validation Failed: Expense Type missing");
       return res.status(400).json({ message: "Expense Type is required" });
     }
 
     // Validate the uploaded file
     if (!req.file) {
+      console.log("Validation Failed: Bill file missing");
       return res.status(400).json({ message: "Bill file is required" });
+    }
+
+    // Validate chapter_id
+    if (!chapter_id) {
+      console.log("Validation Failed: Chapter ID missing");
+      return res.status(400).json({ message: "Chapter ID is required" });
     }
 
     // Construct the file path
     const uploadBillPath = `/uploads/expenses/${req.file.filename}`;
     console.log("File Path to be Stored:", uploadBillPath);
 
+    // First, check if chapter_id column exists
+    try {
+      const checkColumnQuery = `
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'expenses' 
+        AND column_name = 'chapter_id';
+      `;
+      
+      const columnCheck = await con.query(checkColumnQuery);
+      
+      // If chapter_id column doesn't exist, add it
+      if (columnCheck.rows.length === 0) {
+        console.log("Adding chapter_id column to expenses table");
+        await con.query(`
+          ALTER TABLE expenses 
+          ADD COLUMN chapter_id INTEGER REFERENCES chapter(chapter_id);
+        `);
+      }
+    } catch (error) {
+      console.error("Error checking/adding chapter_id column:", error);
+      throw error;
+    }
+
     // Insert the new expense into the database
+    console.log("Inserting expense with values:", {
+      expense_type,
+      submitted_by,
+      description,
+      amount,
+      payment_status,
+      bill_date,
+      uploadBillPath,
+      transaction_no,
+      bill_no,
+      chapter_id
+    });
+
     const result = await con.query(
       `INSERT INTO expenses (
-        expense_type, submitted_by, description, amount, payment_status, bill_date, upload_bill, transaction_no, bill_no
+        expense_type, 
+        submitted_by, 
+        description, 
+        amount, 
+        payment_status, 
+        bill_date, 
+        upload_bill, 
+        transaction_no, 
+        bill_no, 
+        chapter_id
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
       ) RETURNING *`,
       [
         expense_type,
@@ -2397,11 +2455,14 @@ const addExpense = async (req, res) => {
         amount,
         payment_status,
         bill_date,
-        uploadBillPath, // Store the file path as a string
+        uploadBillPath,
         transaction_no,
         bill_no,
+        chapter_id,
       ]
     );
+
+    console.log("Expense added successfully:", result.rows[0]);
 
     // Respond with success message and data
     res.status(201).json({
@@ -2411,6 +2472,10 @@ const addExpense = async (req, res) => {
   } catch (error) {
     // Log the error for debugging
     console.error("Error adding Expense:", error);
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack
+    });
 
     res.status(500).json({
       message: "Error adding Expense",
