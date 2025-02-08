@@ -329,6 +329,7 @@ const addChapter = async (req, res) => {
     chapter_launched_by,
     chapter_location_note,
     chapter_late_fees,
+    chapter_available_fund,
   } = req.body;
 
   // Validate required fields
@@ -359,13 +360,13 @@ const addChapter = async (req, res) => {
                 contact_person, chapter_mission, chapter_vision, email_id, country, state, city,
                 street_address_line, postal_code, chapter_facebook, chapter_instagram,
                 chapter_linkedin, chapter_youtube, chapter_website, date_of_publishing,
-                chapter_launched_by, chapter_location_note, chapter_late_fees
+                chapter_launched_by, chapter_location_note, chapter_late_fees, available_fund
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9,
                 $10, $11, $12, $13, $14, $15, $16,
                 $17, $18, $19, $20, $21, $22, $23,
                 $24, $25, $26, $27, $28, $29, $30,
-                $31, $32, $33, $34
+                $31, $32, $33, $34, $35
             ) RETURNING *`,
       [
         region_id,
@@ -402,6 +403,7 @@ const addChapter = async (req, res) => {
         chapter_launched_by,
         chapter_location_note,
         chapter_late_fees,
+        chapter_available_fund,
       ]
     );
 
@@ -930,8 +932,9 @@ const updateChapter = async (req, res) => {
         chapter_late_fees = $31,
         chapter_membership_fee_two_year = $32,
         chapter_membership_fee_five_year = $33,
-        kitty_billing_frequency = $34
-      WHERE chapter_id = $35
+        kitty_billing_frequency = $34,
+        available_fund = $35
+      WHERE chapter_id = $36
       RETURNING *;`;
 
     const values = [
@@ -969,6 +972,7 @@ const updateChapter = async (req, res) => {
       cleanedData.chapter_membership_fee_two_year,
       cleanedData.chapter_membership_fee_five_year,
       cleanedData.billing_frequency,
+      cleanedData.chapter_available_fund,
       chapter_id, // Ensure the chapter_id is used for the WHERE clause
     ];
 
