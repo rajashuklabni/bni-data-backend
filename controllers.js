@@ -2353,42 +2353,100 @@ const addExpenseType = async (req, res) => {
 };
 
 const addExpense = async (req, res) => {
-  const {
-    expense_type,
-    submitted_by,
-    description,
-    amount,
-    payment_status,
-    bill_date,
-    transaction_no,
-    bill_no,
-  } = req.body;
-
   try {
-    // Log request body and file for debugging
+    // Log complete request details
+    console.log("========= Add Expense Request =========");
     console.log("Request Body:", req.body);
-    console.log("Uploaded File:", req.file);
+    console.log("File Details:", req.file);
+    console.log("Chapter ID received:", req.body.chapter_id);
+    console.log("=======================================");
+
+    const {
+      expense_type,
+      submitted_by,
+      description,
+      amount,
+      payment_status,
+      bill_date,
+      transaction_no,
+      bill_no,
+      chapter_id,
+    } = req.body;
 
     // Validate expense_type
     if (!expense_type) {
+      console.log("Validation Failed: Expense Type missing");
       return res.status(400).json({ message: "Expense Type is required" });
     }
 
     // Validate the uploaded file
     if (!req.file) {
+      console.log("Validation Failed: Bill file missing");
       return res.status(400).json({ message: "Bill file is required" });
+    }
+
+    // Validate chapter_id
+    if (!chapter_id) {
+      console.log("Validation Failed: Chapter ID missing");
+      return res.status(400).json({ message: "Chapter ID is required" });
     }
 
     // Construct the file path
     const uploadBillPath = `/uploads/expenses/${req.file.filename}`;
     console.log("File Path to be Stored:", uploadBillPath);
 
+    // First, check if chapter_id column exists
+    try {
+      const checkColumnQuery = `
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'expenses' 
+        AND column_name = 'chapter_id';
+      `;
+      
+      const columnCheck = await con.query(checkColumnQuery);
+      
+      // If chapter_id column doesn't exist, add it
+      if (columnCheck.rows.length === 0) {
+        console.log("Adding chapter_id column to expenses table");
+        await con.query(`
+          ALTER TABLE expenses 
+          ADD COLUMN chapter_id INTEGER REFERENCES chapter(chapter_id);
+        `);
+      }
+    } catch (error) {
+      console.error("Error checking/adding chapter_id column:", error);
+      throw error;
+    }
+
     // Insert the new expense into the database
+    console.log("Inserting expense with values:", {
+      expense_type,
+      submitted_by,
+      description,
+      amount,
+      payment_status,
+      bill_date,
+      uploadBillPath,
+      transaction_no,
+      bill_no,
+      chapter_id
+    });
+
     const result = await con.query(
       `INSERT INTO expenses (
-        expense_type, submitted_by, description, amount, payment_status, bill_date, upload_bill, transaction_no, bill_no
+        expense_type, 
+        submitted_by, 
+        description, 
+        amount, 
+        payment_status, 
+        bill_date, 
+        upload_bill, 
+        transaction_no, 
+        bill_no, 
+        chapter_id
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
       ) RETURNING *`,
       [
         expense_type,
@@ -2397,11 +2455,14 @@ const addExpense = async (req, res) => {
         amount,
         payment_status,
         bill_date,
-        uploadBillPath, // Store the file path as a string
+        uploadBillPath,
         transaction_no,
         bill_no,
+        chapter_id,
       ]
     );
+
+    console.log("Expense added successfully:", result.rows[0]);
 
     // Respond with success message and data
     res.status(201).json({
@@ -2411,6 +2472,10 @@ const addExpense = async (req, res) => {
   } catch (error) {
     // Log the error for debugging
     console.error("Error adding Expense:", error);
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack
+    });
 
     res.status(500).json({
       message: "Error adding Expense",
@@ -3434,6 +3499,7 @@ const addPendingAmount =async (req, res)=>{
   }
 }
 
+
 // create by vasu Sri
 const getPendingAmount = async (req, res) => {
   // const { member_id, chapter_id, kitty_id } = req.body; 
@@ -3585,7 +3651,136 @@ const updateChapterSettings = async (req, res) => {
     }
 };
 
+const addInvoiceManually = async (req, res) => {
+  const { customer_details, payment_details } = req.body;
+  console.log(customer_details);
+  console.log(payment_details);
+
+  try {
+    // Generate random order_id and transaction_id
+    const order_id = `ORD${Date.now()}`;
+    const cf_payment_id = `TRX${Date.now()}`;
+
+    // Define default values
+    const defaultValues = {
+      order_amount: 0,
+      order_currency: "INR",
+      payment_gateway_id: null,
+      member_id: null,
+      chapter_id: null,
+      region_id: null,
+      universal_link_id: null,
+      ulid_id: null,
+      order_status: "pending",
+      payment_session_id: null,
+      one_time_registration_fee: 0,
+      membership_fee: 0,
+      tax: 0,
+      memberName: "Unknown",
+      customer_email: "unknown@example.com",
+      customer_phone: "0000000000",
+      gstin: null,
+      company: "Unknown",
+      mobileNumber: "0000000000",
+      renewalYear: null,
+      payment_note: null,
+      trainingId: null,
+      eventId: null,
+      kitty_bill_id: null,
+      payment_amount: 0,
+      payment_currency: "INR",
+      payment_status: "pending",
+      payment_message: null,
+      payment_time: new Date(),
+      payment_completion_time: null,
+      bank_reference: null,
+      auth_id: null,
+      payment_method: {},
+      error_details: {},
+      gateway_order_id: null,
+      gateway_payment_id: null,
+      payment_group: null,
+    };
+
+    // Prepare order data with default values
+    const orderData = [
+      order_id,
+      payment_details.order_amount || defaultValues.order_amount,
+      payment_details.order_currency || defaultValues.order_currency,
+      customer_details.payment_gateway_id || defaultValues.payment_gateway_id,
+      customer_details.member_id || defaultValues.member_id,
+      customer_details.chapter_id || defaultValues.chapter_id,
+      customer_details.region_id || defaultValues.region_id,
+      customer_details.universal_link_id || defaultValues.universal_link_id,
+      customer_details.ulid_id || defaultValues.ulid_id,
+      payment_details.order_status || defaultValues.order_status,
+      payment_details.payment_session_id || defaultValues.payment_session_id,
+      customer_details.one_time_registration_fee || defaultValues.one_time_registration_fee,
+      customer_details.membership_fee || defaultValues.membership_fee,
+      customer_details.tax || defaultValues.tax,
+      customer_details.memberName || defaultValues.memberName,
+      customer_details.customer_email || defaultValues.customer_email,
+      customer_details.customer_phone || defaultValues.customer_phone,
+      customer_details.gstin || defaultValues.gstin,
+      customer_details.company || defaultValues.company,
+      customer_details.mobileNumber || defaultValues.mobileNumber,
+      customer_details.renewalYear || defaultValues.renewalYear,
+      customer_details.payment_note || defaultValues.payment_note,
+      customer_details.trainingId || defaultValues.trainingId,
+      customer_details.eventId || defaultValues.eventId,
+      customer_details.kitty_bill_id || defaultValues.kitty_bill_id,
+    ];
+
+    // Insert into Orders table
+    await con.query(
+      `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+      orderData
+    );
+
+    // Prepare transaction data with default values
+    const transactionData = [
+      cf_payment_id,
+      order_id,
+      customer_details.payment_gateway_id || defaultValues.payment_gateway_id, // Assume 999 for cash
+      payment_details.payment_amount || defaultValues.payment_amount,
+      payment_details.payment_currency || defaultValues.payment_currency,
+      payment_details.payment_status || defaultValues.payment_status,
+      payment_details.payment_message || defaultValues.payment_message,
+      payment_details.payment_time || defaultValues.payment_time,
+      payment_details.payment_completion_time || defaultValues.payment_completion_time,
+      payment_details.bank_reference || defaultValues.bank_reference,
+      payment_details.auth_id || defaultValues.auth_id,
+      JSON.stringify(payment_details.payment_method || defaultValues.payment_method),
+      JSON.stringify(payment_details.error_details || defaultValues.error_details),
+      payment_details.gateway_order_id || defaultValues.gateway_order_id,
+      payment_details.gateway_payment_id || defaultValues.gateway_payment_id,
+      payment_details.payment_group || defaultValues.payment_group,
+    ];
+
+    // Insert into Transactions table
+    await con.query(
+      `INSERT INTO Transactions 
+        (cf_payment_id, order_id, payment_gateway_id, payment_amount, payment_currency, payment_status, 
+         payment_message, payment_time, payment_completion_time, bank_reference, auth_id, payment_method, 
+         error_details, gateway_order_id, gateway_payment_id, payment_group)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+      transactionData
+    );
+
+    res.status(201).json({
+      message: "Order and transaction added successfully",
+      order_id,
+      cf_payment_id,
+    });
+  } catch (error) {
+    console.error("Error adding order and transaction:", error);
+    res.status(500).json({ message: "Error adding order and transaction" });
+  }
+};
+
 module.exports = {
+  addInvoiceManually,
   getPendingAmount,
   addPendingAmount,
   getRegions,
@@ -3673,5 +3868,5 @@ module.exports = {
   memberPendingKittyOpeningBalance,
   addPendingAmount,
   getPendingAmount,
-  updateChapterSettings
+  updateChapterSettings,
 };
