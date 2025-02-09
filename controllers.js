@@ -212,7 +212,7 @@ const addRegion = async (req, res) => {
     date_of_publishing,
     postal_code,
   } = req.body;
-
+console.log(postal_code);
   // Ensure accolades_config is handled as an array
   const chapterDaysArray = Array.isArray(chapterDays) ? chapterDays : [];
   const chapterStatusArray = Array.isArray(chapterStatus) ? chapterStatus : [];
