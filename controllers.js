@@ -210,6 +210,7 @@ const addRegion = async (req, res) => {
     website_link,
     region_launched_by,
     date_of_publishing,
+    postal_code,
   } = req.body;
 
   // Ensure accolades_config is handled as an array
@@ -246,10 +247,10 @@ const addRegion = async (req, res) => {
           one_time_registration_fee, one_year_fee, two_year_fee, five_year_fee, late_fees, 
           country, state, city, street_address_line_1, street_address_line_2, social_facebook, 
           social_instagram, social_linkedin, social_youtube, website_link, region_launched_by, 
-          date_of_publishing
+          date_of_publishing, postal_code
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 
-          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
+          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30
         ) RETURNING *`,
       [
         region_name,
@@ -281,6 +282,7 @@ const addRegion = async (req, res) => {
         website_link,
         region_launched_by,
         date_of_publishing,
+        postal_code,
       ]
     );
 
@@ -2197,6 +2199,7 @@ const addKittyPayment = async (req, res) => {
       description,
       total_weeks,
       total_bill_amount,
+      due_date,
     } = req.body;
 
     // Check if all required fields are provided
@@ -2206,7 +2209,8 @@ const addKittyPayment = async (req, res) => {
       !bill_type ||
       !description ||
       !total_weeks ||
-      !total_bill_amount
+      !total_bill_amount ||
+      !due_date
     ) {
       return res.status(400).json({ message: "All fields are required." });
     }
@@ -2225,8 +2229,8 @@ const addKittyPayment = async (req, res) => {
     // If no active payment exists for this chapter_id, proceed to insert the new record
     const query = `
           INSERT INTO kittyPaymentChapter 
-          (chapter_id, payment_date, bill_type, description, total_weeks, total_bill_amount) 
-          VALUES ($1, $2, $3, $4, $5, $6)
+          (chapter_id, payment_date, bill_type, description, total_weeks, total_bill_amount ,kitty_due_date) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
       `;
 
     await con.query(query, [
@@ -2236,6 +2240,7 @@ const addKittyPayment = async (req, res) => {
       description,
       total_weeks,
       total_bill_amount,
+      due_date,
     ]);
 
     // Update the meeting_payable_amount field in the member table for the same chapter_id
