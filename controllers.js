@@ -3799,6 +3799,39 @@ const getAllMemberCredit = async (req, res) => {
   }
 };
 
+const addMemberCredit = async (req, res) => {
+  let { credits } = req.body;
+
+  if (!Array.isArray(credits)) {
+    return res.status(400).json({ message: "Invalid input format, expected an array" });
+  }
+
+  try {
+    const values = credits.map(({ member_id, chapter_id, credit_amount, credit_date }) => [
+      member_id,
+      chapter_id,
+      credit_amount,
+      credit_date,
+      false,
+    ]);
+
+    const query = `
+      INSERT INTO memberkittycredit (member_id, chapter_id, credit_amount, credit_date, is_adjusted) 
+      VALUES ${values.map((_, i) => `($${i * 5 + 1}, $${i * 5 + 2}, $${i * 5 + 3}, $${i * 5 + 4}, $${i * 5 + 5})`).join(", ")}
+      RETURNING *;
+    `;
+
+    const flattenedValues = values.flat();
+    const result = await con.query(query, flattenedValues);
+
+    res.status(201).json({ message: "Credits Added Successfully!", data: result.rows });
+  } catch (error) {
+    console.error("Error adding credits:", error);
+    res.status(500).send("Error adding credits");
+  }
+};
+
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -3890,4 +3923,5 @@ module.exports = {
   getPendingAmount,
   updateChapterSettings,
   getAllMemberCredit,
+  addMemberCredit,
 };
