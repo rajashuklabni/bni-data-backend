@@ -3783,6 +3783,17 @@ const addInvoiceManually = async (req, res) => {
   }
 };
 
+
+const getAllMemberCredit = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM memberkittycredit");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching all member credit:", error);
+    res.status(500).send("Error fetching all member credit");
+  }
+};
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -3873,4 +3884,5 @@ module.exports = {
   addPendingAmount,
   getPendingAmount,
   updateChapterSettings,
+  getAllMemberCredit,
 };

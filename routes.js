@@ -90,6 +90,7 @@ const {
   memberPendingKittyOpeningBalance,
   updatePaymentGatewayStatus,
   updateChapterSettings,
+  getAllMemberCredit,
 } = require("./controllers");
 
 const path = require("path");
@@ -332,6 +333,7 @@ router.get('/getPendingAmount',getPendingAmount);
 router.post('/addInvoiceManually',addInvoiceManually)
 
 router.put("/payment-gateway/:gateway_id/status", updatePaymentGatewayStatus);
+router.get("/getAllMemberCredit", getAllMemberCredit);
 
 router.put("/updateChapterSettings", 
     uploadChapterLogo.single('chapter_logo'), 
