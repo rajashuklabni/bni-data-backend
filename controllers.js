@@ -210,6 +210,7 @@ const addRegion = async (req, res) => {
     website_link,
     region_launched_by,
     date_of_publishing,
+    postal_code,
   } = req.body;
 
   // Ensure accolades_config is handled as an array
@@ -246,10 +247,10 @@ const addRegion = async (req, res) => {
           one_time_registration_fee, one_year_fee, two_year_fee, five_year_fee, late_fees, 
           country, state, city, street_address_line_1, street_address_line_2, social_facebook, 
           social_instagram, social_linkedin, social_youtube, website_link, region_launched_by, 
-          date_of_publishing
+          date_of_publishing, postal_code
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 
-          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
+          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30
         ) RETURNING *`,
       [
         region_name,
@@ -281,6 +282,7 @@ const addRegion = async (req, res) => {
         website_link,
         region_launched_by,
         date_of_publishing,
+        postal_code,
       ]
     );
 
