@@ -3800,8 +3800,12 @@ const getAllMemberCredit = async (req, res) => {
 };
 
 const addMemberCredit = async (req, res) => {
-  const { member_id, chapter_id, credit_amount, credit_date } = req.body;
-  console.log(req.body);
+  let { member_id, chapter_id, credit_amount, credit_date } = req.body;
+
+  // Ensure member_id is always an array
+  if (!Array.isArray(member_id)) {
+    member_id = [member_id]; // Convert single member_id to array
+  }
 
   try {
     const query = `
@@ -3810,15 +3814,43 @@ const addMemberCredit = async (req, res) => {
       RETURNING *;
     `;
 
-    const values = [member_id, chapter_id, credit_amount, credit_date, false];
-    const result = await con.query(query, values);
+    let insertedRecords = [];
+    
+    for (const id of member_id) {
+      const values = [parseInt(id), chapter_id, credit_amount, credit_date, false]; // Ensure member_id is an integer
+      const result = await con.query(query, values);
+      insertedRecords.push(result.rows[0]);
+    }
 
-    res.status(201).json({ message: "Credit added successfully!", data: result.rows[0] });
+    res.status(201).json({ message: "Credit added successfully!", data: insertedRecords });
   } catch (error) {
     console.error("Error adding credit:", error);
     res.status(500).send("Error adding credit");
   }
 };
+
+const getInterviewSheet = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM interviewsheet");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching interview sheet data:", error);
+    res.status(500).send("Error fetching interview sheet");
+  }
+};
+
+
+const getCommitmentSheet = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM commitmentsheet");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching commitment sheet:", error);
+    res.status(500).send("Error fetching commitment sheet");
+  }
+};
+
+
 
 
 module.exports = {
@@ -3913,4 +3945,6 @@ module.exports = {
   updateChapterSettings,
   getAllMemberCredit,
   addMemberCredit,
+  getInterviewSheet,
+  getCommitmentSheet,
 };
