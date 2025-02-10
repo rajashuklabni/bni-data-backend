@@ -92,6 +92,8 @@ const {
   updateChapterSettings,
   getAllMemberCredit,
   addMemberCredit,
+  getInterviewSheet,
+  getCommitmentSheet,
 } = require("./controllers");
 
 const path = require("path");
@@ -341,5 +343,7 @@ router.put("/updateChapterSettings",
     uploadChapterLogo.single('chapter_logo'), 
     updateChapterSettings
 );
+router.get('/getInterviewSheet',getInterviewSheet);
+router.get('/getCommitmentSheet',getCommitmentSheet);
 
 module.exports = router;
