@@ -3800,17 +3800,17 @@ const getAllMemberCredit = async (req, res) => {
 };
 
 const addMemberCredit = async (req, res) => {
-  const { member_id, chapter_id, credit_amount, credit_date } = req.body;
+  const { member_id, chapter_id, credit_amount, credit_date, credit_type } = req.body;
   console.log(req.body);
 
   try {
     const query = `
-      INSERT INTO memberkittycredit (member_id, chapter_id, credit_amount, credit_date, is_adjusted) 
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO memberkittycredit (member_id, chapter_id, credit_amount, credit_date, is_adjusted, credit_type) 
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *;
     `;
 
-    const values = [member_id, chapter_id, credit_amount, credit_date, false];
+    const values = [member_id, chapter_id, credit_amount, credit_date, false, credit_type];
     const result = await con.query(query, values);
 
     res.status(201).json({ message: "Credit added successfully!", data: result.rows[0] });
