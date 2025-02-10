@@ -3800,8 +3800,8 @@ const getAllMemberCredit = async (req, res) => {
 };
 
 const addMemberCredit = async (req, res) => {
-  let { member_id, chapter_id, credit_amount, credit_date } = req.body;
-
+  let { member_id, chapter_id, credit_amount, credit_date, credit_type } = req.body;
+  console.log(req.body);  
   // Ensure member_id is always an array
   if (!Array.isArray(member_id)) {
     member_id = [member_id]; // Convert single member_id to array
@@ -3817,7 +3817,7 @@ const addMemberCredit = async (req, res) => {
     let insertedRecords = [];
     
     for (const id of member_id) {
-      const values = [parseInt(id), chapter_id, credit_amount, credit_date, false]; // Ensure member_id is an integer
+      const values = [parseInt(id), chapter_id, credit_amount, credit_date, false, credit_type]; // Ensure member_id is an integer
       const result = await con.query(query, values);
       insertedRecords.push(result.rows[0]);
     }
