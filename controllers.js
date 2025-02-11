@@ -3880,6 +3880,16 @@ const addMemberWriteOff = async (req, res) => {
   }
 };
 
+const getAllMemberWriteOff = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM rightoff_member");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching write off members:", error);
+    res.status(500).send("Error fetching write off members");
+  }
+};
+
 
 
 
@@ -3978,4 +3988,5 @@ module.exports = {
   getInterviewSheet,
   getCommitmentSheet,
   addMemberWriteOff,
+  getAllMemberWriteOff,
 };
