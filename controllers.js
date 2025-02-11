@@ -3850,6 +3850,36 @@ const getCommitmentSheet = async (req, res) => {
   }
 };
 
+const addMemberWriteOff = async (req, res) => {
+  let { member_id, chapter_id, rightoff_date, total_pending_amount } = req.body;
+
+  // Ensure member_id is always an array
+  if (!Array.isArray(member_id)) {
+    member_id = [member_id]; // Convert single member_id to array
+  }
+
+  try {
+    const query = `
+      INSERT INTO rightoff_member (member_id, chapter_id, rightoff_date, total_pending_amount) 
+      VALUES ($1, $2, $3, $4)
+      RETURNING *;
+    `;
+
+    let insertedRecords = [];
+    
+    for (const id of member_id) {
+      const values = [parseInt(id), chapter_id, rightoff_date, total_pending_amount]; // Ensure member_id is an integer
+      const result = await con.query(query, values);
+      insertedRecords.push(result.rows[0]);
+    }
+
+    res.status(201).json({ message: "Member Write Off Successfully!", data: insertedRecords });
+  } catch (error) {
+    console.error("Error adding Write Off:", error);
+    res.status(500).send("Error adding Write Off");
+  }
+};
+
 
 
 
@@ -3947,4 +3977,5 @@ module.exports = {
   addMemberCredit,
   getInterviewSheet,
   getCommitmentSheet,
+  addMemberWriteOff,
 };
