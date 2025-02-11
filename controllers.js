@@ -3800,8 +3800,8 @@ const getAllMemberCredit = async (req, res) => {
 };
 
 const addMemberCredit = async (req, res) => {
-  let { member_id, chapter_id, credit_amount, credit_date, credit_type } = req.body;
-  console.log(req.body);  
+  let { member_id, chapter_id, credit_amount, credit_date } = req.body;
+
   // Ensure member_id is always an array
   if (!Array.isArray(member_id)) {
     member_id = [member_id]; // Convert single member_id to array
@@ -3809,15 +3809,15 @@ const addMemberCredit = async (req, res) => {
 
   try {
     const query = `
-      INSERT INTO memberkittycredit (member_id, chapter_id, credit_amount, credit_date, is_adjusted, credit_type) 
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO memberkittycredit (member_id, chapter_id, credit_amount, credit_date, is_adjusted) 
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *;
     `;
 
     let insertedRecords = [];
     
     for (const id of member_id) {
-      const values = [parseInt(id), chapter_id, credit_amount, credit_date, false, credit_type]; // Ensure member_id is an integer
+      const values = [parseInt(id), chapter_id, credit_amount, credit_date, false]; // Ensure member_id is an integer
       const result = await con.query(query, values);
       insertedRecords.push(result.rows[0]);
     }
@@ -3847,6 +3847,36 @@ const getCommitmentSheet = async (req, res) => {
   } catch (error) {
     console.error("Error fetching commitment sheet:", error);
     res.status(500).send("Error fetching commitment sheet");
+  }
+};
+
+const addMemberWriteOff = async (req, res) => {
+  let { member_id, chapter_id, rightoff_date, total_pending_amount } = req.body;
+
+  // Ensure member_id is always an array
+  if (!Array.isArray(member_id)) {
+    member_id = [member_id]; // Convert single member_id to array
+  }
+
+  try {
+    const query = `
+      INSERT INTO rightoff_member (member_id, chapter_id, rightoff_date, total_pending_amount) 
+      VALUES ($1, $2, $3, $4)
+      RETURNING *;
+    `;
+
+    let insertedRecords = [];
+    
+    for (const id of member_id) {
+      const values = [parseInt(id), chapter_id, rightoff_date, total_pending_amount]; // Ensure member_id is an integer
+      const result = await con.query(query, values);
+      insertedRecords.push(result.rows[0]);
+    }
+
+    res.status(201).json({ message: "Member Write Off Successfully!", data: insertedRecords });
+  } catch (error) {
+    console.error("Error adding Write Off:", error);
+    res.status(500).send("Error adding Write Off");
   }
 };
 
@@ -3947,4 +3977,5 @@ module.exports = {
   addMemberCredit,
   getInterviewSheet,
   getCommitmentSheet,
+  addMemberWriteOff,
 };
