@@ -94,6 +94,8 @@ const {
   addMemberCredit,
   getInterviewSheet,
   getCommitmentSheet,
+  addMemberWriteOff,
+  getAllMemberWriteOff,
 } = require("./controllers");
 
 const path = require("path");
@@ -338,6 +340,8 @@ router.post('/addInvoiceManually',addInvoiceManually)
 router.put("/payment-gateway/:gateway_id/status", updatePaymentGatewayStatus);
 router.get("/getAllMemberCredit", getAllMemberCredit);
 router.post("/addMemberCredit", addMemberCredit);
+router.post("/addMemberWriteOff", addMemberWriteOff);
+router.get("/getAllMemberWriteOff", getAllMemberWriteOff);
 
 router.put("/updateChapterSettings", 
     uploadChapterLogo.single('chapter_logo'), 
