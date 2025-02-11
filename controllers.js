@@ -332,7 +332,9 @@ const addChapter = async (req, res) => {
     chapter_location_note,
     chapter_late_fees,
     chapter_available_fund,
+    billing_frequency,
   } = req.body;
+  // console.log(req.body);
 
   // Validate required fields
   if (!chapter_name || !region_id) {
@@ -362,13 +364,13 @@ const addChapter = async (req, res) => {
                 contact_person, chapter_mission, chapter_vision, email_id, country, state, city,
                 street_address_line, postal_code, chapter_facebook, chapter_instagram,
                 chapter_linkedin, chapter_youtube, chapter_website, date_of_publishing,
-                chapter_launched_by, chapter_location_note, chapter_late_fees, available_fund
+                chapter_launched_by, chapter_location_note, chapter_late_fees, available_fund, kitty_billing_frequency
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9,
                 $10, $11, $12, $13, $14, $15, $16,
                 $17, $18, $19, $20, $21, $22, $23,
                 $24, $25, $26, $27, $28, $29, $30,
-                $31, $32, $33, $34, $35
+                $31, $32, $33, $34, $35, $36
             ) RETURNING *`,
       [
         region_id,
@@ -406,12 +408,13 @@ const addChapter = async (req, res) => {
         chapter_location_note,
         chapter_late_fees,
         chapter_available_fund,
+        billing_frequency
       ]
     );
 
     res
       .status(201)
-      .json({ message: "Chapter added successfully!", data: result.rows[0] });
+      .json({ message: "Chapter added successfully!", data: result.rows[0] } );
   } catch (error) {
     console.error("Error adding chapter:", error);
     res.status(500).send("Error adding chapter");
