@@ -3893,6 +3893,16 @@ const getAllMemberWriteOff = async (req, res) => {
   }
 };
 
+const getAllVisitors = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM visitors");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching all visitors:", error);
+    res.status(500).send("Error fetching all visitors");
+  }
+};
+
 
 
 
@@ -3992,4 +4002,5 @@ module.exports = {
   getCommitmentSheet,
   addMemberWriteOff,
   getAllMemberWriteOff,
+  getAllVisitors,
 };
