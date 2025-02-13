@@ -96,6 +96,7 @@ const {
   getCommitmentSheet,
   addMemberWriteOff,
   getAllMemberWriteOff,
+  getAllVisitors,
 } = require("./controllers");
 
 const path = require("path");
@@ -362,6 +363,7 @@ router.put("/updateChapterSettings",
 );
 router.get('/getInterviewSheet',getInterviewSheet);
 router.get('/getCommitmentSheet',getCommitmentSheet);
+router.get("/getAllVisitors", getAllVisitors);
 
 // Route to serve the uploaded files
 router.get('/uploads/expenses/:filename', (req, res) => {
