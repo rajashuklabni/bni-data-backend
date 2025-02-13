@@ -114,35 +114,45 @@ const con = new Client({
 
 con.connect().then(() => console.log("Connected to the database"));
 
-// Configure multer storage
+// Add this middleware before multer to parse the form data
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const logoDir = path.join(__dirname, "uploads", "dynamicLogo");
-    if (!fs.existsSync(logoDir)) {
-      fs.mkdirSync(logoDir, { recursive: true });
+    destination: function (req, file, cb) {
+        const uploadDir = path.join(__dirname, 'uploads', 'expenses');
+        console.log('📁 Upload Directory:', uploadDir);
+        
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+            console.log('📁 Created directory:', uploadDir);
+        }
+        
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        // Get expense_id from the controller after DB insert
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const filename = `${uniqueSuffix}${path.extname(file.originalname)}`;
+        console.log('📄 Generated filename:', filename);
+        cb(null, filename);
     }
-    cb(null, logoDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueName = Date.now() + "-" + file.originalname;
-    cb(null, uniqueName);
-  },
 });
 
-const uploadLogo = multer({
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: function (req, file, cb) {
-    const filetypes = /jpeg|jpg|png|gif|svg/;
-    const mimetype = filetypes.test(file.mimetype);
-    const extname = filetypes.test(
-      path.extname(file.originalname).toLowerCase()
-    );
-    if (mimetype && extname) {
-      return cb(null, true);
+// Add fields configuration to multer
+const expenseUpload = multer({
+    storage: storage,
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png|pdf/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (extname && mimetype) {
+            console.log('✅ File validation passed');
+            cb(null, true);
+        } else {
+            console.error('❌ Invalid file type');
+            cb(new Error('Only .png, .jpg, .jpeg and .pdf files are allowed'));
+        }
     }
-    cb(new Error("Only image files are allowed!"));
-  },
 });
 
 // Configure multer storage for member photos
@@ -313,8 +323,11 @@ router.get("/expenseType", expenseType);
 router.post("/expenseType", addExpenseType);
 router.get("/allExpenses", allExpenses);
 router.get("/expense/:expense_id", getExpenseById);
-router.post("/addExpense", upload.single("upload_bill"), addExpense);
-router.put("/expense/:expense_id", upload.single("upload_bill"), updateExpense);
+router.post("/addExpense", (req, res, next) => {
+    console.log('📝 Incoming Request Body:', req.body);
+    next();
+}, expenseUpload.single("upload_bill"), addExpense);
+router.put("/expense/:expense_id", expenseUpload.single("upload_bill"), updateExpense);
 router.delete("/expense/:expense_id", deleteExpense);
 router.put("/updateMemberSettings", uploadMemberPhoto.single('member_photo'), updateMemberSettings);
 router.put("/updateUserSettings", updateUserSettings);
@@ -349,5 +362,55 @@ router.put("/updateChapterSettings",
 );
 router.get('/getInterviewSheet',getInterviewSheet);
 router.get('/getCommitmentSheet',getCommitmentSheet);
+
+// Route to serve the uploaded files
+router.get('/uploads/expenses/:filename', (req, res) => {
+    console.log('🔍 Requesting file:', req.params.filename);
+    
+    const projectRoot = path.resolve(__dirname);
+    const filePath = path.join(projectRoot, 'uploads', 'expenses', req.params.filename);
+    console.log('📂 Full file path:', filePath);
+    
+    if (!fs.existsSync(filePath)) {
+        console.error('❌ File not found:', filePath);
+        return res.status(404).json({ 
+            message: 'File not found',
+            requestedFile: req.params.filename,
+            searchPath: filePath
+        });
+    }
+    
+    // Set proper headers based on file type
+    const ext = path.extname(req.params.filename).toLowerCase();
+    const contentType = ext === '.pdf' ? 'application/pdf' : 'image/jpeg';
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    console.log('✅ Serving file:', req.params.filename);
+    res.sendFile(filePath);
+});
+
+// Add a debug route to check directory structure
+router.get('/check-upload-dir', (req, res) => {
+    const uploadDir = path.join(__dirname, './uploads/expenses');
+    
+    try {
+        const exists = fs.existsSync(uploadDir);
+        const files = exists ? fs.readdirSync(uploadDir) : [];
+        
+        res.json({
+            uploadDir,
+            exists,
+            files,
+            currentDir: __dirname
+        });
+    } catch (error) {
+        res.status(500).json({
+            error: error.message,
+            uploadDir
+        });
+    }
+});
 
 module.exports = router;
