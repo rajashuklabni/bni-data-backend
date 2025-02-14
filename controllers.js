@@ -2228,16 +2228,17 @@ const addKittyPayment = async (req, res) => {
         .status(400)
         .json({ message: "A bill has already been raised for this chapter." });
     }
-
-    // If no active payment exists for this chapter_id, proceed to insert the new record
+    const raisedOnDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    // If no active payment exists for this chapter_id, proceed to insert the new record raised_on payment_date
     const query = `
           INSERT INTO kittyPaymentChapter 
-          (chapter_id, payment_date, bill_type, description, total_weeks, total_bill_amount ,kitty_due_date) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          (chapter_id, payment_date, raised_on, bill_type, description, total_weeks, total_bill_amount ,kitty_due_date) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `;
 
     await con.query(query, [
       chapter_id,
+      raisedOnDate,
       date,
       bill_type,
       description,
