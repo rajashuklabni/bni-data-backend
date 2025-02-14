@@ -199,6 +199,26 @@ console.log("paymentDetails==============================",paymentDetails);
       balance_data.tax
     ]);
     console.log("added in new db");
+        const creditResponse = await fetch("https://bni-data-backend.onrender.com/api/getAllMemberCredit");
+        const creditData = await creditResponse.json();
+
+        // Filter credits based on member_id and chapter_id
+        const filteredCredits = creditData.filter(credit => 
+            credit.member_id === balance_data.member_id && 
+            credit.chapter_id === balance_data.chapter_id && 
+            credit.is_adjusted === false
+        );
+
+        // Update is_adjusted to true for all found entries
+        for (const credit of filteredCredits) {
+            await db.query(`
+                UPDATE memberkittycredit 
+                SET is_adjusted = true 
+                WHERE credit_id = $1`, [credit.credit_id]
+            );
+        }
+
+        console.log("Updated is_adjusted to true for filtered credits");
 
     
         }
