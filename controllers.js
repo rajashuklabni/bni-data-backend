@@ -27,7 +27,7 @@ const con = new Client({
   },
 });
 
-con.connect().then(() => console.log("Connected to the database"));
+con.connect().then(() => console.log("Connected to render PostgreSQL"));
 
 // Backend: Adjusted to filter based on query parameter
 const getRegions = async (req, res) => {

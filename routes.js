@@ -113,7 +113,7 @@ const con = new Client({
   },
 });
 
-con.connect().then(() => console.log("Connected to the database"));
+con.connect().then(() => console.log("Connected to render PostgreSQL"));
 
 // Configure multer storage
 const storage = multer.diskStorage({

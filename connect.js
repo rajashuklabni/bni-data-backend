@@ -96,7 +96,7 @@ const con = new Client({
 
 con
   .connect()
-  .then(() => console.log("Connected to Render PostgreSQL"))
+  .then(() => console.log("Connected to render PostgreSQL"))
   .catch((err) => console.error("Connection error", err.stack));
 
 app.get("/upload", (req, res) => {
