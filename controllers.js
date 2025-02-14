@@ -188,7 +188,7 @@ const addRegion = async (req, res) => {
     chapterDays,
     chapterStatus,
     chapterType,
-    accolades_config, // This should be an array of accolade IDs
+    accolades_config,
     region_status,
     mission,
     vision,
@@ -212,34 +212,15 @@ const addRegion = async (req, res) => {
     date_of_publishing,
     postal_code,
   } = req.body;
-console.log(postal_code);
-  // Ensure accolades_config is handled as an array
-  const chapterDaysArray = Array.isArray(chapterDays) ? chapterDays : [];
-  const chapterStatusArray = Array.isArray(chapterStatus) ? chapterStatus : [];
-  const chapterTypeArray = Array.isArray(chapterType) ? chapterType : [];
-  const accoladesArray = Array.isArray(accolades_config)
-    ? accolades_config
-    : [];
 
-  // Validate region name
-  if (!region_name) {
-    return res.status(400).json({ message: "Region name is required" });
-  }
+  console.log('Received chapterType:', chapterType);
+  console.log('Received chapterStatus:', chapterStatus);
+
+  // Only process arrays that need transformation
+  const chapterDaysArray = Array.isArray(chapterDays) ? chapterDays : [];
+  const accoladesArray = Array.isArray(accolades_config) ? accolades_config : [];
 
   try {
-    // Check if the region name already exists (case-insensitive)
-    const checkDuplicate = await con.query(
-      `SELECT * FROM region WHERE LOWER(region_name) = LOWER($1) AND delete_status = 0`,
-      [region_name]
-    );
-
-    if (checkDuplicate.rows.length > 0) {
-      return res.status(409).json({
-        message: "Region name already exists",
-      });
-    }
-
-    // Insert new region
     const result = await con.query(
       `INSERT INTO region (
           region_name, contact_person, contact_number, email_id, days_of_chapter, region_status,
@@ -249,7 +230,7 @@ console.log(postal_code);
           social_instagram, social_linkedin, social_youtube, website_link, region_launched_by, 
           date_of_publishing, postal_code
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 
+          $1, $2, $3, $4, $5, $6, $7, $8, $9::text[], $10, $11, $12, $13, $14, 
           $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30
         ) RETURNING *`,
       [
@@ -257,11 +238,11 @@ console.log(postal_code);
         contact_person,
         contact_number,
         email_id,
-        `{${chapterDaysArray.join(",")}}`, // Chapter days array
+        `{${chapterDaysArray.join(",")}}`,
         region_status,
-        `{${accoladesArray.join(",")}}`, // Handle accolades as an array for PostgreSQL
-        `{${chapterStatusArray.join(",")}}`, // Chapter status array
-        `{${chapterTypeArray.join(",")}}`, // Chapter type array
+        `{${accoladesArray.join(",")}}`,
+        chapterStatus,  // Pass directly like chapter_type
+        chapterType,    // Already in correct format
         mission,
         vision,
         region_logo,
@@ -286,9 +267,13 @@ console.log(postal_code);
       ]
     );
 
-    res
-      .status(201)
-      .json({ message: "Region added successfully!", data: result.rows[0] });
+    console.log('Stored chapter_type:', result.rows[0].chapter_type);
+    console.log('Stored chapter_status:', result.rows[0].chapter_status);
+    
+    res.status(201).json({ 
+      message: "Region added successfully!", 
+      data: result.rows[0] 
+    });
   } catch (error) {
     console.error("Error adding region:", error);
     res.status(500).send("Error adding region");
