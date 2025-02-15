@@ -2188,6 +2188,7 @@ const addKittyPayment = async (req, res) => {
       total_weeks,
       total_bill_amount,
       due_date,
+      penalty_amount,
     } = req.body;
 
     // Check if all required fields are provided
@@ -2217,8 +2218,8 @@ const addKittyPayment = async (req, res) => {
     // If no active payment exists for this chapter_id, proceed to insert the new record raised_on payment_date
     const query = `
           INSERT INTO kittyPaymentChapter 
-          (chapter_id, payment_date, raised_on, bill_type, description, total_weeks, total_bill_amount ,kitty_due_date) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          (chapter_id, payment_date, raised_on, bill_type, description, total_weeks, total_bill_amount ,kitty_due_date, penalty_fee) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `;
 
     await con.query(query, [
@@ -2230,6 +2231,7 @@ const addKittyPayment = async (req, res) => {
       total_weeks,
       total_bill_amount,
       due_date,
+      penalty_amount,
     ]);
 
     // Update the meeting_payable_amount field in the member table for the same chapter_id
