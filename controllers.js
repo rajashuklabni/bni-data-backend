@@ -2304,6 +2304,7 @@ const addKittyPayment = async (req, res) => {
       total_weeks,
       total_bill_amount,
       due_date,
+      penalty_amount,
     } = req.body;
 
     // Check if all required fields are provided
@@ -2329,22 +2330,24 @@ const addKittyPayment = async (req, res) => {
         .status(400)
         .json({ message: "A bill has already been raised for this chapter." });
     }
-
-    // If no active payment exists for this chapter_id, proceed to insert the new record
+    const raisedOnDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    // If no active payment exists for this chapter_id, proceed to insert the new record raised_on payment_date
     const query = `
           INSERT INTO kittyPaymentChapter 
-          (chapter_id, payment_date, bill_type, description, total_weeks, total_bill_amount ,kitty_due_date) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          (chapter_id, payment_date, raised_on, bill_type, description, total_weeks, total_bill_amount ,kitty_due_date, penalty_fee) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `;
 
     await con.query(query, [
       chapter_id,
+      raisedOnDate,
       date,
       bill_type,
       description,
       total_weeks,
       total_bill_amount,
       due_date,
+      penalty_amount,
     ]);
 
     // Update the meeting_payable_amount field in the member table for the same chapter_id
@@ -3842,7 +3845,7 @@ const getAllMemberCredit = async (req, res) => {
 };
 
 const addMemberCredit = async (req, res) => {
-  let { member_id, chapter_id, credit_amount, credit_date } = req.body;
+  let { member_id, chapter_id, credit_amount, credit_date, credit_type } = req.body;
 
   // Ensure member_id is always an array
   if (!Array.isArray(member_id)) {
@@ -3851,15 +3854,15 @@ const addMemberCredit = async (req, res) => {
 
   try {
     const query = `
-      INSERT INTO memberkittycredit (member_id, chapter_id, credit_amount, credit_date, is_adjusted) 
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO memberkittycredit (member_id, chapter_id, credit_amount, credit_date, is_adjusted, credit_type) 
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *;
     `;
 
     let insertedRecords = [];
     
     for (const id of member_id) {
-      const values = [parseInt(id), chapter_id, credit_amount, credit_date, false]; // Ensure member_id is an integer
+      const values = [parseInt(id), chapter_id, credit_amount, credit_date, false, credit_type]; // Ensure member_id is an integer
       const result = await con.query(query, values);
       insertedRecords.push(result.rows[0]);
     }
