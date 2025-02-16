@@ -56,7 +56,7 @@ const sessionIdGenerator = async (req, res) => {
                       responseData.payment_session_id,
                       data.customer_details.one_time_registration_fee, // New field
                       data.customer_details.membership_fee, // New field
-                      data.customer_details.tax, // New field
+                      data.tax, // New field
                       data.customer_details.memberName, // New field
                       data.customer_details.customer_email, // New field
                       data.customer_details.customer_phone, // New field
@@ -71,6 +71,7 @@ const sessionIdGenerator = async (req, res) => {
                   ]
               );
               console.log('Order data inserted successfully');
+              // console.log(data.tax, "============tax============");
           } catch (error) {
               console.error('Error inserting order data:', error);
           }
@@ -199,6 +200,7 @@ console.log("paymentDetails==============================",paymentDetails);
       balance_data.tax
     ]);
     console.log("added in new db");
+    // console.log(balance_data.tax, "============balance_data.tax============");
         const creditResponse = await fetch("https://bni-data-backend.onrender.com/api/getAllMemberCredit");
         const creditData = await creditResponse.json();
 

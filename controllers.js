@@ -118,24 +118,60 @@ const getUniversalLink = async (req, res) => {
 };
 
 const getRegion = async (req, res) => {
-  const { region_id } = req.params; // Get member_id from route parameters
+    const { region_id } = req.params;
+    console.log('🔍 Fetching region with ID:', region_id);
 
-  try {
-    // Use a parameterized query to safely insert member_id into the SQL statement
-    const result = await con.query(
-      "SELECT * FROM region WHERE region_id = $1",
-      [region_id]
-    );
+    try {
+        const result = await con.query(
+            "SELECT * FROM region WHERE region_id = $1",
+            [region_id]
+        );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Region not found" });
+        if (result.rows.length === 0) {
+            console.log('❌ Region not found for ID:', region_id);
+            return res.status(404).json({ message: "Region not found" });
+        }
+
+        // Get the region data
+        const region = result.rows[0];
+        console.log('📄 Raw region data:', region);
+
+        // Transform the logo data
+        let logoUrl = null;
+        if (region.region_logo && region.region_logo !== '{}' && region.region_logo !== 'null') {
+            logoUrl = `http://localhost:5000/api/uploads/regionLogos/${region.region_logo}`;
+            console.log('🖼️ Constructed logo URL:', logoUrl);
+        }
+
+        // Prepare the response
+        const response = {
+            ...region,
+            region_logo_url: logoUrl,
+            // Parse the arrays and objects that are stored as strings
+            chapter_status: Array.isArray(region.chapter_status) 
+                ? region.chapter_status 
+                : JSON.parse(region.chapter_status.replace('{', '[').replace('}', ']')),
+            chapter_type: Array.isArray(region.chapter_type) 
+                ? region.chapter_type 
+                : JSON.parse(region.chapter_type),
+            days_of_chapter: Array.isArray(region.days_of_chapter) 
+                ? region.days_of_chapter 
+                : JSON.parse(region.days_of_chapter),
+            accolades_config: Array.isArray(region.accolades_config) 
+                ? region.accolades_config 
+                : JSON.parse(region.accolades_config)
+        };
+
+        console.log('✅ Processed region data:', response);
+        res.json(response);
+
+    } catch (error) {
+        console.error("❌ Error fetching Region:", error);
+        res.status(500).json({
+            message: "Error fetching Region",
+            error: error.message
+        });
     }
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error("Error fetching Region:", error);
-    res.status(500).send("Error fetching Region");
-  }
 };
 
 const getAccolade = async (req, res) => {
@@ -180,48 +216,72 @@ const getEinvoice = async (req, res) => {
   }
 };
 
+// ... existing code ...
+
 const addRegion = async (req, res) => {
-  const {
-    region_name,
-    contact_person,
-    contact_number,
-    email_id,
-    chapterDays,
-    chapterStatus,
-    chapterType,
-    accolades_config,
-    region_status,
-    mission,
-    vision,
-    region_logo,
-    one_time_registration_fee,
-    one_year_fee,
-    two_year_fee,
-    five_year_fee,
-    late_fees,
-    country,
-    state,
-    city,
-    street_address_line_1,
-    street_address_line_2,
-    social_facebook,
-    social_instagram,
-    social_linkedin,
-    social_youtube,
-    website_link,
-    region_launched_by,
-    date_of_publishing,
-    postal_code,
-  } = req.body;
-
-  console.log('Received chapterType:', chapterType);
-  console.log('Received chapterStatus:', chapterStatus);
-
-  // Only process arrays that need transformation
-  const chapterDaysArray = Array.isArray(chapterDays) ? chapterDays : [];
-  const accoladesArray = Array.isArray(accolades_config) ? accolades_config : [];
-
   try {
+    console.log('📝 Starting region addition process...');
+    console.log('📦 Received request body:', req.body);
+    console.log('🖼️ Received file:', req.file);
+
+    const {
+      region_name,
+      contact_person,
+      contact_number,
+      email_id,
+      chapterDays,
+      chapterStatus,
+      chapterType,
+      accolades_config,
+      region_status,
+      mission,
+      vision,
+      one_time_registration_fee,
+      one_year_fee,
+      two_year_fee,
+      five_year_fee,
+      late_fees,
+      country,
+      state,
+      city,
+      street_address_line_1,
+      street_address_line_2,
+      social_facebook,
+      social_instagram,
+      social_linkedin,
+      social_youtube,
+      website_link,
+      region_launched_by,
+      date_of_publishing,
+      postal_code,
+    } = req.body;
+
+    // Handle the logo file
+    const region_logo = req.file ? req.file.filename : null;
+    console.log('🎨 Region logo filename:', region_logo);
+
+    // Parse arrays if they're strings
+    const parseArray = (value) => {
+      if (Array.isArray(value)) return value;
+      try {
+        return typeof value === 'string' ? JSON.parse(value) : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const chapterDaysArray = parseArray(chapterDays);
+    const chapterStatusArray = parseArray(chapterStatus);
+    const chapterTypeArray = parseArray(chapterType);
+    const accoladesArray = parseArray(accolades_config);
+
+    console.log('📅 Processed arrays:', {
+      days: chapterDaysArray,
+      status: chapterStatusArray,
+      type: chapterTypeArray,
+      accolades: accoladesArray
+    });
+
     const result = await con.query(
       `INSERT INTO region (
           region_name, contact_person, contact_number, email_id, days_of_chapter, region_status,
@@ -231,7 +291,7 @@ const addRegion = async (req, res) => {
           social_instagram, social_linkedin, social_youtube, website_link, region_launched_by, 
           date_of_publishing, postal_code
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9::text[], $10, $11, $12, $13, $14, 
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 
           $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30
         ) RETURNING *`,
       [
@@ -242,8 +302,8 @@ const addRegion = async (req, res) => {
         `{${chapterDaysArray.join(",")}}`,
         region_status,
         `{${accoladesArray.join(",")}}`,
-        chapterStatus,  // Pass directly like chapter_type
-        chapterType,    // Already in correct format
+        `{${chapterStatusArray.join(",")}}`,
+        `{${chapterTypeArray.join(",")}}`,
         mission,
         vision,
         region_logo,
@@ -268,16 +328,23 @@ const addRegion = async (req, res) => {
       ]
     );
 
-    console.log('Stored chapter_type:', result.rows[0].chapter_type);
-    console.log('Stored chapter_status:', result.rows[0].chapter_status);
-    
+    console.log('✅ Region added successfully to database');
+    console.log('📄 Database result:', result.rows[0]);
+
     res.status(201).json({ 
       message: "Region added successfully!", 
-      data: result.rows[0] 
+      data: {
+        ...result.rows[0],
+        region_logo_url: region_logo ? `http://localhost:5000/uploads/regionLogos/${region_logo}` : null
+      }
     });
   } catch (error) {
-    console.error("Error adding region:", error);
-    res.status(500).send("Error adding region");
+    console.error("❌ Error adding region:", error);
+    console.error("Error details:", error.message);
+    res.status(500).json({
+      message: "Error adding region",
+      error: error.message
+    });
   }
 };
 
@@ -763,98 +830,147 @@ const authTokens = async (req, res) => {
 };
 
 const updateRegion = async (req, res) => {
-  const { region_id } = req.params; // Get region_id from URL parameter
-  const regionData = req.body; // Get the updated data from the request body
+    console.log('🔄 Starting region update process...');
+    const { region_id } = req.params;
+    console.log('🎯 Updating region with ID:', region_id);
+    console.log('📦 Received update data:', req.body);
+    console.log('🖼️ Received file:', req.file);
 
-  console.log("Updating region with ID:", region_id);
-  console.log("Received data:", regionData);
+    try {
+        // Parse arrays from JSON strings if they're strings
+        const daysOfChapter = Array.isArray(req.body.days_of_chapter) 
+            ? req.body.days_of_chapter 
+            : JSON.parse(req.body.days_of_chapter);
 
-  try {
-    // Construct the SQL query for updating the region
-    const query = `
-      UPDATE region
-      SET
-        region_name = $1,
-        contact_person = $2,
-        contact_number = $3,
-        email_id = $4,
-        mission = $5,
-        vision = $6,
-        region_logo = $7,
-        region_status = $8,
-        one_time_registration_fee = $9,
-        one_year_fee = $10,
-        two_year_fee = $11,
-        five_year_fee = $12,
-        late_fees = $13,
-        country = $14,
-        state = $15,
-        city = $16,
-        street_address_line_1 = $17,
-        street_address_line_2 = $18,
-        postal_code = $19,
-        social_facebook = $20,
-        social_instagram = $21,
-        social_linkedin = $22,
-        social_youtube = $23,
-        website_link = $24,
-        date_of_publishing = $25,
-        region_launched_by = $26,
-        days_of_chapter = $27,
-        chapter_status = $28,
-        chapter_type = $29,
-        accolades_config = $30
-      WHERE region_id = $31
-      RETURNING *;`;
+        const chapterStatus = Array.isArray(req.body.chapter_status) 
+            ? req.body.chapter_status 
+            : JSON.parse(req.body.chapter_status);
 
-    // Execute the query with the provided region data
-    const values = [
-      regionData.region_name,
-      regionData.contact_person,
-      regionData.contact_number,
-      regionData.email_id,
-      regionData.mission,
-      regionData.vision,
-      regionData.region_logo,
-      regionData.region_status,
-      regionData.one_time_registration_fee,
-      regionData.one_year_fee,
-      regionData.two_year_fee,
-      regionData.five_year_fee,
-      regionData.late_fees,
-      regionData.country,
-      regionData.state,
-      regionData.city,
-      regionData.street_address_line_1,
-      regionData.street_address_line_2,
-      regionData.postal_code,
-      regionData.social_facebook,
-      regionData.social_instagram,
-      regionData.social_linkedin,
-      regionData.social_youtube,
-      regionData.website_link,
-      regionData.date_of_publishing,
-      regionData.region_launched_by,
-      regionData.chapter_days,
-      regionData.chapter_status,
-      regionData.chapter_type,
-      regionData.accolades_config,
-      region_id, // Ensure the region_id is used for the WHERE clause
-    ];
+        const chapterType = Array.isArray(req.body.chapter_type) 
+            ? req.body.chapter_type 
+            : JSON.parse(req.body.chapter_type);
 
-    const { rows } = await con.query(query, values);
+        const accoladesConfig = Array.isArray(req.body.accolades_config) 
+            ? req.body.accolades_config 
+            : JSON.parse(req.body.accolades_config);
 
-    if (rows.length === 0) {
-      console.error("Region not found:", region_id);
-      return res.status(404).json({ message: "Region not found" });
+        // Convert arrays to PostgreSQL array format
+        const formattedDays = `{${daysOfChapter.map(day => `"${day}"`).join(',')}}`;
+        const formattedStatus = `{${chapterStatus.map(status => `"${status}"`).join(',')}}`;
+        const formattedType = `{${chapterType.map(type => `"${type}"`).join(',')}}`;
+        const formattedAccolades = `{${accoladesConfig.join(',')}}`;
+
+        console.log('📊 Formatted arrays:', {
+            days: formattedDays,
+            status: formattedStatus,
+            type: formattedType,
+            accolades: formattedAccolades
+        });
+
+        // Start building the query
+        let query = `
+            UPDATE region 
+            SET region_name = $1,
+                contact_person = $2,
+                contact_number = $3,
+                email_id = $4,
+                mission = $5,
+                vision = $6,
+                region_status = $7,
+                one_time_registration_fee = $8,
+                one_year_fee = $9,
+                two_year_fee = $10,
+                five_year_fee = $11,
+                late_fees = $12,
+                country = $13,
+                state = $14,
+                city = $15,
+                street_address_line_1 = $16,
+                street_address_line_2 = $17,
+                postal_code = $18,
+                social_facebook = $19,
+                social_instagram = $20,
+                social_linkedin = $21,
+                social_youtube = $22,
+                website_link = $23,
+                date_of_publishing = $24,
+                region_launched_by = $25,
+                days_of_chapter = $26,
+                chapter_status = $27,
+                chapter_type = $28,
+                accolades_config = $29
+        `;
+
+        // Add region_logo update if a new file was uploaded
+        if (req.file) {
+            query += `, region_logo = $30`;
+        }
+
+        query += ` WHERE region_id = $${req.file ? '31' : '30'} RETURNING *`;
+
+        // Prepare values array
+        const values = [
+            req.body.region_name,
+            req.body.contact_person,
+            req.body.contact_number,
+            req.body.email_id,
+            req.body.mission,
+            req.body.vision,
+            req.body.region_status,
+            req.body.one_time_registration_fee,
+            req.body.one_year_fee,
+            req.body.two_year_fee,
+            req.body.five_year_fee,
+            req.body.late_fees,
+            req.body.country,
+            req.body.state,
+            req.body.city,
+            req.body.street_address_line_1,
+            req.body.street_address_line_2,
+            req.body.postal_code,
+            req.body.social_facebook,
+            req.body.social_instagram,
+            req.body.social_linkedin,
+            req.body.social_youtube,
+            req.body.website_link,
+            req.body.date_of_publishing,
+            req.body.region_launched_by,
+            formattedDays,        // Using formatted array string
+            formattedStatus,      // Using formatted array string
+            formattedType,        // Using formatted array string
+            formattedAccolades    // Using formatted array string
+        ];
+
+        // Add file name and region_id to values array
+        if (req.file) {
+            values.push(req.file.filename);
+        }
+        values.push(region_id);
+
+        console.log('📝 Executing query with values:', values);
+
+        const result = await con.query(query, values);
+
+        if (result.rowCount === 0) {
+            console.log('❌ No region found with ID:', region_id);
+            return res.status(404).json({
+                message: "Region not found"
+            });
+        }
+
+        console.log('✅ Region updated successfully');
+        res.json({
+            message: "Region updated successfully",
+            data: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Error updating region:', error);
+        res.status(500).json({
+            message: "Error updating region",
+            error: error.message
+        });
     }
-
-    // Return the updated region data
-    res.status(200).json(rows[0]);
-  } catch (error) {
-    console.error("Error updating region:", error);
-    res.status(500).json({ message: "Error updating region" });
-  }
 };
 
 const updateChapter = async (req, res) => {
@@ -2189,6 +2305,7 @@ const addKittyPayment = async (req, res) => {
       total_weeks,
       total_bill_amount,
       due_date,
+      penalty_amount,
     } = req.body;
 
     // Check if all required fields are provided
@@ -2218,8 +2335,8 @@ const addKittyPayment = async (req, res) => {
     // If no active payment exists for this chapter_id, proceed to insert the new record raised_on payment_date
     const query = `
           INSERT INTO kittyPaymentChapter 
-          (chapter_id, payment_date, raised_on, bill_type, description, total_weeks, total_bill_amount ,kitty_due_date) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          (chapter_id, payment_date, raised_on, bill_type, description, total_weeks, total_bill_amount ,kitty_due_date, penalty_fee) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `;
 
     await con.query(query, [
@@ -2231,6 +2348,7 @@ const addKittyPayment = async (req, res) => {
       total_weeks,
       total_bill_amount,
       due_date,
+      penalty_amount,
     ]);
 
     // Update the meeting_payable_amount field in the member table for the same chapter_id

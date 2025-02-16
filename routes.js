@@ -244,6 +244,36 @@ const uploadChapterLogo = multer({
     }
 });
 
+// Configure multer storage for region logos
+const regionLogoStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = './uploads/regionLogos';
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'region-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const uploadRegionLogo = multer({
+    storage: regionLogoStorage,
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (extname && mimetype) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
+        }
+    }
+});
+
 // Route to handle logo upload
 router.post("/uploadLogo", (req, res) => {
   uploadLogo.single("logo")(req, res, async function (err) {
@@ -291,7 +321,7 @@ router.post("/uploadLogo", (req, res) => {
 });
 
 router.get("/regions", getRegions);
-router.post("/regions", addRegion);
+router.post("/regions", uploadRegionLogo.single('region_logo'), addRegion);
 router.get("/chapters", getChapters);
 router.post("/chapters", addChapter);
 router.get("/members", getMembers);
@@ -316,7 +346,7 @@ router.get("/einvoice/:order_id", getEinvoice);
 router.get("/getChapter/:chapter_id", getChapter);
 router.get("/getRegion/:region_id", getRegion);
 router.get("/getUniversalLink/:id", getUniversalLink);
-router.put("/updateRegion/:region_id", updateRegion);
+router.put("/updateRegion/:region_id", uploadRegionLogo.single('region_logo'), updateRegion);
 router.put("/deleteRegion/:region_id", deleteRegion);
 router.get("/getUsers", getUsers);
 router.get("/getAccolade/:accolade_id", getAccolade);
@@ -445,6 +475,22 @@ router.get('/check-upload-dir', (req, res) => {
             uploadDir
         });
     }
+});
+
+// Add route to serve region logos
+router.get('/uploads/regionLogos/:filename', (req, res) => {
+    const filePath = path.join(__dirname, 'uploads', 'regionLogos', req.params.filename);
+    
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ 
+            message: 'Logo not found',
+            requestedFile: req.params.filename
+        });
+    }
+    
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(filePath);
 });
 
 module.exports = router;
