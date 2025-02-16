@@ -97,6 +97,7 @@ const {
   addMemberWriteOff,
   getAllMemberWriteOff,
   getAllVisitors,
+  createInvoice,
 } = require("./controllers");
 
 const path = require("path");
@@ -394,6 +395,7 @@ router.put("/updateChapterSettings",
 router.get('/getInterviewSheet',getInterviewSheet);
 router.get('/getCommitmentSheet',getCommitmentSheet);
 router.get("/getAllVisitors", getAllVisitors);
+router.post("/add-invoice", createInvoice);
 
 // Route to serve the uploaded files
 router.get('/uploads/expenses/:filename', (req, res) => {

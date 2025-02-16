@@ -7,6 +7,7 @@ const nodemailer = require("nodemailer"); // Ensure you have nodemailer installe
 const QRCode = require("qrcode"); // Import the qrcode library
 const PDFDocument = require("pdfkit");
 const { QueryTypes } = require("sequelize"); // If using Sequelize
+const { v4: uuidv4 } = require("uuid"); // For generating unique IDs
 
 // Instead of this:
 // const fetch = require('node-fetch');
@@ -2213,16 +2214,17 @@ const addKittyPayment = async (req, res) => {
         .status(400)
         .json({ message: "A bill has already been raised for this chapter." });
     }
-
-    // If no active payment exists for this chapter_id, proceed to insert the new record
+    const raisedOnDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    // If no active payment exists for this chapter_id, proceed to insert the new record raised_on payment_date
     const query = `
           INSERT INTO kittyPaymentChapter 
-          (chapter_id, payment_date, bill_type, description, total_weeks, total_bill_amount ,kitty_due_date) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          (chapter_id, payment_date, raised_on, bill_type, description, total_weeks, total_bill_amount ,kitty_due_date) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `;
 
     await con.query(query, [
       chapter_id,
+      raisedOnDate,
       date,
       bill_type,
       description,
@@ -3726,7 +3728,7 @@ const getAllMemberCredit = async (req, res) => {
 };
 
 const addMemberCredit = async (req, res) => {
-  let { member_id, chapter_id, credit_amount, credit_date } = req.body;
+  let { member_id, chapter_id, credit_amount, credit_date, credit_type } = req.body;
 
   // Ensure member_id is always an array
   if (!Array.isArray(member_id)) {
@@ -3735,15 +3737,15 @@ const addMemberCredit = async (req, res) => {
 
   try {
     const query = `
-      INSERT INTO memberkittycredit (member_id, chapter_id, credit_amount, credit_date, is_adjusted) 
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO memberkittycredit (member_id, chapter_id, credit_amount, credit_date, is_adjusted, credit_type) 
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *;
     `;
 
     let insertedRecords = [];
     
     for (const id of member_id) {
-      const values = [parseInt(id), chapter_id, credit_amount, credit_date, false]; // Ensure member_id is an integer
+      const values = [parseInt(id), chapter_id, credit_amount, credit_date, false, credit_type]; // Ensure member_id is an integer
       const result = await con.query(query, values);
       insertedRecords.push(result.rows[0]);
     }
@@ -3823,6 +3825,105 @@ const getAllVisitors = async (req, res) => {
   } catch (error) {
     console.error("Error fetching all visitors:", error);
     res.status(500).send("Error fetching all visitors");
+  }
+};
+
+const createInvoice = async (req, res) => {
+  try {
+    const {
+      grandTotal,
+      member_id,
+      chapter_id,
+      region_id,
+      universal_link_id,
+      ulid,
+      member_first_name,
+      member_last_name,
+      member_email_address,
+      member_phone_number,
+      member_gst_number,
+      member_company_name,
+      training_id,
+    } = req.body;
+
+    // Generate order and transaction IDs
+    const order_id = uuidv4();
+    const transaction_id = uuidv4();
+    const session_id = `session_${uuidv4()}`;
+    const created_at = new Date().toISOString();
+
+    // Insert data into orders table
+    const insertOrderQuery = `
+      INSERT INTO orders (
+        order_id, order_amount, order_currency, payment_gateway_id,
+        customer_id, chapter_id, region_id, universal_link_id, ulid,
+        order_status, payment_session_id, created_at, tax,
+        member_name, customer_email, customer_phone, gstin,
+        company, mobile_number, payment_note, training_id
+      ) VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, $8, 'ACTIVE', $9, $10, $11, $12, $13, $14, $15, $16, $17, 'All Training Payments for all', $18)
+    `;
+
+    const orderValues = [
+      order_id,
+      grandTotal,
+      "INR",
+      member_id,
+      chapter_id,
+      region_id,
+      universal_link_id,
+      ulid,
+      session_id,
+      created_at,
+      (grandTotal * 0.18).toFixed(2), // 18% tax
+      `${member_first_name} ${member_last_name}`,
+      member_email_address,
+      member_phone_number,
+      member_gst_number,
+      member_company_name,
+      member_phone_number,
+      training_id,
+    ];
+
+    await db.query(insertOrderQuery, orderValues);
+
+    // Insert data into transactions table
+    const insertTransactionQuery = `
+      INSERT INTO transactions (
+        cf_payment_id, order_id, payment_gateway_id, payment_amount,
+        payment_currency, payment_status, payment_message, payment_time,
+        payment_completion_time, bank_reference, payment_method, gateway_payment_id,
+        payment_group
+      ) VALUES ($1, $2, NULL, $3, 'INR', 'SUCCESS', 'Cash payment message', $4, $5, $6, $7, $8, 'cash')
+    `;
+
+    const transactionValues = [
+      transaction_id,
+      order_id,
+      grandTotal,
+      created_at,
+      created_at,
+      transaction_id,
+      JSON.stringify({
+        payment_method: {
+          cash: {
+            channel: "cash collect",
+          },
+        },
+      }),
+      transaction_id,
+    ];
+
+    await db.query(insertTransactionQuery, transactionValues);
+
+    res.status(201).json({
+      success: true,
+      message: "Invoice added successfully",
+      order_id,
+      transaction_id,
+    });
+  } catch (error) {
+    console.error("Error adding invoice:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 
@@ -3926,4 +4027,5 @@ module.exports = {
   addMemberWriteOff,
   getAllMemberWriteOff,
   getAllVisitors,
+  createInvoice,
 };
