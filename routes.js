@@ -29,7 +29,7 @@ const {
   getMember,
   getEinvoice,
   getChapter,
-  getRegion,
+  getRegions,
   getUniversalLink,
   updateRegion,
   deleteRegion,
@@ -343,7 +343,7 @@ router.get("/authTokens", authTokens);
 router.get("/getMember/:member_id", getMember);
 router.get("/einvoice/:order_id", getEinvoice);
 router.get("/getChapter/:chapter_id", getChapter);
-router.get("/getRegion/:region_id", getRegion);
+router.get("/getRegions/:region_id", getRegions);
 router.get("/getUniversalLink/:id", getUniversalLink);
 router.put("/updateRegion/:region_id", uploadRegionLogo.single('region_logo'), updateRegion);
 router.put("/deleteRegion/:region_id", deleteRegion);

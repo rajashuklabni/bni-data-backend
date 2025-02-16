@@ -116,7 +116,7 @@ const getUniversalLink = async (req, res) => {
   }
 };
 
-const getRegion = async (req, res) => {
+const getRegions = async (req, res) => {
     const { region_id } = req.params;
     console.log('🔍 Fetching region with ID:', region_id);
 
@@ -3985,7 +3985,7 @@ module.exports = {
   getMember,
   getEinvoice,
   getChapter,
-  getRegion,
+  getRegions,
   getUniversalLink,
   updateRegion,
   deleteRegion,
