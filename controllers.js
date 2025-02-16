@@ -30,28 +30,28 @@ const con = new Client({
 con.connect().then(() => console.log("Connected to the database"));
 
 // Backend: Adjusted to filter based on query parameter
-// const getRegions = async (req, res) => {
-//   try {
-//     const { filter } = req.query; // Get filter from query string (e.g., filter=deleted)
+const getRegions = async (req, res) => {
+  try {
+    const { filter } = req.query; // Get filter from query string (e.g., filter=deleted)
 
-//     let query = "SELECT * FROM region WHERE delete_status = 0"; // Default query (non-deleted regions)
-//     if (filter === "deleted") {
-//       query = "SELECT * FROM region WHERE delete_status = 1"; // Query for deleted regions
-//     } else if (filter === "inactive") {
-//       query =
-//         "SELECT * FROM region WHERE region_status = 'inactive' AND delete_status = 0";
-//     } else if (filter === "active") {
-//       query =
-//         "SELECT * FROM region WHERE region_status = 'active' AND delete_status = 0";
-//     }
+    let query = "SELECT * FROM region WHERE delete_status = 0"; // Default query (non-deleted regions)
+    if (filter === "deleted") {
+      query = "SELECT * FROM region WHERE delete_status = 1"; // Query for deleted regions
+    } else if (filter === "inactive") {
+      query =
+        "SELECT * FROM region WHERE region_status = 'inactive' AND delete_status = 0";
+    } else if (filter === "active") {
+      query =
+        "SELECT * FROM region WHERE region_status = 'active' AND delete_status = 0";
+    }
 
-//     const result = await con.query(query); // Execute the query
-//     res.json(result.rows); // Return filtered data
-//   } catch (error) {
-//     console.error("Error fetching regions:", error);
-//     res.status(500).send("Error fetching regions");
-//   }
-// };
+    const result = await con.query(query); // Execute the query
+    res.json(result.rows); // Return filtered data
+  } catch (error) {
+    console.error("Error fetching regions:", error);
+    res.status(500).send("Error fetching regions");
+  }
+};
 
 const getMember = async (req, res) => {
   const { member_id } = req.params; // Get member_id from route parameters
@@ -116,7 +116,7 @@ const getUniversalLink = async (req, res) => {
   }
 };
 
-const getRegions = async (req, res) => {
+const getRegion = async (req, res) => {
     const { region_id } = req.params;
     console.log('🔍 Fetching region with ID:', region_id);
 
@@ -3962,7 +3962,7 @@ module.exports = {
   addInvoiceManually,
   getPendingAmount,
   addPendingAmount,
-  // getRegions,
+  getRegions,
   getChapters,
   getMembers,
   getAccolades,
@@ -3985,7 +3985,7 @@ module.exports = {
   getMember,
   getEinvoice,
   getChapter,
-  getRegions,
+  getRegion,
   getUniversalLink,
   updateRegion,
   deleteRegion,

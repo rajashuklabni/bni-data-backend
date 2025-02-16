@@ -6,7 +6,7 @@ const {
   addInvoiceManually,
   addPendingAmount,
   getPendingAmount,
-//   getRegions,
+  getRegions,
   getChapters,
   getMembers,
   getAccolades,
@@ -29,7 +29,7 @@ const {
   getMember,
   getEinvoice,
   getChapter,
-  getRegions,
+  getRegion,
   getUniversalLink,
   updateRegion,
   deleteRegion,
@@ -319,7 +319,7 @@ router.post("/uploadLogo", (req, res) => {
   });
 });
 
-// router.get("/regions", getRegions);
+router.get("/regions", getRegions);
 router.post("/regions", uploadRegionLogo.single('region_logo'), addRegion);
 router.get("/chapters", getChapters);
 router.post("/chapters", addChapter);
@@ -343,7 +343,7 @@ router.get("/authTokens", authTokens);
 router.get("/getMember/:member_id", getMember);
 router.get("/einvoice/:order_id", getEinvoice);
 router.get("/getChapter/:chapter_id", getChapter);
-router.get("/getRegions/:region_id", getRegions);
+router.get("/getRegion/:region_id", getRegion);
 router.get("/getUniversalLink/:id", getUniversalLink);
 router.put("/updateRegion/:region_id", uploadRegionLogo.single('region_logo'), updateRegion);
 router.put("/deleteRegion/:region_id", deleteRegion);
