@@ -6,7 +6,7 @@ const {
   addInvoiceManually,
   addPendingAmount,
   getPendingAmount,
-  getRegions,
+//   getRegions,
   getChapters,
   getMembers,
   getAccolades,
@@ -319,7 +319,7 @@ router.post("/uploadLogo", (req, res) => {
   });
 });
 
-router.get("/regions", getRegions);
+// router.get("/regions", getRegions);
 router.post("/regions", uploadRegionLogo.single('region_logo'), addRegion);
 router.get("/chapters", getChapters);
 router.post("/chapters", addChapter);

@@ -30,28 +30,28 @@ const con = new Client({
 con.connect().then(() => console.log("Connected to the database"));
 
 // Backend: Adjusted to filter based on query parameter
-const getRegions = async (req, res) => {
-  try {
-    const { filter } = req.query; // Get filter from query string (e.g., filter=deleted)
+// const getRegions = async (req, res) => {
+//   try {
+//     const { filter } = req.query; // Get filter from query string (e.g., filter=deleted)
 
-    let query = "SELECT * FROM region WHERE delete_status = 0"; // Default query (non-deleted regions)
-    if (filter === "deleted") {
-      query = "SELECT * FROM region WHERE delete_status = 1"; // Query for deleted regions
-    } else if (filter === "inactive") {
-      query =
-        "SELECT * FROM region WHERE region_status = 'inactive' AND delete_status = 0";
-    } else if (filter === "active") {
-      query =
-        "SELECT * FROM region WHERE region_status = 'active' AND delete_status = 0";
-    }
+//     let query = "SELECT * FROM region WHERE delete_status = 0"; // Default query (non-deleted regions)
+//     if (filter === "deleted") {
+//       query = "SELECT * FROM region WHERE delete_status = 1"; // Query for deleted regions
+//     } else if (filter === "inactive") {
+//       query =
+//         "SELECT * FROM region WHERE region_status = 'inactive' AND delete_status = 0";
+//     } else if (filter === "active") {
+//       query =
+//         "SELECT * FROM region WHERE region_status = 'active' AND delete_status = 0";
+//     }
 
-    const result = await con.query(query); // Execute the query
-    res.json(result.rows); // Return filtered data
-  } catch (error) {
-    console.error("Error fetching regions:", error);
-    res.status(500).send("Error fetching regions");
-  }
-};
+//     const result = await con.query(query); // Execute the query
+//     res.json(result.rows); // Return filtered data
+//   } catch (error) {
+//     console.error("Error fetching regions:", error);
+//     res.status(500).send("Error fetching regions");
+//   }
+// };
 
 const getMember = async (req, res) => {
   const { member_id } = req.params; // Get member_id from route parameters
@@ -138,28 +138,38 @@ const getRegion = async (req, res) => {
         // Transform the logo data
         let logoUrl = null;
         if (region.region_logo && region.region_logo !== '{}' && region.region_logo !== 'null') {
-            logoUrl = `http://localhost:5000/api/uploads/regionLogos/${region.region_logo}`;
+            logoUrl = `https://bni-data-backend.onrender.com/api/uploads/regionLogos/${region.region_logo}`;
             console.log('🖼️ Constructed logo URL:', logoUrl);
         }
 
         // Prepare the response
-        const response = {
-            ...region,
-            region_logo_url: logoUrl,
-            // Parse the arrays and objects that are stored as strings
-            chapter_status: Array.isArray(region.chapter_status) 
-                ? region.chapter_status 
-                : JSON.parse(region.chapter_status.replace('{', '[').replace('}', ']')),
-            chapter_type: Array.isArray(region.chapter_type) 
-                ? region.chapter_type 
-                : JSON.parse(region.chapter_type),
-            days_of_chapter: Array.isArray(region.days_of_chapter) 
-                ? region.days_of_chapter 
-                : JSON.parse(region.days_of_chapter),
-            accolades_config: Array.isArray(region.accolades_config) 
-                ? region.accolades_config 
-                : JSON.parse(region.accolades_config)
-        };
+       // ... existing code ...
+const response = {
+  ...region,
+  region_logo_url: logoUrl,
+  // Parse the arrays and objects that are stored as strings
+  chapter_status: Array.isArray(region.chapter_status) 
+      ? region.chapter_status 
+      : typeof region.chapter_status === 'string'
+          ? region.chapter_status.replace(/[{}]/g, '').split(',').map(s => s.trim())
+          : [],
+  chapter_type: Array.isArray(region.chapter_type) 
+      ? region.chapter_type 
+      : typeof region.chapter_type === 'string'
+          ? JSON.parse(region.chapter_type)
+          : [],
+  days_of_chapter: Array.isArray(region.days_of_chapter) 
+      ? region.days_of_chapter 
+      : typeof region.days_of_chapter === 'string'
+          ? JSON.parse(region.days_of_chapter)
+          : [],
+  accolades_config: Array.isArray(region.accolades_config) 
+      ? region.accolades_config 
+      : typeof region.accolades_config === 'string'
+          ? JSON.parse(region.accolades_config)
+          : []
+};
+// ... existing code ...
 
         console.log('✅ Processed region data:', response);
         res.json(response);
@@ -334,7 +344,7 @@ const addRegion = async (req, res) => {
       message: "Region added successfully!", 
       data: {
         ...result.rows[0],
-        region_logo_url: region_logo ? `http://localhost:5000/uploads/regionLogos/${region_logo}` : null
+        region_logo_url: region_logo ? `https://bni-data-backend.onrender.com/uploads/regionLogos/${region_logo}` : null
       }
     });
   } catch (error) {
@@ -3952,7 +3962,7 @@ module.exports = {
   addInvoiceManually,
   getPendingAmount,
   addPendingAmount,
-  getRegions,
+  // getRegions,
   getChapters,
   getMembers,
   getAccolades,
