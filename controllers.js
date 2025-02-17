@@ -522,6 +522,7 @@ const addMember = async (req, res) => {
     member_sponsored_by,
     member_status,
     meeting_opening_balance,
+    member_company_pincode,
   } = req.body;
 
   // Validate required fields
@@ -558,13 +559,14 @@ const addMember = async (req, res) => {
                 member_photo, member_website, member_company_logo,
                 member_facebook, member_instagram, member_linkedin, member_youtube, country,
                 street_address_line_1, street_address_line_2, gender, notification_consent,
-                date_of_publishing, member_sponsored_by, member_status, meeting_opening_balance
+                date_of_publishing, member_sponsored_by, member_status, meeting_opening_balance,
+                member_company_pincode
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
                 $11, $12, $13, $14, $15, $16, $17, $18,
                 $19, $20, $21, $22, $23, $24, $25, $26,
                 $27, $28, $29, $30, $31, $32, $33, $34,
-                $35, $36, $37
+                $35, $36, $37, $38
             ) RETURNING *`,
       [
         member_first_name,
@@ -604,6 +606,7 @@ const addMember = async (req, res) => {
         member_sponsored_by,
         member_status,
         meeting_opening_balance,
+        member_company_pincode,
       ]
     );
 
