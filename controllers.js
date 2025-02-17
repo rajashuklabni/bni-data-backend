@@ -626,6 +626,15 @@ const addMember = async (req, res) => {
     res.status(500).send("Error adding member");
   }
 };
+const getBankOrder = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM bankorder");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching bank order:", error);
+    res.status(500).send("Error fetching bank order");
+  }
+};
 
 const getChapters = async (req, res) => {
   try {
@@ -4091,4 +4100,5 @@ module.exports = {
   addMemberWriteOff,
   getAllMemberWriteOff,
   getAllVisitors,
+  getBankOrder,
 };
