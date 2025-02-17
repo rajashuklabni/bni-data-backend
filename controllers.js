@@ -609,6 +609,14 @@ const addMember = async (req, res) => {
         member_company_pincode,
       ]
     );
+    const { member_opening_balance } = req.body; // Assuming you're sending 'member_opening_balance' in the request body
+    const member_id = result.rows[0].member_id;
+    // const chapter_id = req.body.chapter_id; // Assuming chapter_id is also sent in the request body
+
+    await con.query(
+      `INSERT INTO bankorder (member_id, chapter_id, amount_to_pay) VALUES ($1, $2, $3)`,
+      [member_id, chapter_id, member_opening_balance]
+    );
 
     res
       .status(201)
