@@ -1281,21 +1281,46 @@ const updateUniversalLink = async (req, res) => {
 
 const deleteRegion = async (req, res) => {
   const { region_id } = req.params;
+  
+  if (!region_id) {
+      return res.status(400).json({ message: "Region ID is required" });
+  }
+
   try {
-    const result = await con.query(
-      `UPDATE region SET delete_status = 1 WHERE region_id = $1 RETURNING *`,
-      [region_id]
-    );
-    if (result.rowCount > 0) {
-      res
-        .status(200)
-        .json({ message: "Region marked as deleted successfully" });
-    } else {
-      res.status(404).json({ message: "Region not found" });
-    }
+      // First check if region exists and isn't already deleted
+      const checkRegion = await con.query(
+          `SELECT * FROM region WHERE region_id = $1 AND delete_status = 0`,
+          [region_id]
+      );
+
+      if (checkRegion.rowCount === 0) {
+          return res.status(404).json({ 
+              message: "Region not found or already deleted" 
+          });
+      }
+
+      // Proceed with deletion
+      const result = await con.query(
+          `UPDATE region SET delete_status = 1 WHERE region_id = $1 RETURNING *`,
+          [region_id]
+      );
+
+      if (result.rowCount > 0) {
+          res.status(200).json({ 
+              message: "Region marked as deleted successfully",
+              data: result.rows[0]
+          });
+      } else {
+          res.status(500).json({ 
+              message: "Failed to delete region" 
+          });
+      }
   } catch (error) {
-    console.error("Error deleting region:", error);
-    res.status(500).json({ message: "Error deleting region" });
+      console.error("Error deleting region:", error);
+      res.status(500).json({ 
+          message: "Error deleting region",
+          error: error.message 
+      });
   }
 };
 
