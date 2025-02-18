@@ -2350,6 +2350,12 @@ const getMemberId = async (req, res) => {
   }
 };
 
+const getSpecificBankOrder = async (req, res) => {
+  const { member_id, chapter_id } = req.body;
+  const result = await con.query("SELECT * FROM bankorder WHERE chapter_id = $1 AND member_id = $2", [chapter_id, member_id]);
+  res.json(result.rows);
+}
+
 const addKittyPayment = async (req, res) => {
   try {
     const {
@@ -4184,4 +4190,5 @@ module.exports = {
   getAllMemberWriteOff,
   getAllVisitors,
   getBankOrder,
+  getSpecificBankOrder,
 };

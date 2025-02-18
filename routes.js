@@ -5,6 +5,7 @@ const { Client } = require("pg");
 const {
   addInvoiceManually,
   getBankOrder,
+  getSpecificBankOrder,
   addPendingAmount,
   getPendingAmount,
   getRegions,
@@ -426,6 +427,7 @@ router.get('/getInterviewSheet',getInterviewSheet);
 router.get('/getCommitmentSheet',getCommitmentSheet);
 router.get("/getAllVisitors", getAllVisitors);
 router.get("/getBankOrder", getBankOrder);
+router.get("/getSpecificBankOrder", getSpecificBankOrder);
 
 // Route to serve the uploaded files
 router.get('/uploads/expenses/:filename', (req, res) => {
