@@ -2349,6 +2349,11 @@ const getMemberId = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+const getCurrentDate = (req, res) => {
+  const currentDate = new Date();
+  res.status(200).json({ currentDate: currentDate.toISOString() });
+};
+
 
 const getSpecificBankOrder = async (req, res) => {
   console.log("getSpecificBankOrder",req.body);
@@ -4214,4 +4219,5 @@ module.exports = {
   getAllVisitors,
   getBankOrder,
   getSpecificBankOrder,
+  getCurrentDate,
 };
