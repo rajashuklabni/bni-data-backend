@@ -4016,6 +4016,8 @@ const getAllMemberCredit = async (req, res) => {
   }
 };
 
+
+
 const addMemberCredit = async (req, res) => {
   let { member_id, chapter_id, credit_amount, credit_date, credit_type } = req.body;
 
@@ -4023,6 +4025,7 @@ const addMemberCredit = async (req, res) => {
   if (!Array.isArray(member_id)) {
     member_id = [member_id]; // Convert single member_id to array
   }
+  
 
   try {
     const query = `
@@ -4032,12 +4035,37 @@ const addMemberCredit = async (req, res) => {
     `;
 
     let insertedRecords = [];
+
+    const response = await fetch("https://bni-data-backend.onrender.com/api/getbankOrder");
+    const bankOrders = await response.json();
+
     
     for (const id of member_id) {
       const values = [parseInt(id), chapter_id, credit_amount, credit_date, false, credit_type]; // Ensure member_id is an integer
       const result = await con.query(query, values);
       insertedRecords.push(result.rows[0]);
+    const matchedBankOrder = bankOrders.find(order => parseFloat(id) === parseFloat(order.member_id) && order.chapter_id === parseFloat(chapter_id));
+    if (matchedBankOrder) {
+      console.log("Matched Bank Order:", matchedBankOrder);
+     
+        const updateQuery = `
+          UPDATE bankorder 
+          SET amount_to_pay = amount_to_pay - $1 
+          WHERE member_id = $2 AND chapter_id = $3 
+          RETURNING *;
+        `;
+        const values = [credit_amount, matchedBankOrder.member_id, matchedBankOrder.chapter_id];
+        const updateResult = await con.query(updateQuery, values);
+        console.log("Updated Matched Bank Order:", updateResult.rows[0]);
+      
+      // You can add any additional logic here if needed
+    } else {
+      console.log("No matching bank order found for member_id:", id);
     }
+
+    
+    }
+
 
     res.status(201).json({ message: "Credit added successfully!", data: insertedRecords });
   } catch (error) {
