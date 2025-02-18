@@ -1,5 +1,6 @@
 const { Client } = require("pg");
 const xlsx = require("xlsx");
+// const fetch = require('node-fetch'); 
 const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcrypt");
@@ -2414,6 +2415,88 @@ const addKittyPayment = async (req, res) => {
 
     await con.query(updateMemberQuery, [total_bill_amount, chapter_id]);
     console.log(updateMemberQuery);
+    
+
+    const response = await fetch('https://bni-data-backend.onrender.com/api/getbankOrder');
+    const bankOrders = await response.json();
+
+    // Filter the bank orders based on chapter_id
+    // const filteredBankOrders = bankOrders.filter(order => order.chapter_id === chapter_id);
+    console.log("bankOrders",bankOrders);
+    console.log("chapter_id",chapter_id);
+    const filteredBankOrders = bankOrders.filter(order => {
+      console.log("Order Chapter ID:", order.chapter_id);
+      console.log("Chapter ID:", chapter_id);
+      return order.chapter_id === Number(chapter_id);
+    });
+    // const fiterdata = bankOrders.filter(order => order.chapter_id === chapter_id);
+    console.log('Filtered Bank Orders:', filteredBankOrders);
+
+    if (filteredBankOrders.length > 0) {
+      // const totalAmountToPay = filteredBankOrders.reduce((acc, order) => acc + order.amount_to_pay, 0);
+      
+    
+      for (const order of filteredBankOrders) {
+        let currentAmountToPay = order.amount_to_pay;
+        let noOfLatePayment = order.no_of_late_payment;
+        
+        if (currentAmountToPay > 0) {
+          // Code to handle positive amount_to_pay
+          console.log(`Processing payment for order ID: ${order.id} with amount: ${currentAmountToPay}`);
+          let currentDate = new Date();
+          let dueDate = order.kitty_due_date ? new Date(order.kitty_due_date) : null;
+          if (dueDate === null) {
+            // Code to handle the case where dueDate is null
+            console.log(`Order ID: ${order.id} has due date === null.`);
+          }
+          else if (currentDate > dueDate) {
+            // Code to handle the case where the current date is greater than the due date
+            currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(order.kitty_penalty);
+            noOfLatePayment = parseFloat(noOfLatePayment) + 1;
+            console.log(`Order ID: ${order.id} is overdue. Processing overdue actions. added penalty ${order.kitty_penalty} and no of late payment ${noOfLatePayment}`);
+          } else {
+            // Code to handle the case where the current date is less than or equal to the due date
+            console.log(`Order ID: ${order.id} is not overdue. No action needed to add penalty.`);
+          }
+          currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(total_bill_amount);
+        } else {
+          // Code to handle zero or negative amount_to_pay
+          console.log(`for order ID: ${order.id}. Amount to pay is ${order.amount_to_pay}`);
+          currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(total_bill_amount);
+        }
+        
+        // const currentPenalty = parseFloat(penalty_amount);
+
+        const updateQuery = `
+          UPDATE bankorder 
+          SET 
+            amount_to_pay = $1, 
+            kitty_due_date = $2, 
+            no_of_late_payment = $3, 
+            kitty_penalty = $4 
+          WHERE member_id = $5
+        `;
+        
+        const values = [
+          currentAmountToPay, 
+          due_date, 
+          noOfLatePayment, 
+          penalty_amount, 
+          order.member_id
+        ];
+        
+        try {
+          await con.query(updateQuery, values);
+          console.log(`Updated bank order for member ID: ${order.member_id}`);
+        } catch (dbError) {
+          console.error(`Error updating bank order for member ID: ${order.member_id}`, dbError);
+        }
+      }
+    
+    
+    } else {
+      console.log(`No member found for chapter in bank orders ${chapter_id}.`);
+    }
 
     res.status(201).json({ message: "Kitty payment added successfully." });
   } catch (error) {
