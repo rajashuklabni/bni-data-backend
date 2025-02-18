@@ -2351,9 +2351,32 @@ const getMemberId = async (req, res) => {
 };
 
 const getSpecificBankOrder = async (req, res) => {
+  console.log("getSpecificBankOrder",req.body);
   const { member_id, chapter_id } = req.body;
-  const result = await con.query("SELECT * FROM bankorder WHERE chapter_id = $1 AND member_id = $2", [chapter_id, member_id]);
-  res.json(result.rows);
+  // const result = await con.query("SELECT * FROM bankorder WHERE chapter_id = $1 AND member_id = $2", [chapter_id, member_id]);
+  // res.json(result.rows);
+  try {
+        // Query the database to find matching entries
+        const query = `
+            SELECT * 
+            FROM bankorder 
+            WHERE chapter_id = $1 AND member_id = $2
+        `;
+        
+        const result = await con.query(query, [chapter_id, member_id]);
+
+        // If no rows are found, send a 404 response
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'No matching orders found' });
+        }
+
+        // Send back the matching orders as the response
+        res.status(200).json(result.rows);
+    } catch (error) {
+        // Handle any database errors
+        console.error(error);
+        res.status(500).json({ message: 'Server error, please try again later' });
+    }
 }
 
 const addKittyPayment = async (req, res) => {
