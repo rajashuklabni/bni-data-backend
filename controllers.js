@@ -54,45 +54,93 @@ const getRegions = async (req, res) => {
 };
 
 const getMember = async (req, res) => {
-  const { member_id } = req.params; // Get member_id from route parameters
+  const { member_id } = req.params;
+  console.log('🔍 Fetching member with ID:', member_id);
 
   try {
-    // Use a parameterized query to safely insert member_id into the SQL statement
-    const result = await con.query(
-      "SELECT * FROM member WHERE member_id = $1",
-      [member_id]
-    );
+      const result = await con.query(
+          "SELECT * FROM member WHERE member_id = $1",
+          [member_id]
+      );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Member not found" });
-    }
+      if (result.rows.length === 0) {
+          console.log('❌ Member not found for ID:', member_id);
+          return res.status(404).json({ message: "Member not found" });
+      }
 
-    res.json(result.rows[0]);
+      // Get the member data
+      const member = result.rows[0];
+      console.log('📄 Raw member data:', member);
+
+      // Transform the member data and add image URLs
+      const transformedMember = {
+          ...member,
+          // Add image URLs if images exist
+          member_photo_url: member.member_photo 
+              ? `https://bni-data-backend.onrender.com/api/uploads/memberLogos/${member.member_photo}`
+              : null,
+          member_company_logo_url: member.member_company_logo 
+              ? `https://bni-data-backend.onrender.com/api/uploads/memberCompanyLogos/${member.member_company_logo}`
+              : null,
+          // Parse arrays that might be stored as strings
+          accolades_id: Array.isArray(member.accolades_id)
+              ? member.accolades_id
+              : typeof member.accolades_id === 'string'
+                  ? member.accolades_id.replace(/[{}]/g, '').split(',').map(id => parseInt(id.trim()))
+                  : []
+      };
+
+      console.log('✅ Processed member data:', {
+          id: transformedMember.member_id,
+          name: `${transformedMember.member_first_name} ${transformedMember.member_last_name}`,
+          photo: transformedMember.member_photo_url,
+          companyLogo: transformedMember.member_company_logo_url,
+          accolades: transformedMember.accolades_id
+      });
+
+      res.json(transformedMember);
+
   } catch (error) {
-    console.error("Error fetching member:", error);
-    res.status(500).send("Error fetching member");
+      console.error('❌ Error fetching member:', error);
+      res.status(500).json({
+          message: "Error fetching member",
+          error: error.message
+      });
   }
 };
 
 const getChapter = async (req, res) => {
-  const { chapter_id } = req.params; // Get member_id from route parameters
+    const { chapter_id } = req.params;
+    console.log('🔍 Fetching chapter:', chapter_id);
 
-  try {
-    // Use a parameterized query to safely insert member_id into the SQL statement
-    const result = await con.query(
-      "SELECT * FROM chapter WHERE chapter_id = $1",
-      [chapter_id]
-    );
+    try {
+        const result = await con.query(
+            "SELECT * FROM chapter WHERE chapter_id = $1",
+            [chapter_id]
+        );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Chapter not found" });
+        if (result.rows.length === 0) {
+            console.log('⚠️ Chapter not found:', chapter_id);
+            return res.status(404).json({ message: "Chapter not found" });
+        }
+
+        // Add image URL to response
+        const chapterData = result.rows[0];
+        if (chapterData.chapter_logo) {
+            chapterData.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+            console.log('🖼️ Added logo URL:', chapterData.chapter_logo_url);
+        }
+
+        console.log('✅ Found chapter:', chapterData);
+        res.json(chapterData);
+
+    } catch (error) {
+        console.error('❌ Error fetching chapter:', error);
+        res.status(500).json({
+            message: "Error fetching chapter",
+            error: error.message
+        });
     }
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error("Error fetching Chapter:", error);
-    res.status(500).send("Error fetching Chapter");
-  }
 };
 
 const getUniversalLink = async (req, res) => {
@@ -358,86 +406,28 @@ const addRegion = async (req, res) => {
 };
 
 const addChapter = async (req, res) => {
-  const {
-    region_id,
-    chapter_name,
-    chapter_logo,
-    chapter_status,
-    chapter_membership_fee,
-    chapter_kitty_fees,
-    chapter_visitor_fees,
-    chapter_meeting_day,
-    one_time_registration_fee,
-    chapter_type,
-    eoi_link,
-    member_app_link,
-    meeting_hotel_name,
-    chapter_membership_fee_two_year,
-    chapter_membership_fee_five_year,
-    contact_number,
-    contact_person,
-    chapter_mission,
-    chapter_vision,
-    email_id,
-    country,
-    state,
-    city,
-    street_address_line,
-    postal_code,
-    chapter_facebook,
-    chapter_instagram,
-    chapter_linkedin,
-    chapter_youtube,
-    chapter_website,
-    date_of_publishing,
-    chapter_launched_by,
-    chapter_location_note,
-    chapter_late_fees,
-    chapter_available_fund,
-    billing_frequency,
-  } = req.body;
-  // console.log(req.body);
-
-  // Validate required fields
-  if (!chapter_name || !region_id) {
-    return res
-      .status(400)
-      .json({ message: "Chapter name and region ID are required." });
-  }
-
-  try {
-    const checkDuplicate = await con.query(
-      `SELECT * FROM chapter WHERE chapter_name = $1`,
-      [chapter_name]
-    );
-
-    if (checkDuplicate.rows.length > 0) {
-      return res.status(409).json({
-        message: "Chapter name already exists",
-      });
+    console.log('📥 Starting addChapter process');
+    console.log('📦 Request body:', req.body);
+    console.log('📎 Request files:', req.files);
+    console.log('📄 Single file:', req.file);
+    
+    // Log form data for debugging
+    if (req.file) {
+        console.log('🖼️ Uploaded file details:', {
+            fieldname: req.file.fieldname,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            filename: req.file.filename,
+            path: req.file.path,
+            size: req.file.size
+        });
+    } else {
+        console.log('⚠️ No file uploaded');
     }
 
-    const result = await con.query(
-      `INSERT INTO chapter (
-                region_id, chapter_name, chapter_logo, chapter_status, chapter_membership_fee,
-                chapter_kitty_fees, chapter_visitor_fees, chapter_meeting_day, one_time_registration_fee,
-                chapter_type, eoi_link, member_app_link, meeting_hotel_name,
-                chapter_membership_fee_two_year, chapter_membership_fee_five_year, contact_number,
-                contact_person, chapter_mission, chapter_vision, email_id, country, state, city,
-                street_address_line, postal_code, chapter_facebook, chapter_instagram,
-                chapter_linkedin, chapter_youtube, chapter_website, date_of_publishing,
-                chapter_launched_by, chapter_location_note, chapter_late_fees, available_fund, kitty_billing_frequency
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9,
-                $10, $11, $12, $13, $14, $15, $16,
-                $17, $18, $19, $20, $21, $22, $23,
-                $24, $25, $26, $27, $28, $29, $30,
-                $31, $32, $33, $34, $35, $36
-            ) RETURNING *`,
-      [
+    const {
         region_id,
         chapter_name,
-        chapter_logo,
         chapter_status,
         chapter_membership_fee,
         chapter_kitty_fees,
@@ -470,87 +460,136 @@ const addChapter = async (req, res) => {
         chapter_location_note,
         chapter_late_fees,
         chapter_available_fund,
-        billing_frequency
-      ]
-    );
+        billing_frequency,
+    } = req.body;
 
-    res
-      .status(201)
-      .json({ message: "Chapter added successfully!", data: result.rows[0] } );
-  } catch (error) {
-    console.error("Error adding chapter:", error);
-    res.status(500).send("Error adding chapter");
-  }
+    // Get logo filename from uploaded file
+    const logoFilename = req.file ? req.file.filename : null;
+    console.log('💾 Logo filename to store:', logoFilename);
+
+    try {
+        const checkDuplicate = await con.query(
+            `SELECT * FROM chapter WHERE chapter_name = $1`,
+            [chapter_name]
+        );
+
+        if (checkDuplicate.rows.length > 0) {
+            console.log('⚠️ Duplicate chapter name found');
+            return res.status(409).json({
+                message: "Chapter name already exists",
+            });
+        }
+
+        const result = await con.query(
+            `INSERT INTO chapter (
+                region_id, chapter_name, chapter_logo, chapter_status, chapter_membership_fee,
+                chapter_kitty_fees, chapter_visitor_fees, chapter_meeting_day, one_time_registration_fee,
+                chapter_type, eoi_link, member_app_link, meeting_hotel_name,
+                chapter_membership_fee_two_year, chapter_membership_fee_five_year, contact_number,
+                contact_person, chapter_mission, chapter_vision, email_id, country, state, city,
+                street_address_line, postal_code, chapter_facebook, chapter_instagram,
+                chapter_linkedin, chapter_youtube, chapter_website, date_of_publishing,
+                chapter_launched_by, chapter_location_note, chapter_late_fees, available_fund, kitty_billing_frequency
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                $10, $11, $12, $13, $14, $15, $16,
+                $17, $18, $19, $20, $21, $22, $23,
+                $24, $25, $26, $27, $28, $29, $30,
+                $31, $32, $33, $34, $35, $36
+            ) RETURNING *`,
+            [
+                region_id,
+                chapter_name,
+                logoFilename, // This should now have the correct filename
+                chapter_status,
+                chapter_membership_fee,
+                chapter_kitty_fees,
+                chapter_visitor_fees,
+                chapter_meeting_day,
+                one_time_registration_fee,
+                chapter_type,
+                eoi_link,
+                member_app_link,
+                meeting_hotel_name,
+                chapter_membership_fee_two_year,
+                chapter_membership_fee_five_year,
+                contact_number,
+                contact_person,
+                chapter_mission,
+                chapter_vision,
+                email_id,
+                country,
+                state,
+                city,
+                street_address_line,
+                postal_code,
+                chapter_facebook,
+                chapter_instagram,
+                chapter_linkedin,
+                chapter_youtube,
+                chapter_website,
+                date_of_publishing,
+                chapter_launched_by,
+                chapter_location_note,
+                chapter_late_fees,
+                chapter_available_fund,
+                billing_frequency
+            ]
+        );
+
+        // Add image URL to response
+        const chapterData = result.rows[0];
+        if (chapterData.chapter_logo) {
+            chapterData.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+            console.log('🔗 Generated logo URL:', chapterData.chapter_logo_url);
+        }
+
+        console.log('✅ Chapter added successfully:', chapterData);
+        res.status(201).json({ 
+            message: "Chapter added successfully!", 
+            data: chapterData 
+        });
+
+    } catch (error) {
+        console.error('❌ Error adding chapter:', error);
+        console.error('Error details:', error.stack);
+        res.status(500).json({
+            message: "Error adding chapter",
+            error: error.message
+        });
+    }
 };
 
 const addMember = async (req, res) => {
-  const {
-    member_first_name,
-    member_last_name,
-    member_date_of_birth,
-    member_phone_number,
-    member_alternate_mobile_number,
-    member_email_address,
-    address_pincode,
-    address_city,
-    address_state,
-    region_id,
-    chapter_id,
-    accolades_id,
-    category_id,
-    member_induction_date,
-    member_current_membership,
-    member_renewal_date,
-    member_gst_number,
-    member_company_name,
-    member_company_address,
-    member_company_state,
-    member_company_city,
-    member_photo,
-    member_website,
-    member_company_logo,
-    member_facebook,
-    member_instagram,
-    member_linkedin,
-    member_youtube,
-    country,
-    street_address_line_1,
-    street_address_line_2,
-    gender,
-    notification_consent,
-    date_of_publishing,
-    member_sponsored_by,
-    member_status,
-    meeting_opening_balance,
-    member_company_pincode,
-  } = req.body;
+    console.log('📥 Starting add member process');
+    console.log('📦 Request body:', req.body);
+    console.log('📸 Files received:', req.files);
+    
+    try {
+        // Parse accolades_id and convert to PostgreSQL array format
+        let parsedAccolades;
+        try {
+            // Parse the JSON string to array
+            const accoladesArray = JSON.parse(req.body.accolades_id);
+            console.log('🏆 Parsed accolades:', accoladesArray);
+            
+            // Convert to PostgreSQL array format
+            parsedAccolades = `{${accoladesArray.join(',')}}`;
+            console.log('🏆 PostgreSQL array format:', parsedAccolades);
+        } catch (error) {
+            console.error('❌ Error parsing accolades:', error);
+            parsedAccolades = '{}'; // Empty PostgreSQL array
+        }
 
-  // Validate required fields
-  if (
-    !member_first_name ||
-    !member_email_address ||
-    !region_id ||
-    !chapter_id
-  ) {
-    return res.status(400).json({
-      message:
-        "Member first name, email address, region ID, and chapter ID are required.",
-    });
-  }
+        // Get filenames from uploaded files
+        const memberPhotoFilename = req.files?.['member_photo']?.[0]?.filename || null;
+        const companyLogoFilename = req.files?.['member_company_logo']?.[0]?.filename || null;
 
-  // Add GST number format validation
-  if (member_gst_number) {
-    if (!/^[A-Z0-9]{15}$/.test(member_gst_number)) {
-      return res.status(400).json({
-        message:
-          "GST number must be exactly 15 characters (letters and numbers).",
-      });
-    }
-  }
+        console.log('📸 Member photo filename:', memberPhotoFilename);
+        console.log('🏢 Company logo filename:', companyLogoFilename);
 
-  try {
-    const result = await con.query(
-      `INSERT INTO member (
+        const result = await con.query(
+            `INSERT INTO member (
                 member_first_name, member_last_name, member_date_of_birth, member_phone_number,
                 member_alternate_mobile_number, member_email_address, address_pincode,
                 address_city, address_state, region_id, chapter_id, accolades_id, category_id,
@@ -561,62 +600,71 @@ const addMember = async (req, res) => {
                 street_address_line_1, street_address_line_2, gender, notification_consent,
                 date_of_publishing, member_sponsored_by, member_status, meeting_opening_balance,
                 member_company_pincode
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-                $11, $12, $13, $14, $15, $16, $17, $18,
-                $19, $20, $21, $22, $23, $24, $25, $26,
-                $27, $28, $29, $30, $31, $32, $33, $34,
-                $35, $36, $37, $38
-            ) RETURNING *`,
-      [
-        member_first_name,
-        member_last_name,
-        member_date_of_birth,
-        member_phone_number,
-        member_alternate_mobile_number,
-        member_email_address,
-        address_pincode,
-        address_city,
-        address_state,
-        region_id,
-        chapter_id,
-        accolades_id,
-        category_id,
-        member_induction_date,
-        member_current_membership,
-        member_renewal_date,
-        member_gst_number,
-        member_company_name,
-        member_company_address,
-        member_company_state,
-        member_company_city,
-        member_photo,
-        member_website,
-        member_company_logo,
-        member_facebook,
-        member_instagram,
-        member_linkedin,
-        member_youtube,
-        country,
-        street_address_line_1,
-        street_address_line_2,
-        gender,
-        notification_consent,
-        date_of_publishing,
-        member_sponsored_by,
-        member_status,
-        meeting_opening_balance,
-        member_company_pincode,
-      ]
-    );
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 
+                     $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, 
+                     $33, $34, $35, $36, $37, $38)
+            RETURNING *`,
+            [
+                req.body.member_first_name,
+                req.body.member_last_name,
+                req.body.member_date_of_birth,
+                req.body.member_phone_number,
+                req.body.member_alternate_mobile_number,
+                req.body.member_email_address,
+                req.body.address_pincode,
+                req.body.address_city,
+                req.body.address_state,
+                req.body.region_id,
+                req.body.chapter_id,
+                parsedAccolades,  // Using the PostgreSQL formatted array
+                req.body.category_id,
+                req.body.member_induction_date,
+                req.body.member_current_membership,
+                req.body.member_renewal_date,
+                req.body.member_gst_number,
+                req.body.member_company_name,
+                req.body.member_company_address,
+                req.body.member_company_state,
+                req.body.member_company_city,
+                memberPhotoFilename,
+                req.body.member_website,
+                companyLogoFilename,
+                req.body.member_facebook,
+                req.body.member_instagram,
+                req.body.member_linkedin,
+                req.body.member_youtube,
+                req.body.country,
+                req.body.street_address_line_1,
+                req.body.street_address_line_2,
+                req.body.gender,
+                req.body.notification_consent,
+                req.body.date_of_publishing,
+                req.body.member_sponsored_by,
+                req.body.member_status,
+                req.body.meeting_opening_balance,
+                req.body.member_company_pincode
+            ]
+        );
 
-    res
-      .status(201)
-      .json({ message: "Member added successfully!", data: result.rows[0] });
-  } catch (error) {
-    console.error("Error adding member:", error);
-    res.status(500).send("Error adding member");
-  }
+        const newMember = result.rows[0];
+        console.log('✅ Member added successfully:', newMember);
+
+        res.status(201).json({
+            message: "Member added successfully!",
+            data: {
+                ...newMember,
+                member_photo_url: memberPhotoFilename ? `/uploads/memberPhotos/${memberPhotoFilename}` : null,
+                member_company_logo_url: companyLogoFilename ? `/uploads/memberCompanyLogos/${companyLogoFilename}` : null
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Error adding member:', error);
+        res.status(500).json({ 
+            message: "Error adding member", 
+            error: error.message 
+        });
+    }
 };
 
 const getChapters = async (req, res) => {
@@ -986,254 +1034,245 @@ const updateRegion = async (req, res) => {
 };
 
 const updateChapter = async (req, res) => {
-  const { chapter_id } = req.params; // Get chapter_id from URL parameter
-  const chapterData = req.body; // Get the updated data from the request body
-
-  console.log("Updating chapter with ID:", chapter_id);
-  console.log("Received data:", chapterData);
+  console.log('🔄 Starting chapter update process');
+  const { chapter_id } = req.params;
+  console.log('📝 Updating chapter ID:', chapter_id);
 
   try {
-    // Convert invalid numeric fields to null
-    const toNumeric = (value) =>
-      isNaN(value) || value === "Not Found" ? null : Number(value);
+      // First, get the current chapter data to preserve logo if not changed
+      const currentChapter = await con.query(
+          'SELECT chapter_logo FROM chapter WHERE chapter_id = $1',
+          [chapter_id]
+      );
+      
+      console.log('📸 Current chapter logo:', currentChapter.rows[0]?.chapter_logo);
 
-    // Clean the input data
-    const cleanedData = {
-      ...chapterData,
-      chapter_membership_fee: toNumeric(chapterData.chapter_membership_fee),
-      chapter_kitty_fees: toNumeric(chapterData.chapter_kitty_fees),
-      chapter_visitor_fees: toNumeric(chapterData.chapter_visitor_fees),
-      one_time_registration_fee: toNumeric(
-        chapterData.one_time_registration_fee
-      ),
-      chapter_late_fees: toNumeric(chapterData.chapter_late_fees),
-      chapter_membership_fee_two_year: toNumeric(
-        chapterData.chapter_membership_fee_two_year
-      ),
-      chapter_membership_fee_five_year: toNumeric(
-        chapterData.chapter_membership_fee_five_year
-      ),
-    };
+      // Determine which logo to use
+      const logoFilename = req.file ? 
+          req.file.filename : 
+          currentChapter.rows[0]?.chapter_logo;
 
-    const query = `
-      UPDATE chapter
-      SET
-        chapter_name = $1,
-        region_id = $2,
-        chapter_meeting_day = $3,
-        chapter_type = $4,
-        chapter_status = $5,
-        chapter_membership_fee = $6,
-        chapter_kitty_fees = $7,
-        chapter_visitor_fees = $8,
-        one_time_registration_fee = $9,
-        eoi_link = $10,
-        member_app_link = $11,
-        meeting_hotel_name = $12,
-        chapter_mission = $13,
-        chapter_vision = $14,
-        contact_person = $15,
-        contact_number = $16,
-        email_id = $17,
-        country = $18,
-        state = $19,
-        city = $20,
-        street_address_line = $21,
-        postal_code = $22,
-        chapter_facebook = $23,
-        chapter_instagram = $24,
-        chapter_linkedin = $25,
-        chapter_youtube = $26,
-        chapter_website = $27,
-        chapter_logo = $28,
-        date_of_publishing = $29,
-        chapter_launched_by = $30,
-        chapter_late_fees = $31,
-        chapter_membership_fee_two_year = $32,
-        chapter_membership_fee_five_year = $33,
-        kitty_billing_frequency = $34,
-        available_fund = $35
-      WHERE chapter_id = $36
-      RETURNING *;`;
+      console.log('🖼️ Logo to be used:', logoFilename);
 
-    const values = [
-      cleanedData.chapter_name,
-      cleanedData.region_id,
-      cleanedData.chapter_meeting_day,
-      cleanedData.chapter_type,
-      cleanedData.chapter_status,
-      cleanedData.chapter_membership_fee,
-      cleanedData.chapter_kitty_fees,
-      cleanedData.chapter_visitor_fees,
-      cleanedData.one_time_registration_fee,
-      cleanedData.eoi_link,
-      cleanedData.member_app_link,
-      cleanedData.meeting_hotel_name,
-      cleanedData.chapter_mission,
-      cleanedData.chapter_vision,
-      cleanedData.contact_person,
-      cleanedData.contact_number,
-      cleanedData.email_id,
-      cleanedData.country,
-      cleanedData.state,
-      cleanedData.city,
-      cleanedData.street_address_line,
-      cleanedData.postal_code,
-      cleanedData.chapter_facebook,
-      cleanedData.chapter_instagram,
-      cleanedData.chapter_linkedin,
-      cleanedData.chapter_youtube,
-      cleanedData.chapter_website,
-      cleanedData.chapter_logo,
-      cleanedData.date_of_publishing,
-      cleanedData.chapter_launched_by,
-      cleanedData.chapter_late_fees,
-      cleanedData.chapter_membership_fee_two_year,
-      cleanedData.chapter_membership_fee_five_year,
-      cleanedData.billing_frequency,
-      cleanedData.chapter_available_fund,
-      chapter_id, // Ensure the chapter_id is used for the WHERE clause
-    ];
+      const query = `
+          UPDATE chapter 
+          SET 
+              region_id = $1,
+              chapter_name = $2,
+              chapter_logo = $3,
+              chapter_status = $4,
+              chapter_membership_fee = $5,
+              chapter_kitty_fees = $6,
+              chapter_visitor_fees = $7,
+              chapter_meeting_day = $8,
+              one_time_registration_fee = $9,
+              chapter_type = $10,
+              eoi_link = $11,
+              member_app_link = $12,
+              meeting_hotel_name = $13,
+              chapter_membership_fee_two_year = $14,
+              chapter_membership_fee_five_year = $15,
+              contact_number = $16,
+              contact_person = $17,
+              chapter_mission = $18,
+              chapter_vision = $19,
+              email_id = $20,
+              country = $21,
+              state = $22,
+              city = $23,
+              street_address_line = $24,
+              postal_code = $25,
+              chapter_facebook = $26,
+              chapter_instagram = $27,
+              chapter_linkedin = $28,
+              chapter_youtube = $29,
+              chapter_website = $30,
+              date_of_publishing = $31,
+              chapter_launched_by = $32,
+              chapter_location_note = $33,
+              chapter_late_fees = $34,
+              available_fund = $35,
+              kitty_billing_frequency = $36
+          WHERE chapter_id = $37
+          RETURNING *
+      `;
 
-    const { rows } = await con.query(query, values);
+      const values = [
+          req.body.region_id,
+          req.body.chapter_name,
+          logoFilename,
+          req.body.chapter_status,
+          req.body.chapter_membership_fee,
+          req.body.chapter_kitty_fees,
+          req.body.chapter_visitor_fees,
+          req.body.chapter_meeting_day,
+          req.body.one_time_registration_fee,
+          req.body.chapter_type,
+          req.body.eoi_link,
+          req.body.member_app_link,
+          req.body.meeting_hotel_name,
+          req.body.chapter_membership_fee_two_year,
+          req.body.chapter_membership_fee_five_year,
+          req.body.contact_number,
+          req.body.contact_person,
+          req.body.chapter_mission,
+          req.body.chapter_vision,
+          req.body.email_id,
+          req.body.country,
+          req.body.state,
+          req.body.city,
+          req.body.street_address_line,
+          req.body.postal_code,
+          req.body.chapter_facebook,
+          req.body.chapter_instagram,
+          req.body.chapter_linkedin,
+          req.body.chapter_youtube,
+          req.body.chapter_website,
+          req.body.date_of_publishing,
+          req.body.chapter_launched_by,
+          req.body.chapter_location_note,
+          req.body.chapter_late_fees,
+          req.body.chapter_available_fund,
+          req.body.billing_frequency,
+          chapter_id
+      ];
 
-    if (rows.length === 0) {
-      console.error("Chapter not found:", chapter_id);
-      return res.status(404).json({ message: "Chapter not found" });
-    }
+      console.log('🔍 Executing update query with values:', values);
+      const result = await con.query(query, values);
 
-    // Return the updated chapter data
-    res.status(200).json(rows[0]);
+      if (result.rows.length === 0) {
+          console.log('⚠️ No chapter found with ID:', chapter_id);
+          return res.status(404).json({ message: "Chapter not found" });
+      }
+
+      // Add image URL to response
+      const updatedChapter = result.rows[0];
+      if (updatedChapter.chapter_logo) {
+          updatedChapter.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          console.log('🔗 Generated logo URL:', updatedChapter.chapter_logo_url);
+      }
+
+      console.log('✅ Chapter updated successfully:', updatedChapter);
+      res.json(updatedChapter);
+
   } catch (error) {
-    console.error("Error updating chapter:", error);
-    res.status(500).json({ message: "Error updating chapter" });
+      console.error('❌ Error updating chapter:', error);
+      console.error('Error details:', error.stack);
+      res.status(500).json({
+          message: "Error updating chapter",
+          error: error.message,
+          details: error.stack
+      });
   }
 };
 
 const updateMember = async (req, res) => {
-  const { member_id } = req.params;
-  const memberData = req.body;
+    console.log('📝 Starting member update process');
+    console.log('📦 Request body:', req.body);
+    console.log('📸 Files received:', req.files);
 
-  console.log("Updating member with ID:", member_id);
-  console.log("Received data:", memberData);
-  console.log("Received file:", req.file);
+    try {
+        const { member_id } = req.params;
 
-  try {
-    // Handle the photo file if it exists
-    if (req.file) {
-      console.log('Photo file received:', req.file.filename);
-      memberData.member_photo = req.file.filename; // Store only the filename
+        // First get the existing member data
+        const existingMember = await con.query(
+            "SELECT * FROM member WHERE member_id = $1",
+            [member_id]
+        );
+
+        if (existingMember.rows.length === 0) {
+            return res.status(404).json({
+                message: "Member not found"
+            });
+        }
+
+        // Handle accolades_id - keep existing if not provided in request
+        let parsedAccolades;
+        if (req.body.accolades_id) {
+            try {
+                const accoladesArray = JSON.parse(req.body.accolades_id);
+                console.log('🏆 New accolades:', accoladesArray);
+                parsedAccolades = `{${accoladesArray.join(',')}}`;
+            } catch (error) {
+                console.error('❌ Error parsing accolades:', error);
+                parsedAccolades = existingMember.rows[0].accolades_id;
+            }
+        } else {
+            // Important: Keep existing accolades if not provided in request
+            console.log('🏆 Keeping existing accolades:', existingMember.rows[0].accolades_id);
+            parsedAccolades = existingMember.rows[0].accolades_id;
+        }
+
+        // Get filenames from uploaded files
+        const memberPhotoFilename = req.files?.['member_photo']?.[0]?.filename;
+        const companyLogoFilename = req.files?.['member_company_logo']?.[0]?.filename;
+
+        // Build the SET clause dynamically
+        const updates = [];
+        const values = [];
+        let valueCounter = 1;
+
+        // Add all fields from request body except files and accolades
+        Object.keys(req.body).forEach(key => {
+            if (key !== 'accolades_id' && key !== 'member_photo' && key !== 'member_company_logo') {
+                updates.push(`${key} = $${valueCounter}`);
+                values.push(req.body[key]);
+                valueCounter++;
+            }
+        });
+
+        // Always include accolades in the update with the preserved value
+        updates.push(`accolades_id = $${valueCounter}`);
+        values.push(parsedAccolades);
+        valueCounter++;
+
+        // Add photo if present, otherwise keep existing
+        if (memberPhotoFilename) {
+            updates.push(`member_photo = $${valueCounter}`);
+            values.push(memberPhotoFilename);
+            valueCounter++;
+        }
+
+        // Add company logo if present, otherwise keep existing
+        if (companyLogoFilename) {
+            updates.push(`member_company_logo = $${valueCounter}`);
+            values.push(companyLogoFilename);
+            valueCounter++;
+        }
+
+        // Add member_id to values array
+        values.push(member_id);
+
+        const query = `
+            UPDATE member 
+            SET ${updates.join(', ')}
+            WHERE member_id = $${valueCounter}
+            RETURNING *
+        `;
+
+        console.log('🔍 Executing query:', query);
+        console.log('📊 With values:', values);
+
+        const result = await con.query(query, values);
+        const updatedMember = result.rows[0];
+        console.log('✅ Member updated successfully:', updatedMember);
+
+        res.json({
+            message: "Member updated successfully",
+            data: {
+                ...updatedMember,
+                member_photo_url: updatedMember.member_photo ? `/uploads/memberPhotos/${updatedMember.member_photo}` : null,
+                member_company_logo_url: updatedMember.member_company_logo ? `/uploads/memberCompanyLogos/${updatedMember.member_company_logo}` : null
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Error updating member:', error);
+        res.status(500).json({
+            message: "Error updating member",
+            error: error.message
+        });
     }
-
-    // Handle empty accolades_id - convert empty string to empty array
-    if (memberData.accolades_id === '') {
-      memberData.accolades_id = '{}'; // PostgreSQL empty array syntax
-    }
-
-    // Construct the SQL query for updating the member
-    const query = `
-      UPDATE member
-      SET
-        member_first_name = $1,
-        member_last_name = $2,
-        member_date_of_birth = $3,
-        member_phone_number = $4,
-        member_alternate_mobile_number = $5,
-        member_email_address = $6,
-        street_address_line_1 = $7,
-        street_address_line_2 = $8,
-        address_pincode = $9,
-        address_city = $10,
-        address_state = $11,
-        region_id = $12,
-        chapter_id = $13,
-        accolades_id = $14::integer[], -- Cast explicitly to integer array
-        category_id = $15,
-        member_current_membership = $16,
-        member_renewal_date = $17,
-        member_gst_number = $18,
-        member_company_name = $19,
-        member_company_address = $20,
-        member_company_state = $21,
-        member_company_city = $22,
-        member_company_pincode = $23,
-        member_photo = $24,
-        member_website = $25,
-        member_facebook = $26,
-        member_instagram = $27,
-        member_linkedin = $28,
-        member_youtube = $29,
-        member_sponsored_by = $30,
-        date_of_publishing = $31,
-        member_status = $32,
-        meeting_opening_balance = $33
-      WHERE member_id = $34
-      RETURNING *;`;
-
-    // Prepare the values for the SQL query
-    const values = [
-      memberData.member_first_name,
-      memberData.member_last_name,
-      memberData.member_date_of_birth,
-      memberData.member_phone_number,
-      memberData.member_alternate_mobile_number,
-      memberData.member_email_address,
-      memberData.street_address_line_1,
-      memberData.street_address_line_2,
-      memberData.address_pincode,
-      memberData.address_city,
-      memberData.address_state,
-      memberData.region_id,
-      memberData.chapter_id,
-      memberData.accolades_id, // Now properly handled for empty case
-      memberData.category_id,
-      memberData.member_current_membership,
-      memberData.member_renewal_date,
-      memberData.member_gst_number,
-      memberData.member_company_name,
-      memberData.member_company_address,
-      memberData.member_company_state,
-      memberData.member_company_city,
-      memberData.member_company_pincode || null, // Handle 'null' string
-      memberData.member_photo,
-      memberData.member_website,
-      memberData.member_facebook,
-      memberData.member_instagram,
-      memberData.member_linkedin,
-      memberData.member_youtube,
-      memberData.member_sponsored_by,
-      memberData.date_of_publishing,
-      memberData.member_status,
-      memberData.meeting_opening_balance,
-      member_id,
-    ];
-
-    console.log('Executing query with values:', values);
-
-    // Execute the query with the provided member data
-    const { rows } = await con.query(query, values);
-
-    if (rows.length === 0) {
-      console.error("Member not found:", member_id);
-      return res.status(404).json({ message: "Member not found" });
-    }
-
-    console.log('Member updated successfully:', rows[0]);
-
-    // Return the updated member data
-    res.status(200).json({
-      message: "Member updated successfully",
-      data: rows[0],
-      photo_path: req.file ? `/uploads/memberPhotos/${req.file.filename}` : null
-    });
-  } catch (error) {
-    console.error("Error updating member:", error);
-    res.status(500).json({ 
-      message: "Error updating member", 
-      error: error.message,
-      details: error.detail || 'No additional details available'
-    });
-  }
 };
 
 const updateUniversalLink = async (req, res) => {
