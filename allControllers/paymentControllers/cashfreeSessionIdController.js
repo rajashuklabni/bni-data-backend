@@ -25,6 +25,8 @@ const sessionIdGenerator = async (req, res) => {
     const data = req.body;
     console.log(data, "================body=================");
     responseData1= data;
+    console.log(responseData1.tax, "============responseData1============");
+    console.log(responseData1.order_amount, "============responseData1============");
 
     try {
         const axiosResponse = await axios.post(`${process.env.cashfree_testing_url}/pg/orders`, data, { headers });
@@ -224,7 +226,19 @@ console.log("paymentDetails==============================",paymentDetails);
 
     
         }
-      
+
+        const newAmountToPay = parseFloat(responseData1.total_amount_paid) - parseFloat(responseData1.tax);
+
+      const updateQuery = `
+          UPDATE bankorder 
+          SET amount_to_pay = amount_to_pay - $1
+          WHERE member_id = $2
+      `;
+      const values = [newAmountToPay, balance_data.member_id];
+      await db.query(updateQuery, values);
+      console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
+      // responseData1.total_amount_paid,
+        // tax: responseData1.tax,
       return res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`);
     } else {
       console.error("Payment details missing");
