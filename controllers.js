@@ -3959,7 +3959,7 @@ const getAllVisitors = async (req, res) => {
 const createInvoice = async (req, res) => {
   try {
     const {
-      grandTotal,
+      grand_total,
       member_id,
       chapter_id,
       region_id,
@@ -3974,18 +3974,27 @@ const createInvoice = async (req, res) => {
       training_id,
     } = req.body;
 
+    console.log(req.body);
+
+    // Function to remove non-numeric characters except the decimal point
+    const sanitizeAmount = (amount) => parseFloat(amount.replace(/[^\d.]/g, ""));
+
+    // Sanitize grand_total before inserting into the database
+    const sanitizedGrandTotal = sanitizeAmount(grand_total);
+
     // Generate order and transaction IDs
     const order_id = uuidv4();
     const transaction_id = uuidv4();
     const session_id = `session_${uuidv4()}`;
     const created_at = new Date().toISOString();
+    const updated_at = new Date().toISOString();
 
     // Insert data into orders table
     const insertOrderQuery = `
       INSERT INTO orders (
         order_id, order_amount, order_currency, payment_gateway_id,
         customer_id, chapter_id, region_id, universal_link_id, ulid,
-        order_status, payment_session_id, created_at, tax,
+        order_status, payment_session_id, created_at, updated_at, tax,
         member_name, customer_email, customer_phone, gstin,
         company, mobile_number, payment_note, training_id
       ) VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, $8, 'ACTIVE', $9, $10, $11, $12, $13, $14, $15, $16, $17, 'All Training Payments for all', $18)
@@ -3993,7 +4002,7 @@ const createInvoice = async (req, res) => {
 
     const orderValues = [
       order_id,
-      grandTotal,
+      sanitizedGrandTotal,
       "INR",
       member_id,
       chapter_id,
@@ -4002,7 +4011,8 @@ const createInvoice = async (req, res) => {
       ulid,
       session_id,
       created_at,
-      (grandTotal * 0.18).toFixed(2), // 18% tax
+      updated_at,
+      (sanitizedGrandTotal * 0.18).toFixed(2), // 18% tax
       `${member_first_name} ${member_last_name}`,
       member_email_address,
       member_phone_number,
@@ -4012,7 +4022,7 @@ const createInvoice = async (req, res) => {
       training_id,
     ];
 
-    await db.query(insertOrderQuery, orderValues);
+    await con.query(insertOrderQuery, orderValues);
 
     // Insert data into transactions table
     const insertTransactionQuery = `
@@ -4027,7 +4037,7 @@ const createInvoice = async (req, res) => {
     const transactionValues = [
       transaction_id,
       order_id,
-      grandTotal,
+      sanitizedGrandTotal,
       created_at,
       created_at,
       transaction_id,
@@ -4041,7 +4051,7 @@ const createInvoice = async (req, res) => {
       transaction_id,
     ];
 
-    await db.query(insertTransactionQuery, transactionValues);
+    await con.query(insertTransactionQuery, transactionValues);
 
     res.status(201).json({
       success: true,
@@ -4054,6 +4064,7 @@ const createInvoice = async (req, res) => {
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+
 
 
 

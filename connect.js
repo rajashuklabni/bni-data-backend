@@ -64,11 +64,11 @@ app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true }));
 // Replace with your Render database credentials
 const con = new Client({
-  host: "54.39.51.161",
-  user: "bninewdelhi_db_user",
-  port: 7546,
-  password: "wP0CqTn346DzBqN",
-  database: "bninewdelhi_dashboard_db",
+  host: "dpg-cs0d2hi3esus739088bg-a.oregon-postgres.render.com",
+  user: "bni_dashboard_backend_database_user",
+  port: 5432,
+  password: "8UGkmCixOpO5Gb89BSBI8aPPapoAW6fD",
+  database: "bni_dashboard_backend_database",
   ssl: {
     rejectUnauthorized: false, // Required for secure connections to Render
   },
