@@ -1,5 +1,6 @@
 const { Client } = require("pg");
 const xlsx = require("xlsx");
+// const fetch = require('node-fetch'); 
 const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcrypt");
@@ -566,27 +567,37 @@ const addMember = async (req, res) => {
     console.log('📸 Files received:', req.files);
     
     try {
+        // Validate required integer fields
+        const requiredIntegerFields = {
+            'region_id': req.body.region_id,
+            'chapter_id': req.body.chapter_id,
+            'category_id': req.body.category_id
+        };
+
+        // Check for empty or invalid integer values
+        for (const [field, value] of Object.entries(requiredIntegerFields)) {
+            if (!value || value === '') {
+                return res.status(400).json({
+                    message: `${field} is required and must be a valid integer`,
+                    field: field
+                });
+            }
+        }
+
         // Parse accolades_id and convert to PostgreSQL array format
         let parsedAccolades;
         try {
-            // Parse the JSON string to array
             const accoladesArray = JSON.parse(req.body.accolades_id);
             console.log('🏆 Parsed accolades:', accoladesArray);
-            
-            // Convert to PostgreSQL array format
             parsedAccolades = `{${accoladesArray.join(',')}}`;
-            console.log('🏆 PostgreSQL array format:', parsedAccolades);
         } catch (error) {
             console.error('❌ Error parsing accolades:', error);
-            parsedAccolades = '{}'; // Empty PostgreSQL array
+            parsedAccolades = '{}';
         }
 
         // Get filenames from uploaded files
         const memberPhotoFilename = req.files?.['member_photo']?.[0]?.filename || null;
         const companyLogoFilename = req.files?.['member_company_logo']?.[0]?.filename || null;
-
-        console.log('📸 Member photo filename:', memberPhotoFilename);
-        console.log('🏢 Company logo filename:', companyLogoFilename);
 
         const result = await con.query(
             `INSERT INTO member (
@@ -614,10 +625,10 @@ const addMember = async (req, res) => {
                 req.body.address_pincode,
                 req.body.address_city,
                 req.body.address_state,
-                req.body.region_id,
-                req.body.chapter_id,
-                parsedAccolades,  // Using the PostgreSQL formatted array
-                req.body.category_id,
+                parseInt(req.body.region_id) || null,      // Convert to integer
+                parseInt(req.body.chapter_id) || null,     // Convert to integer
+                parsedAccolades,
+                parseInt(req.body.category_id) || null,    // Convert to integer
                 req.body.member_induction_date,
                 req.body.member_current_membership,
                 req.body.member_renewal_date,
@@ -641,12 +652,26 @@ const addMember = async (req, res) => {
                 req.body.date_of_publishing,
                 req.body.member_sponsored_by,
                 req.body.member_status,
-                req.body.meeting_opening_balance,
+                parseFloat(req.body.meeting_opening_balance) || 0,
                 req.body.member_company_pincode
             ]
         );
 
         const newMember = result.rows[0];
+        const member_id = newMember.member_id;
+
+        // Convert meeting_opening_balance to number or set default to 0
+        const meeting_opening_balance = parseFloat(req.body.meeting_opening_balance) || 0;
+        
+        await con.query(
+            `INSERT INTO bankorder (member_id, chapter_id, amount_to_pay) VALUES ($1, $2, $3)`,
+            [
+                member_id, 
+                parseInt(req.body.chapter_id), 
+                meeting_opening_balance
+            ]
+        );
+
         console.log('✅ Member added successfully:', newMember);
 
         res.status(201).json({
@@ -665,6 +690,16 @@ const addMember = async (req, res) => {
             error: error.message 
         });
     }
+};
+
+const getBankOrder = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM bankorder");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching bank order:", error);
+    res.status(500).send("Error fetching bank order");
+  }
 };
 
 const getChapters = async (req, res) => {
@@ -2370,6 +2405,40 @@ const getMemberId = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+const getCurrentDate = (req, res) => {
+  const currentDate = new Date();
+  res.status(200).json({ currentDate: currentDate.toISOString() });
+};
+
+
+const getSpecificBankOrder = async (req, res) => {
+  console.log("getSpecificBankOrder",req.body);
+  const { member_id, chapter_id } = req.body;
+  // const result = await con.query("SELECT * FROM bankorder WHERE chapter_id = $1 AND member_id = $2", [chapter_id, member_id]);
+  // res.json(result.rows);
+  try {
+        // Query the database to find matching entries
+        const query = `
+            SELECT * 
+            FROM bankorder 
+            WHERE chapter_id = $1 AND member_id = $2
+        `;
+        
+        const result = await con.query(query, [chapter_id, member_id]);
+
+        // If no rows are found, send a 404 response
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'No matching orders found' });
+        }
+
+        // Send back the matching orders as the response
+        res.status(200).json(result.rows);
+    } catch (error) {
+        // Handle any database errors
+        console.error(error);
+        res.status(500).json({ message: 'Server error, please try again later' });
+    }
+}
 
 const addKittyPayment = async (req, res) => {
   try {
@@ -2436,6 +2505,88 @@ const addKittyPayment = async (req, res) => {
 
     await con.query(updateMemberQuery, [total_bill_amount, chapter_id]);
     console.log(updateMemberQuery);
+    
+
+    const response = await fetch('https://bni-data-backend.onrender.com/api/getbankOrder');
+    const bankOrders = await response.json();
+
+    // Filter the bank orders based on chapter_id
+    // const filteredBankOrders = bankOrders.filter(order => order.chapter_id === chapter_id);
+    console.log("bankOrders",bankOrders);
+    console.log("chapter_id",chapter_id);
+    const filteredBankOrders = bankOrders.filter(order => {
+      console.log("Order Chapter ID:", order.chapter_id);
+      console.log("Chapter ID:", chapter_id);
+      return order.chapter_id === Number(chapter_id);
+    });
+    // const fiterdata = bankOrders.filter(order => order.chapter_id === chapter_id);
+    console.log('Filtered Bank Orders:', filteredBankOrders);
+
+    if (filteredBankOrders.length > 0) {
+      // const totalAmountToPay = filteredBankOrders.reduce((acc, order) => acc + order.amount_to_pay, 0);
+      
+    
+      for (const order of filteredBankOrders) {
+        let currentAmountToPay = order.amount_to_pay;
+        let noOfLatePayment = order.no_of_late_payment;
+        
+        if (currentAmountToPay > 0) {
+          // Code to handle positive amount_to_pay
+          console.log(`Processing payment for order ID: ${order.id} with amount: ${currentAmountToPay}`);
+          let currentDate = new Date();
+          let dueDate = order.kitty_due_date ? new Date(order.kitty_due_date) : null;
+          if (dueDate === null) {
+            // Code to handle the case where dueDate is null
+            console.log(`Order ID: ${order.id} has due date === null.`);
+          }
+          else if (currentDate > dueDate) {
+            // Code to handle the case where the current date is greater than the due date
+            currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(order.kitty_penalty);
+            noOfLatePayment = parseFloat(noOfLatePayment) + 1;
+            console.log(`Order ID: ${order.id} is overdue. Processing overdue actions. added penalty ${order.kitty_penalty} and no of late payment ${noOfLatePayment}`);
+          } else {
+            // Code to handle the case where the current date is less than or equal to the due date
+            console.log(`Order ID: ${order.id} is not overdue. No action needed to add penalty.`);
+          }
+          currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(total_bill_amount);
+        } else {
+          // Code to handle zero or negative amount_to_pay
+          console.log(`for order ID: ${order.id}. Amount to pay is ${order.amount_to_pay}`);
+          currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(total_bill_amount);
+        }
+        
+        // const currentPenalty = parseFloat(penalty_amount);
+
+        const updateQuery = `
+          UPDATE bankorder 
+          SET 
+            amount_to_pay = $1, 
+            kitty_due_date = $2, 
+            no_of_late_payment = $3, 
+            kitty_penalty = $4 
+          WHERE member_id = $5
+        `;
+        
+        const values = [
+          currentAmountToPay, 
+          due_date, 
+          noOfLatePayment, 
+          penalty_amount, 
+          order.member_id
+        ];
+        
+        try {
+          await con.query(updateQuery, values);
+          console.log(`Updated bank order for member ID: ${order.member_id}`);
+        } catch (dbError) {
+          console.error(`Error updating bank order for member ID: ${order.member_id}`, dbError);
+        }
+      }
+    
+    
+    } else {
+      console.log(`No member found for chapter in bank orders ${chapter_id}.`);
+    }
 
     res.status(201).json({ message: "Kitty payment added successfully." });
   } catch (error) {
@@ -4122,4 +4273,7 @@ module.exports = {
   addMemberWriteOff,
   getAllMemberWriteOff,
   getAllVisitors,
+  getBankOrder,
+  getSpecificBankOrder,
+  getCurrentDate,
 };

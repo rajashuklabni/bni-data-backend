@@ -4,6 +4,9 @@ const upload = require("./middleware/expenseImagesMiddleware");
 const { Client } = require("pg");
 const {
   addInvoiceManually,
+  getCurrentDate,
+  getBankOrder,
+  getSpecificBankOrder,
   addPendingAmount,
   getPendingAmount,
   getRegions,
@@ -573,6 +576,9 @@ router.put("/updateChapterSettings",
 router.get('/getInterviewSheet',getInterviewSheet);
 router.get('/getCommitmentSheet',getCommitmentSheet);
 router.get("/getAllVisitors", getAllVisitors);
+router.get("/getBankOrder", getBankOrder);
+router.post("/getSpecificBankOrder", getSpecificBankOrder);
+router.get("/getCurrentDate", getCurrentDate);
 
 // Route to serve the uploaded files
 router.get('/uploads/expenses/:filename', (req, res) => {
