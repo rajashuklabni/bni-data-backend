@@ -1076,14 +1076,15 @@ const updateChapter = async (req, res) => {
   try {
       // First, get the current chapter data to preserve logo if not changed
       const currentChapter = await con.query(
-          'SELECT chapter_logo FROM chapter WHERE chapter_id = $1',
+          'SELECT chapter_logo, email_id FROM chapter WHERE chapter_id = $1',
           [chapter_id]
       );
       
-      console.log('📸 Current chapter logo:', currentChapter.rows[0]?.chapter_logo);
+      const email_id = currentChapter.rows[0]?.email_id;
+      console.log('📧 Chapter email:', email_id);
 
       // Determine which logo to use
-      const logoFilename = req.file ? 
+      let logoFilename = req.file ? 
           req.file.filename : 
           currentChapter.rows[0]?.chapter_logo;
 
@@ -1178,6 +1179,22 @@ const updateChapter = async (req, res) => {
       if (result.rows.length === 0) {
           console.log('⚠️ No chapter found with ID:', chapter_id);
           return res.status(404).json({ message: "Chapter not found" });
+      }
+
+      // If logo was updated, also update it in chapterSettings
+      if (req.file && email_id) {
+          console.log('🔄 Syncing logo update with chapterSettings...');
+          try {
+              const updateSettingsQuery = `
+                  UPDATE chapter 
+                  SET chapter_logo = $1
+                  WHERE email_id = $2
+              `;
+              await con.query(updateSettingsQuery, [logoFilename, email_id]);
+              console.log('✅ Logo synced successfully');
+          } catch (syncError) {
+              console.error('⚠️ Error syncing logo:', syncError);
+          }
       }
 
       // Add image URL to response
@@ -3893,6 +3910,7 @@ const updateChapterSettings = async (req, res) => {
         // Handle file upload if present
         if (req.file) {
             console.log('File uploaded:', req.file);
+            // Store just the filename as that's what we'll use in the URL
             const photoPath = `${req.file.filename}`;
             updateQuery += `, chapter_logo = $12`;
             queryParams.push(photoPath);
@@ -3900,11 +3918,6 @@ const updateChapterSettings = async (req, res) => {
 
         updateQuery += ` WHERE email_id = $${queryParams.length + 1} RETURNING *`;
         queryParams.push(email_id);
-
-        console.log('Executing update query:', {
-            query: updateQuery,
-            params: queryParams
-        });
 
         const result = await con.query(updateQuery, queryParams);
 
@@ -3916,11 +3929,17 @@ const updateChapterSettings = async (req, res) => {
             });
         }
 
-        console.log('Chapter updated successfully:', result.rows[0]);
+        // Add the logo URL to the response
+        const updatedChapter = result.rows[0];
+        if (updatedChapter.chapter_logo) {
+            updatedChapter.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+        }
+
+        console.log('Chapter updated successfully:', updatedChapter);
         res.status(200).json({
             success: true,
             message: 'Chapter settings updated successfully',
-            data: result.rows[0]
+            data: updatedChapter
         });
 
     } catch (error) {
