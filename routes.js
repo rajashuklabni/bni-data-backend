@@ -4,6 +4,9 @@ const upload = require("./middleware/expenseImagesMiddleware");
 const { Client } = require("pg");
 const {
   addInvoiceManually,
+  getCurrentDate,
+  getBankOrder,
+  getSpecificBankOrder,
   addPendingAmount,
   getPendingAmount,
   getRegions,
@@ -187,6 +190,45 @@ const expenseUpload = multer({
     }
 });
 
+// Configure multer storage for member files
+const memberStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        let uploadDir;
+        if (file.fieldname === 'member_photo') {
+            uploadDir = './uploads/memberLogos';
+        } else if (file.fieldname === 'member_company_logo') {
+            uploadDir = './uploads/memberCompanyLogos';
+        }
+        
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const memberUpload = multer({
+    storage: memberStorage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    },
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (extname && mimetype) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
+        }
+    }
+});
+
 // Configure multer storage for member photos
 const memberPhotoStorage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -214,30 +256,41 @@ const uploadMemberPhoto = multer({
   }
 });
 
-// Configure multer storage for chapter logos
-const chapterLogoStorage = multer.diskStorage({
+// Configure multer storage for main chapter logos
+const mainChapterLogoStorage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const uploadDir = './uploads/chapterPhotos';
+        const uploadDir = './uploads/chapterLogos';
+        console.log('📁 Creating upload directory:', uploadDir);
+        
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
+            console.log('✨ Created new directory');
         }
         cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'chapter-' + uniqueSuffix + path.extname(file.originalname));
+        const filename = 'chapter-' + uniqueSuffix + path.extname(file.originalname);
+        console.log('📝 Generated filename:', filename);
+        cb(null, filename);
     }
 });
 
-const uploadChapterLogo = multer({
-    storage: chapterLogoStorage,
+const uploadMainChapterLogo = multer({
+    storage: mainChapterLogoStorage,
     fileFilter: function (req, file, cb) {
         const allowedTypes = /jpeg|jpg|png/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
         const mimetype = allowedTypes.test(file.mimetype);
 
+        console.log('🔍 Validating file:', {
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            isValid: extname && mimetype
+        });
+
         if (extname && mimetype) {
-            return cb(null, true);
+            cb(null, true);
         } else {
             cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
         }
@@ -273,6 +326,96 @@ const uploadRegionLogo = multer({
         }
     }
 });
+
+// Configure multer storage for main member logos
+const mainMemberLogoStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = './uploads/memberLogos';
+        console.log('📁 Creating member logo directory:', uploadDir);
+        
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+            console.log('✨ Created new member logo directory');
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const filename = 'member-' + uniqueSuffix + path.extname(file.originalname);
+        console.log('📝 Generated member logo filename:', filename);
+        cb(null, filename);
+    }
+});
+
+// Configure multer storage for main member company logos
+const mainMemberCompanyLogoStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = './uploads/memberCompanyLogos';
+        console.log('📁 Creating company logo directory:', uploadDir);
+        
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+            console.log('✨ Created new company logo directory');
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const filename = 'company-' + uniqueSuffix + path.extname(file.originalname);
+        console.log('📝 Generated company logo filename:', filename);
+        cb(null, filename);
+    }
+});
+
+// Set up multer for main member logo uploads
+const uploadMainMemberLogo = multer({
+    storage: mainMemberLogoStorage,
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        console.log('🔍 Validating member logo:', {
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            isValid: extname && mimetype
+        });
+
+        if (extname && mimetype) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
+        }
+    }
+});
+
+// Set up multer for main member company logo uploads
+const uploadMainMemberCompanyLogo = multer({
+    storage: mainMemberCompanyLogoStorage,
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        console.log('🔍 Validating company logo:', {
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            isValid: extname && mimetype
+        });
+
+        if (extname && mimetype) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
+        }
+    }
+});
+
+// First, set up the multer fields configuration for multiple files
+const memberUploadFields = [
+    { name: 'member_photo', maxCount: 1 },
+    { name: 'member_company_logo', maxCount: 1 }
+];
 
 // Route to handle logo upload
 router.post("/uploadLogo", (req, res) => {
@@ -323,10 +466,13 @@ router.post("/uploadLogo", (req, res) => {
 router.get("/regions", getRegions);
 router.post("/regions", uploadRegionLogo.single('region_logo'), addRegion);
 router.get("/chapters", getChapters);
-router.post("/chapters", addChapter);
+router.post("/chapters", uploadMainChapterLogo.single('chapter_logo'), addChapter);
 router.get("/members", getMembers);
 router.get("/members/:email", getMemberByEmail);
-router.post("/members", addMember);
+router.post("/members", memberUpload.fields([
+    { name: 'member_photo', maxCount: 1 },
+    { name: 'member_company_logo', maxCount: 1 }
+]), addMember);
 router.get("/accolades", getAccolades);
 router.get("/memberCategory", getMemberCategory);
 router.get("/company", getCompany);
@@ -352,9 +498,15 @@ router.get("/getUsers", getUsers);
 router.get("/getAccolade/:accolade_id", getAccolade);
 router.get("/getLoginOtps", getLoginOtps);
 router.get("/getLoginLogs", getLoginLogs);
-router.put("/updateChapter/:chapter_id", updateChapter);
+router.put("/updateChapter/:chapter_id", uploadMainChapterLogo.single('chapter_logo'), updateChapter);
 router.put("/deleteChapter/:chapter_id", deleteChapter);
-router.put("/updateMember/:member_id", uploadMemberPhoto.single('member_photo'), updateMember);
+router.put("/updateMember/:member_id", 
+    memberUpload.fields([
+        { name: 'member_photo', maxCount: 1 },
+        { name: 'member_company_logo', maxCount: 1 }
+    ]),
+    updateMember
+);
 router.put("/deleteMember/:member_id", deleteMember);
 router.put("/updateUniversalLink/:id", updateUniversalLink);
 router.put("/deleteUniversalLink/:id", deleteUniversalLink);
@@ -419,17 +571,20 @@ router.post("/addMemberWriteOff", addMemberWriteOff);
 router.get("/getAllMemberWriteOff", getAllMemberWriteOff);
 
 router.put("/updateChapterSettings", 
-    uploadChapterLogo.single('chapter_logo'), 
+    uploadMainChapterLogo.single('chapter_logo'), 
     updateChapterSettings
 );
 router.get('/getInterviewSheet',getInterviewSheet);
 router.get('/getCommitmentSheet',getCommitmentSheet);
 router.get("/getAllVisitors", getAllVisitors);
 router.post("/add-invoice", createInvoice);
+router.get("/getBankOrder", getBankOrder);
+router.post("/getSpecificBankOrder", getSpecificBankOrder);
+router.get("/getCurrentDate", getCurrentDate);
 
 // Route to serve the uploaded files
 router.get('/uploads/expenses/:filename', (req, res) => {
-    console.log('🔍 Requesting file:', req.params.filename);
+    console.log('🖼️ Requesting file:', req.params.filename);
     
     const projectRoot = path.resolve(__dirname);
     const filePath = path.join(projectRoot, 'uploads', 'expenses', req.params.filename);
@@ -482,6 +637,63 @@ router.get('/uploads/regionLogos/:filename', (req, res) => {
     const filePath = path.join(__dirname, 'uploads', 'regionLogos', req.params.filename);
     
     if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ 
+            message: 'Logo not found',
+            requestedFile: req.params.filename
+        });
+    }
+    
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(filePath);
+});
+
+// Route to serve chapter logos
+router.get('/uploads/chapterLogos/:filename', (req, res) => {
+    console.log('🖼️ Requesting chapter logo:', req.params.filename);
+    
+    const filePath = path.join(__dirname, 'uploads', 'chapterLogos', req.params.filename);
+    
+    if (!fs.existsSync(filePath)) {
+        console.log('❌ Logo file not found:', filePath);
+        return res.status(404).json({ 
+            message: 'Logo not found',
+            requestedFile: req.params.filename
+        });
+    }
+    
+    console.log('✅ Serving logo file:', req.params.filename);
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(filePath);
+});
+
+// Routes to serve the images
+router.get('/uploads/memberLogos/:filename', (req, res) => {
+    console.log('🖼️ Requesting member logo:', req.params.filename);
+    
+    const filePath = path.join(__dirname, 'uploads', 'memberLogos', req.params.filename);
+    
+    if (!fs.existsSync(filePath)) {
+        console.log('❌ Member logo not found:', filePath);
+        return res.status(404).json({ 
+            message: 'Logo not found',
+            requestedFile: req.params.filename
+        });
+    }
+    
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(filePath);
+});
+
+router.get('/uploads/memberCompanyLogos/:filename', (req, res) => {
+    console.log('🖼️ Requesting company logo:', req.params.filename);
+    
+    const filePath = path.join(__dirname, 'uploads', 'memberCompanyLogos', req.params.filename);
+    
+    if (!fs.existsSync(filePath)) {
+        console.log('❌ Company logo not found:', filePath);
         return res.status(404).json({ 
             message: 'Logo not found',
             requestedFile: req.params.filename
