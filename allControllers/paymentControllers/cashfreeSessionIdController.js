@@ -188,7 +188,7 @@ console.log("paymentDetails==============================",paymentDetails);
       console.log("separated data");
       console.log(balance_data);
       
-        if(payment_status==='SUCCESS'){
+        if(payment_status==='SUCCESS' && responseData1.customer_details.payment_note === 'meeting-payments'){
           // db query
           console.log("adding in db.....");
           await db.query(`
@@ -223,10 +223,6 @@ console.log("paymentDetails==============================",paymentDetails);
         }
 
         console.log("Updated is_adjusted to true for filtered credits");
-
-    
-        }
-
         const newAmountToPay = parseFloat(responseData1.total_amount_paid) - parseFloat(responseData1.tax);
 
       const updateQuery = `
@@ -237,6 +233,10 @@ console.log("paymentDetails==============================",paymentDetails);
       const values = [newAmountToPay, balance_data.member_id];
       await db.query(updateQuery, values);
       console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
+    
+        }
+
+        
       // responseData1.total_amount_paid,
         // tax: responseData1.tax,
       return res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`);
