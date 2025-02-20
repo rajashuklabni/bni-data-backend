@@ -101,6 +101,7 @@ const {
   getAllMemberWriteOff,
   getAllVisitors,
   createInvoice,
+  getZones,
 } = require("./controllers");
 
 const path = require("path");
@@ -581,6 +582,7 @@ router.post("/add-invoice", createInvoice);
 router.get("/getBankOrder", getBankOrder);
 router.post("/getSpecificBankOrder", getSpecificBankOrder);
 router.get("/getCurrentDate", getCurrentDate);
+router.get("/getZones", getZones);
 
 // Route to serve the uploaded files
 router.get('/uploads/expenses/:filename', (req, res) => {

@@ -4331,6 +4331,17 @@ const createInvoice = async (req, res) => {
 };
 
 
+const getZones = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM zone");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching zones:", error);
+    res.status(500).send("Error fetching zones");
+  }
+};
+
+
 
 
 
@@ -4435,4 +4446,5 @@ module.exports = {
   getBankOrder,
   getSpecificBankOrder,
   getCurrentDate,
+  getZones,
 };
