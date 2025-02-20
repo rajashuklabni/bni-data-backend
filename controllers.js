@@ -4242,10 +4242,13 @@ const createInvoice = async (req, res) => {
     console.log(req.body);
 
     // Function to remove non-numeric characters except the decimal point
-    const sanitizeAmount = (amount) => parseFloat(amount.replace(/[^\d.]/g, ""));
+    const sanitizeAmount = (amount) => parseFloat(amount.replace(/[^\d.]/g, "")) || 0;
 
     // Sanitize grand_total before inserting into the database
     const sanitizedGrandTotal = sanitizeAmount(grand_total);
+    const sanitizedCGST = sanitizeAmount(req.body.cgst_amount);
+    const sanitizedSGST = sanitizeAmount(req.body.sgst_amount);
+    const totalTax = (sanitizedCGST + sanitizedSGST).toFixed(2); // Sum of CGST & SGST
 
     // Generate order and transaction IDs
     const order_id = uuidv4();
@@ -4262,7 +4265,7 @@ const createInvoice = async (req, res) => {
         order_status, payment_session_id, created_at, updated_at, tax,
         member_name, customer_email, customer_phone, gstin,
         company, mobile_number, payment_note, training_id
-      ) VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, $8, 'ACTIVE', $9, $10, $11, $12, $13, $14, $15, $16, $17, 'All Training Payments for all', $18)
+      ) VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, $8, 'ACTIVE', $9, $10, $11, $12, $13, $14, $15, $16, $17, 'All Training Payments for all', $18, $19)
     `;
 
     const orderValues = [
@@ -4277,7 +4280,7 @@ const createInvoice = async (req, res) => {
       session_id,
       created_at,
       updated_at,
-      (sanitizedGrandTotal * 0.18).toFixed(2), // 18% tax
+      totalTax,
       `${member_first_name} ${member_last_name}`,
       member_email_address,
       member_phone_number,
@@ -4340,8 +4343,6 @@ const getZones = async (req, res) => {
     res.status(500).send("Error fetching zones");
   }
 };
-
-
 
 
 
