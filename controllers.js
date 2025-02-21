@@ -4452,7 +4452,7 @@ const getZone = async (req, res) => {
 
         // Add base URL to zone logo
         if (result.rows[0].zone_logo) {
-            result.rows[0].zone_logo = `http://localhost:5000/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
+            result.rows[0].zone_logo = `https://bni-data-backend.onrender.com/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
         }
 
         res.json({
