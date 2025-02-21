@@ -102,6 +102,9 @@ const {
   getAllVisitors,
   createInvoice,
   getZones,
+  addZone,
+  getZone,
+  updateZone,
 } = require("./controllers");
 
 const path = require("path");
@@ -706,5 +709,53 @@ router.get('/uploads/memberCompanyLogos/:filename', (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.sendFile(filePath);
 });
+
+// Add this with other multer configurations
+const zoneLogoStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = './uploads/ZonesLogos';
+        console.log('📁 Creating zone logo directory:', uploadDir);
+        
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+            console.log('✨ Created new zone logo directory');
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const filename = 'zone-' + uniqueSuffix + path.extname(file.originalname);
+        console.log('📝 Generated zone logo filename:', filename);
+        cb(null, filename);
+    }
+});
+
+const uploadZoneLogo = multer({
+    storage: zoneLogoStorage,
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        console.log('🔍 Validating zone logo:', {
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            isValid: extname && mimetype
+        });
+
+        if (extname && mimetype) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
+        }
+    }
+});
+
+// Add this route with other routes
+router.post("/addZone", uploadZoneLogo.single('zone_logo'), addZone);
+
+// Add these routes with your other routes
+router.get("/getZone/:zone_id", getZone);
+router.put("/updateZone/:zone_id", uploadZoneLogo.single('zone_logo'), updateZone);
 
 module.exports = router;
