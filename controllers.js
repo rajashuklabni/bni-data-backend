@@ -4544,6 +4544,17 @@ const updateZone = async (req, res) => {
     }
 };
 
+
+const getHotels = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM hotel WHERE delete_status='0' ");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching hotels:", error);
+    res.status(500).send("Error fetching hotels");
+  }
+};
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -4649,4 +4660,5 @@ module.exports = {
   addZone,
   getZone,
   updateZone,
+  getHotels,
 };

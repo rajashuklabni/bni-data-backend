@@ -105,6 +105,7 @@ const {
   addZone,
   getZone,
   updateZone,
+  getHotels,
 } = require("./controllers");
 
 const path = require("path");
@@ -586,6 +587,7 @@ router.get("/getBankOrder", getBankOrder);
 router.post("/getSpecificBankOrder", getSpecificBankOrder);
 router.get("/getCurrentDate", getCurrentDate);
 router.get("/getZones", getZones);
+router.get("/getHotels", getHotels);
 
 // Route to serve the uploaded files
 router.get('/uploads/expenses/:filename', (req, res) => {
