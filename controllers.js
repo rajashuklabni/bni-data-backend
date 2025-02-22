@@ -4582,7 +4582,10 @@ const addHotel = async (req, res) => {
           });
       }
 
-      // Insert zone into database
+      // Convert hotel_status to boolean (true for "Active", false for "Inactive")
+      const is_active = hotel_status.toLowerCase() === "active";
+
+      // Insert data into the database
       const query = `
           INSERT INTO hotel (
               hotel_name,
@@ -4602,7 +4605,7 @@ const addHotel = async (req, res) => {
           hotel_name,
           hotel_address,
           hotel_bill_amount,
-          hotel_status,
+          is_active, // Corrected boolean value
           hotel_pincode,
           hotel_published_by,
           date_of_publishing || new Date(),
@@ -4630,6 +4633,7 @@ const addHotel = async (req, res) => {
       });
   }
 };
+
 
 const deleteHotel = async (req, res) => {
   const { hotel_id } = req.params;
