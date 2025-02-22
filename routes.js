@@ -106,6 +106,9 @@ const {
   getZone,
   updateZone,
   getHotels,
+  addHotel,
+  deleteHotel,
+  updateHotel,
 } = require("./controllers");
 
 const path = require("path");
@@ -755,6 +758,9 @@ const uploadZoneLogo = multer({
 
 // Add this route with other routes
 router.post("/addZone", uploadZoneLogo.single('zone_logo'), addZone);
+router.post("/addHotel", addHotel);
+router.put("/deleteHotel/:hotel_id", deleteHotel);
+router.put("/updateHotel/:hotel_id", updateHotel);
 
 // Add these routes with your other routes
 router.get("/getZone/:zone_id", getZone);
