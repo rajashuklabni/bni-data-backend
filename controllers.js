@@ -4344,7 +4344,205 @@ const getZones = async (req, res) => {
   }
 };
 
+const addZone = async (req, res) => {
+    try {
+        console.log('📝 Starting addZone process');
+        console.log('Request body:', req.body);
+        console.log('Uploaded file:', req.file);
 
+        const {
+            zone_name,
+            zone_status,
+            zone_launched_by,
+            zone_contact_number,
+            zone_email_id,
+            date_of_publishing
+        } = req.body;
+
+        // Validate required fields
+        if (!zone_name || !zone_status || !zone_contact_number || !zone_email_id) {
+            console.error('❌ Missing required fields');
+            return res.status(400).json({
+                success: false,
+                message: "Required fields missing: zone_name, zone_status, zone_contact_number, and zone_email_id are mandatory"
+            });
+        }
+
+        // Get the filename from the uploaded file
+        const zone_logo = req.file ? req.file.filename : null;
+        console.log('🖼️ Zone logo filename:', zone_logo);
+
+        // First, drop the existing unique constraint if it exists
+        try {
+            await con.query(`
+                ALTER TABLE zone 
+                DROP CONSTRAINT IF EXISTS zone_zone_email_id_key;
+            `);
+            console.log('🔧 Dropped unique constraint on email_id if it existed');
+        } catch (error) {
+            console.log('ℹ️ No constraint to drop or already dropped');
+        }
+
+        // Insert zone into database
+        const query = `
+            INSERT INTO zone (
+                zone_name,
+                zone_logo,
+                zone_status,
+                zone_launched_by,
+                zone_contact_number,
+                zone_email_id,
+                date_of_publishing,
+                delete_status
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING *
+        `;
+
+        const values = [
+            zone_name,
+            zone_logo,
+            zone_status,
+            zone_launched_by || null,
+            zone_contact_number,
+            zone_email_id,
+            date_of_publishing || new Date(),
+            false // default delete_status
+        ];
+
+        console.log('💾 Executing query with values:', values);
+
+        const result = await con.query(query, values);
+        console.log('✅ Zone added successfully:', result.rows[0]);
+
+        res.status(201).json({
+            success: true,
+            message: "Zone added successfully",
+            data: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Error in addZone:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error adding zone",
+            error: error.message
+        });
+    }
+};
+
+const getZone = async (req, res) => {
+    try {
+        console.log('📥 Getting zone details for ID:', req.params.zone_id);
+        
+        const query = `
+            SELECT * FROM zone 
+            WHERE zone_id = $1 AND delete_status = false
+        `;
+        
+        const result = await con.query(query, [req.params.zone_id]);
+        console.log('🔍 Zone details found:', result.rows[0]);
+
+        if (result.rows.length === 0) {
+            console.log('❌ No zone found with ID:', req.params.zone_id);
+            return res.status(404).json({
+                success: false,
+                message: "Zone not found"
+            });
+        }
+
+        // Add base URL to zone logo
+        if (result.rows[0].zone_logo) {
+            result.rows[0].zone_logo = `https://bni-data-backend.onrender.com/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
+        }
+
+        res.json({
+            success: true,
+            data: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Error in getZone:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error fetching zone details",
+            error: error.message
+        });
+    }
+};
+
+const updateZone = async (req, res) => {
+    try {
+        console.log('📝 Starting zone update process');
+        console.log('Request body:', req.body);
+        console.log('Uploaded file:', req.file);
+
+        const zone_id = req.params.zone_id;
+        const {
+            zone_name,
+            zone_status,
+            zone_launched_by,
+            zone_contact_number,
+            zone_email_id,
+            date_of_publishing
+        } = req.body;
+
+        // Validate required fields
+        if (!zone_name || !zone_status || !zone_contact_number || !zone_email_id) {
+            console.error('❌ Missing required fields');
+            return res.status(400).json({
+                success: false,
+                message: "Required fields missing"
+            });
+        }
+
+        let updateQuery = `
+            UPDATE zone 
+            SET zone_name = $1,
+                zone_status = $2,
+                zone_launched_by = $3,
+                zone_contact_number = $4,
+                zone_email_id = $5,
+                date_of_publishing = $6
+        `;
+
+        let values = [
+            zone_name,
+            zone_status,
+            zone_launched_by,
+            zone_contact_number,
+            zone_email_id,
+            date_of_publishing || new Date()
+        ];
+
+        // If new logo is uploaded
+        if (req.file) {
+            updateQuery += `, zone_logo = $${values.length + 1}`;
+            values.push(req.file.filename);
+        }
+
+        updateQuery += ` WHERE zone_id = $${values.length + 1} RETURNING *`;
+        values.push(zone_id);
+
+        console.log('💾 Executing update query:', { query: updateQuery, values });
+
+        const result = await con.query(updateQuery, values);
+        console.log('✅ Zone updated successfully:', result.rows[0]);
+
+        res.json({
+            success: true,
+            message: "Zone updated successfully",
+            data: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ Error in updateZone:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error updating zone",
+            error: error.message
+        });
+    }
+};
 
 module.exports = {
   addInvoiceManually,
@@ -4448,4 +4646,7 @@ module.exports = {
   getSpecificBankOrder,
   getCurrentDate,
   getZones,
+  addZone,
+  getZone,
+  updateZone,
 };
