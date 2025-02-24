@@ -408,159 +408,161 @@ const addRegion = async (req, res) => {
 };
 
 const addChapter = async (req, res) => {
-    console.log('📥 Starting addChapter process');
-    console.log('📦 Request body:', req.body);
-    console.log('📎 Request files:', req.files);
-    console.log('📄 Single file:', req.file);
-    
-    // Log form data for debugging
-    if (req.file) {
-        console.log('🖼️ Uploaded file details:', {
-            fieldname: req.file.fieldname,
-            originalname: req.file.originalname,
-            mimetype: req.file.mimetype,
-            filename: req.file.filename,
-            path: req.file.path,
-            size: req.file.size
-        });
-    } else {
-        console.log('⚠️ No file uploaded');
-    }
+  console.log('📥 Starting addChapter process');
+  console.log('📦 Request body:', req.body);
+  console.log('📎 Request files:', req.files);
+  console.log('📄 Single file:', req.file);
+  
+  // Log form data for debugging
+  if (req.file) {
+      console.log('🖼️ Uploaded file details:', {
+          fieldname: req.file.fieldname,
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          filename: req.file.filename,
+          path: req.file.path,
+          size: req.file.size
+      });
+  } else {
+      console.log('⚠️ No file uploaded');
+  }
 
-    const {
-        region_id,
-        chapter_name,
-        chapter_status,
-        chapter_membership_fee,
-        chapter_kitty_fees,
-        chapter_visitor_fees,
-        chapter_meeting_day,
-        one_time_registration_fee,
-        chapter_type,
-        eoi_link,
-        member_app_link,
-        meeting_hotel_name,
-        chapter_membership_fee_two_year,
-        chapter_membership_fee_five_year,
-        contact_number,
-        contact_person,
-        chapter_mission,
-        chapter_vision,
-        email_id,
-        country,
-        state,
-        city,
-        street_address_line,
-        postal_code,
-        chapter_facebook,
-        chapter_instagram,
-        chapter_linkedin,
-        chapter_youtube,
-        chapter_website,
-        date_of_publishing,
-        chapter_launched_by,
-        chapter_location_note,
-        chapter_late_fees,
-        chapter_available_fund,
-        billing_frequency,
-    } = req.body;
+  const {
+      region_id,
+      chapter_name,
+      chapter_status,
+      chapter_membership_fee,
+      chapter_kitty_fees,
+      chapter_visitor_fees,
+      chapter_meeting_day,
+      one_time_registration_fee,
+      chapter_type,
+      eoi_link,
+      member_app_link,
+      chapter_membership_fee_two_year,
+      chapter_membership_fee_five_year,
+      contact_number,
+      contact_person,
+      chapter_mission,
+      chapter_vision,
+      email_id,
+      country,
+      state,
+      city,
+      street_address_line,
+      postal_code,
+      chapter_facebook,
+      chapter_instagram,
+      chapter_linkedin,
+      chapter_youtube,
+      chapter_website,
+      date_of_publishing,
+      chapter_launched_by,
+      chapter_location_note,
+      chapter_late_fees,
+      chapter_available_fund,
+      billing_frequency,
+      meeting_hotel_id,
+  } = req.body;
 
-    // Get logo filename from uploaded file
-    const logoFilename = req.file ? req.file.filename : null;
-    console.log('💾 Logo filename to store:', logoFilename);
+  // Get logo filename from uploaded file
+  const logoFilename = req.file ? req.file.filename : null;
+  console.log('💾 Logo filename to store:', logoFilename);
 
-    try {
-        const checkDuplicate = await con.query(
-            `SELECT * FROM chapter WHERE chapter_name = $1`,
-            [chapter_name]
-        );
+  try {
+      const checkDuplicate = await con.query(
+          `SELECT * FROM chapter WHERE chapter_name = $1`,
+          [chapter_name]
+      );
 
-        if (checkDuplicate.rows.length > 0) {
-            console.log('⚠️ Duplicate chapter name found');
-            return res.status(409).json({
-                message: "Chapter name already exists",
-            });
-        }
+      if (checkDuplicate.rows.length > 0) {
+          console.log('⚠️ Duplicate chapter name found');
+          return res.status(409).json({
+              message: "Chapter name already exists",
+          });
+      }
 
-        const result = await con.query(
-            `INSERT INTO chapter (
-                region_id, chapter_name, chapter_logo, chapter_status, chapter_membership_fee,
-                chapter_kitty_fees, chapter_visitor_fees, chapter_meeting_day, one_time_registration_fee,
-                chapter_type, eoi_link, member_app_link, meeting_hotel_name,
-                chapter_membership_fee_two_year, chapter_membership_fee_five_year, contact_number,
-                contact_person, chapter_mission, chapter_vision, email_id, country, state, city,
-                street_address_line, postal_code, chapter_facebook, chapter_instagram,
-                chapter_linkedin, chapter_youtube, chapter_website, date_of_publishing,
-                chapter_launched_by, chapter_location_note, chapter_late_fees, available_fund, kitty_billing_frequency
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9,
-                $10, $11, $12, $13, $14, $15, $16,
-                $17, $18, $19, $20, $21, $22, $23,
-                $24, $25, $26, $27, $28, $29, $30,
-                $31, $32, $33, $34, $35, $36
-            ) RETURNING *`,
-            [
-                region_id,
-                chapter_name,
-                logoFilename, // This should now have the correct filename
-                chapter_status,
-                chapter_membership_fee,
-                chapter_kitty_fees,
-                chapter_visitor_fees,
-                chapter_meeting_day,
-                one_time_registration_fee,
-                chapter_type,
-                eoi_link,
-                member_app_link,
-                meeting_hotel_name,
-                chapter_membership_fee_two_year,
-                chapter_membership_fee_five_year,
-                contact_number,
-                contact_person,
-                chapter_mission,
-                chapter_vision,
-                email_id,
-                country,
-                state,
-                city,
-                street_address_line,
-                postal_code,
-                chapter_facebook,
-                chapter_instagram,
-                chapter_linkedin,
-                chapter_youtube,
-                chapter_website,
-                date_of_publishing,
-                chapter_launched_by,
-                chapter_location_note,
-                chapter_late_fees,
-                chapter_available_fund,
-                billing_frequency
-            ]
-        );
+      const result = await con.query(
+          `INSERT INTO chapter (
+              region_id, chapter_name, chapter_logo, chapter_status, chapter_membership_fee,
+              chapter_kitty_fees, chapter_visitor_fees, chapter_meeting_day, one_time_registration_fee,
+              chapter_type, eoi_link, member_app_link,
+              chapter_membership_fee_two_year, chapter_membership_fee_five_year, contact_number,
+              contact_person, chapter_mission, chapter_vision, email_id, country, state, city,
+              street_address_line, postal_code, chapter_facebook, chapter_instagram,
+              chapter_linkedin, chapter_youtube, chapter_website, date_of_publishing,
+              chapter_launched_by, chapter_location_note, chapter_late_fees, available_fund, kitty_billing_frequency,meeting_hotel_id
+          ) VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9,
+              $10, $11, $12, $13, $14, $15, $16,
+              $17, $18, $19, $20, $21, $22, $23,
+              $24, $25, $26, $27, $28, $29, $30,
+              $31, $32, $33, $34, $35, $36
+          ) RETURNING *`,
+          [
+              region_id,
+              chapter_name,
+              logoFilename, // This should now have the correct filename
+              chapter_status,
+              chapter_membership_fee,
+              chapter_kitty_fees,
+              chapter_visitor_fees,
+              chapter_meeting_day,
+              one_time_registration_fee,
+              chapter_type,
+              eoi_link,
+              member_app_link,
+              
+              chapter_membership_fee_two_year,
+              chapter_membership_fee_five_year,
+              contact_number,
+              contact_person,
+              chapter_mission,
+              chapter_vision,
+              email_id,
+              country,
+              state,
+              city,
+              street_address_line,
+              postal_code,
+              chapter_facebook,
+              chapter_instagram,
+              chapter_linkedin,
+              chapter_youtube,
+              chapter_website,
+              date_of_publishing,
+              chapter_launched_by,
+              chapter_location_note,
+              chapter_late_fees,
+              chapter_available_fund,
+              billing_frequency,
+              meeting_hotel_id
+          ]
+      );
 
-        // Add image URL to response
-        const chapterData = result.rows[0];
-        if (chapterData.chapter_logo) {
-            chapterData.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
-            console.log('🔗 Generated logo URL:', chapterData.chapter_logo_url);
-        }
+      // Add image URL to response
+      const chapterData = result.rows[0];
+      if (chapterData.chapter_logo) {
+          chapterData.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+          console.log('🔗 Generated logo URL:', chapterData.chapter_logo_url);
+      }
 
-        console.log('✅ Chapter added successfully:', chapterData);
-        res.status(201).json({ 
-            message: "Chapter added successfully!", 
-            data: chapterData 
-        });
+      console.log('✅ Chapter added successfully:', chapterData);
+      res.status(201).json({ 
+          message: "Chapter added successfully!", 
+          data: chapterData 
+      });
 
-    } catch (error) {
-        console.error('❌ Error adding chapter:', error);
-        console.error('Error details:', error.stack);
-        res.status(500).json({
-            message: "Error adding chapter",
-            error: error.message
-        });
-    }
+  } catch (error) {
+      console.error('❌ Error adding chapter:', error);
+      console.error('Error details:', error.stack);
+      res.status(500).json({
+          message: "Error adding chapter",
+          error: error.message
+      });
+  }
 };
+
 
 const addMember = async (req, res) => {
     console.log('📥 Starting add member process');
@@ -1106,30 +1108,30 @@ const updateChapter = async (req, res) => {
               chapter_type = $10,
               eoi_link = $11,
               member_app_link = $12,
-              meeting_hotel_name = $13,
-              chapter_membership_fee_two_year = $14,
-              chapter_membership_fee_five_year = $15,
-              contact_number = $16,
-              contact_person = $17,
-              chapter_mission = $18,
-              chapter_vision = $19,
-              email_id = $20,
-              country = $21,
-              state = $22,
-              city = $23,
-              street_address_line = $24,
-              postal_code = $25,
-              chapter_facebook = $26,
-              chapter_instagram = $27,
-              chapter_linkedin = $28,
-              chapter_youtube = $29,
-              chapter_website = $30,
-              date_of_publishing = $31,
-              chapter_launched_by = $32,
-              chapter_location_note = $33,
-              chapter_late_fees = $34,
-              available_fund = $35,
-              kitty_billing_frequency = $36
+              chapter_membership_fee_two_year = $13,
+              chapter_membership_fee_five_year = $14,
+              contact_number = $15,
+              contact_person = $16,
+              chapter_mission = $17,
+              chapter_vision = $18,
+              email_id = $19,
+              country = $20,
+              state = $21,
+              city = $22,
+              street_address_line = $23,
+              postal_code = $24,
+              chapter_facebook = $25,
+              chapter_instagram = $26,
+              chapter_linkedin = $27,
+              chapter_youtube = $28,
+              chapter_website = $29,
+              date_of_publishing = $30,
+              chapter_launched_by = $31,
+              chapter_location_note = $32,
+              chapter_late_fees = $33,
+              available_fund = $34,
+              kitty_billing_frequency = $35,
+              meeting_hotel_id = $36
           WHERE chapter_id = $37
           RETURNING *
       `;
@@ -1147,7 +1149,6 @@ const updateChapter = async (req, res) => {
           req.body.chapter_type,
           req.body.eoi_link,
           req.body.member_app_link,
-          req.body.meeting_hotel_name,
           req.body.chapter_membership_fee_two_year,
           req.body.chapter_membership_fee_five_year,
           req.body.contact_number,
@@ -1171,6 +1172,7 @@ const updateChapter = async (req, res) => {
           req.body.chapter_late_fees,
           req.body.chapter_available_fund,
           req.body.billing_frequency,
+          req.body.meeting_hotel_id,  // Moved to match addChapter order
           chapter_id
       ];
 
@@ -3850,107 +3852,106 @@ const memberPendingKittyOpeningBalance = async (req, res) => {
 };
 
 const updateChapterSettings = async (req, res) => {
-    console.log('Starting updateChapterSettings controller...');
-    
-    try {
-        console.log('Request body:', req.body);
-        const {
-            email_id,
-            contact_number,
-            contact_person,
-            chapter_mission,
-            chapter_vision,
-            meeting_hotel_name,
-            street_address_line,
-            postal_code,
-            chapter_facebook,
-            chapter_instagram,
-            chapter_linkedin,
-            chapter_youtube
-        } = req.body;
-        console.log(email_id, contact_number, contact_person, chapter_mission, chapter_vision, meeting_hotel_name, street_address_line, postal_code, chapter_facebook, chapter_instagram, chapter_linkedin, chapter_youtube);
+  console.log('Starting updateChapterSettings controller...');
+  
+  try {
+      console.log('Request body:', req.body);
+      const {
+          email_id,
+          contact_number,
+          contact_person,
+          chapter_mission,
+          chapter_vision,
+          meeting_hotel_id,
+          street_address_line,
+          postal_code,
+          chapter_facebook,
+          chapter_instagram,
+          chapter_linkedin,
+          chapter_youtube
+      } = req.body;
+      console.log(email_id, contact_number, contact_person, chapter_mission, chapter_vision, meeting_hotel_id, street_address_line, postal_code, chapter_facebook, chapter_instagram, chapter_linkedin, chapter_youtube);
 
-        if (!email_id) {
-            console.error('Email ID is required');
-            return res.status(400).json({
-                success: false,
-                message: 'Email ID is required'
-            });
-        }
+      if (!email_id) {
+          console.error('Email ID is required');
+          return res.status(400).json({
+              success: false,
+              message: 'Email ID is required'
+          });
+      }
 
-        let updateQuery = `
-            UPDATE chapter 
-            SET 
-                contact_number = COALESCE($1, contact_number),
-                contact_person = COALESCE($2, contact_person),
-                chapter_mission = COALESCE($3, chapter_mission),
-                chapter_vision = COALESCE($4, chapter_vision),
-                meeting_hotel_name = COALESCE($5, meeting_hotel_name),
-                street_address_line = COALESCE($6, street_address_line),
-                postal_code = COALESCE($7, postal_code),
-                chapter_facebook = COALESCE($8, chapter_facebook),
-                chapter_instagram = COALESCE($9, chapter_instagram),
-                chapter_linkedin = COALESCE($10, chapter_linkedin),
-                chapter_youtube = COALESCE($11, chapter_youtube)
-        `;
+      let updateQuery = `
+          UPDATE chapter 
+          SET 
+              contact_number = COALESCE($1, contact_number),
+              contact_person = COALESCE($2, contact_person),
+              chapter_mission = COALESCE($3, chapter_mission),
+              chapter_vision = COALESCE($4, chapter_vision),
+              meeting_hotel_id = COALESCE($5, meeting_hotel_id),
+              street_address_line = COALESCE($6, street_address_line),
+              postal_code = COALESCE($7, postal_code),
+              chapter_facebook = COALESCE($8, chapter_facebook),
+              chapter_instagram = COALESCE($9, chapter_instagram),
+              chapter_linkedin = COALESCE($10, chapter_linkedin),
+              chapter_youtube = COALESCE($11, chapter_youtube)
+      `;
 
-        const queryParams = [
-            contact_number,
-            contact_person,
-            chapter_mission,
-            chapter_vision,
-            meeting_hotel_name,
-            street_address_line,
-            postal_code,
-            chapter_facebook,
-            chapter_instagram,
-            chapter_linkedin,
-            chapter_youtube
-        ];
+      const queryParams = [
+          contact_number,
+          contact_person,
+          chapter_mission,
+          chapter_vision,
+          meeting_hotel_id,
+          street_address_line,
+          postal_code,
+          chapter_facebook,
+          chapter_instagram,
+          chapter_linkedin,
+          chapter_youtube
+      ];
 
-        // Handle file upload if present
-        if (req.file) {
-            console.log('File uploaded:', req.file);
-            // Store just the filename as that's what we'll use in the URL
-            const photoPath = `${req.file.filename}`;
-            updateQuery += `, chapter_logo = $12`;
-            queryParams.push(photoPath);
-        }
+      // Handle file upload if present
+      if (req.file) {
+          console.log('File uploaded:', req.file);
+          const photoPath = `${req.file.filename}`;
+          updateQuery += `, chapter_logo = $12`;
+          queryParams.push(photoPath);
+      }
 
-        updateQuery += ` WHERE email_id = $${queryParams.length + 1} RETURNING *`;
-        queryParams.push(email_id);
+      updateQuery += ` WHERE email_id = $${queryParams.length + 1} RETURNING *`;
+      queryParams.push(email_id);
 
-        const result = await con.query(updateQuery, queryParams);
+      const result = await con.query(updateQuery, queryParams);
 
-        if (result.rows.length === 0) {
-            console.error('No chapter found with email:', email_id);
-            return res.status(404).json({
-                success: false,
-                message: 'Chapter not found'
-            });
-        }
+      if (result.rows.length === 0) {
+          console.error('No chapter found with email:', email_id);
+          return res.status(404).json({
+              success: false,
+              message: 'Chapter not found'
+          });
+      }
 
-        // Add the logo URL to the response
-        const updatedChapter = result.rows[0];
-        if (updatedChapter.chapter_logo) {
-            updatedChapter.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
-        }
+      // Add the logo URL to the response
+      const updatedChapter = result.rows[0];
+      if (updatedChapter.chapter_logo) {
+          updatedChapter.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+      }
 
-        console.log('Chapter updated successfully:', updatedChapter);
-        res.status(200).json({
-            success: true,
-            message: 'Chapter settings updated successfully',
-            data: updatedChapter
-        });
+      console.log('Chapter updated successfully:', updatedChapter);
+      res.status(200).json({
+          success: true,
+          message: 'Chapter settings updated successfully',
+          data: updatedChapter
+      });
 
-    } catch (error) {
-        console.error('Error in updateChapterSettings:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error updating chapter settings',
-            error: error.message
-        });
-    }
+  } catch (error) {
+      console.error('Error in updateChapterSettings:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Error updating chapter settings',
+          error: error.message
+      });
+  }
 };
 
 const addInvoiceManually = async (req, res) => {
