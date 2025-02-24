@@ -28,6 +28,7 @@ app.use(bodyParser.raw({ type: "application/json" }));
 const allowedOrigins = [
   "https://bni-data-backend.onrender.com", // Your front-end URL
   "http://localhost:5173",
+  "http://localhost:5173/",
   "http://localhost:3000/",
   "http://localhost:3000",
   "https://bninewdelhi.com/",

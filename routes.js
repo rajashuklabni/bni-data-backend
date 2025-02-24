@@ -105,6 +105,10 @@ const {
   addZone,
   getZone,
   updateZone,
+  getHotels,
+  addHotel,
+  deleteHotel,
+  updateHotel,
 } = require("./controllers");
 
 const path = require("path");
@@ -586,6 +590,7 @@ router.get("/getBankOrder", getBankOrder);
 router.post("/getSpecificBankOrder", getSpecificBankOrder);
 router.get("/getCurrentDate", getCurrentDate);
 router.get("/getZones", getZones);
+router.get("/getHotels", getHotels);
 
 // Route to serve the uploaded files
 router.get('/uploads/expenses/:filename', (req, res) => {
@@ -753,6 +758,9 @@ const uploadZoneLogo = multer({
 
 // Add this route with other routes
 router.post("/addZone", uploadZoneLogo.single('zone_logo'), addZone);
+router.post("/addHotel", addHotel);
+router.put("/deleteHotel/:hotel_id", deleteHotel);
+router.put("/updateHotel/:hotel_id", updateHotel);
 
 // Add these routes with your other routes
 router.get("/getZone/:zone_id", getZone);

@@ -4544,6 +4544,198 @@ const updateZone = async (req, res) => {
     }
 };
 
+
+const getHotels = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM hotel WHERE delete_status='0' ");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching hotels:", error);
+    res.status(500).send("Error fetching hotels");
+  }
+};
+
+
+const addHotel = async (req, res) => {
+  try {
+      console.log('📝 Starting addHotel process');
+      console.log('Request body:', req.body);
+
+      const {
+          hotel_name,
+          hotel_address,
+          hotel_bill_amount,
+          hotel_pincode,
+          hotel_status,
+          hotel_published_by,
+          hotel_email,
+          hotel_phone,
+          date_of_publishing
+      } = req.body;
+
+      // Validate required fields
+      if (!hotel_name || !hotel_address || !hotel_bill_amount || !hotel_pincode || !hotel_phone) {
+          console.error('❌ Missing required fields');
+          return res.status(400).json({
+              success: false,
+              message: "Required fields missing: hotel_name, hotel_address, hotel_bill_amount, hotel_pincode and hotel_phone are mandatory"
+          });
+      }
+
+      // Convert hotel_status to boolean (true for "Active", false for "Inactive")
+      const is_active = hotel_status.toLowerCase() === "active";
+
+      // Insert data into the database
+      const query = `
+          INSERT INTO hotel (
+              hotel_name,
+              hotel_address,
+              hotel_bill_amount,
+              is_active,
+              hotel_pincode,
+              hotel_published_by,
+              date_of_publishing,
+              hotel_email,
+              hotel_phone
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          RETURNING *
+      `;
+
+      const values = [
+          hotel_name,
+          hotel_address,
+          hotel_bill_amount,
+          is_active, // Corrected boolean value
+          hotel_pincode,
+          hotel_published_by,
+          date_of_publishing || new Date(),
+          hotel_email,
+          hotel_phone
+      ];
+
+      console.log('💾 Executing query with values:', values);
+
+      const result = await con.query(query, values);
+      console.log('✅ Hotel added successfully:', result.rows[0]);
+
+      res.status(201).json({
+          success: true,
+          message: "Hotel added successfully",
+          data: result.rows[0]
+      });
+
+  } catch (error) {
+      console.error('❌ Error in hotel adding:', error);
+      res.status(500).json({
+          success: false,
+          message: "Error adding hotel",
+          error: error.message
+      });
+  }
+};
+
+
+const deleteHotel = async (req, res) => {
+  const { hotel_id } = req.params;
+  console.log("Hotel ID:", hotel_id);
+
+  try {
+    const result = await con.query(
+      `UPDATE hotel SET delete_status = 1 WHERE hotel_id = $1 RETURNING *`,
+      [hotel_id]
+    );
+    if (result.rowCount > 0) {
+      res
+        .status(200)
+        .json({ message: "Hotel marked as deleted successfully" });
+    } else {
+      res.status(404).json({ message: "Hotel not found" });
+    }
+  } catch (error) {
+    console.error("Error deleting Hotel", error);
+    res.status(500).json({ message: "Error deleting Hotel" });
+  }
+};
+
+
+const updateHotel = async (req, res) => {
+  try {
+      console.log('📝 Starting hotel update process');
+      console.log('Request body:', req.body);
+
+      const hotel_id = req.params.hotel_id;
+      const {
+          hotel_name,
+          hotel_address,
+          hotel_bill_amount,
+          hotel_status,
+          hotel_pincode,
+          hotel_published_by,
+          date_of_publishing,
+          hotel_email,
+          hotel_phone
+      } = req.body;
+
+      // Validate required fields
+      if (!hotel_name || !hotel_address || !hotel_bill_amount || !hotel_phone) {
+          console.error('❌ Missing required fields');
+          return res.status(400).json({
+              success: false,
+              message: "Required fields missing"
+          });
+      }
+
+      let updateQuery = `
+          UPDATE hotel 
+              SET hotel_name = $1,
+              hotel_address = $2,
+              hotel_bill_amount = $3,
+              is_active = $4,
+              hotel_pincode = $5,
+              date_of_publishing = $6,
+              hotel_published_by = $7,
+              hotel_email = $8,
+              hotel_phone = $9
+      `;
+
+      let values = [
+          hotel_name,
+          hotel_address,
+          hotel_bill_amount,
+          hotel_status,
+          hotel_pincode,
+          date_of_publishing || new Date(),
+          hotel_published_by,
+          hotel_email,
+          hotel_phone
+      ];
+
+
+      updateQuery += ` WHERE hotel_id = $${values.length + 1} RETURNING *`;
+      values.push(hotel_id);
+
+      console.log('💾 Executing update query:', { query: updateQuery, values });
+
+      const result = await con.query(updateQuery, values);
+      console.log('✅ Hotel updated successfully:', result.rows[0]);
+
+      res.json({
+          success: true,
+          message: "Hotel updated successfully",
+          data: result.rows[0]
+      });
+
+  } catch (error) {
+      console.error('❌ Error in hotel:', error);
+      res.status(500).json({
+          success: false,
+          message: "Error updating hotel",
+          error: error.message
+      });
+  }
+};
+
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -4649,4 +4841,8 @@ module.exports = {
   addZone,
   getZone,
   updateZone,
+  getHotels,
+  addHotel,
+  deleteHotel,
+  updateHotel
 };
