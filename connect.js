@@ -43,6 +43,8 @@ const allowedOrigins = [
   "https://dashboard.bninewdelhi.com/",
   "https://54.39.51.161:3000",
   "http://54.39.51.161:3000",
+  "http://localhost:5000/",
+  "http://localhost:5000",
 ];
 
 const corsOptions = {
@@ -126,20 +128,6 @@ app.post("/import-members", upload.single("file"), async (req, res) => {
           ? new Date(member.member_renewal_date)
           : null;
 
-      const memberRenewalDueDate =
-        typeof member.member_renewal_due_date === "number"
-          ? excelDateToJSDate(member.member_renewal_due_date)
-          : member.member_renewal_due_date
-          ? new Date(member.member_renewal_due_date)
-          : null;
-
-      const memberLastRenewalDate =
-        typeof member.member_last_renewal_date === "number"
-          ? excelDateToJSDate(member.member_last_renewal_date)
-          : member.member_last_renewal_date
-          ? new Date(member.member_last_renewal_date)
-          : null;
-
       // Ensure that if the date is null, it won't call toISOString
       const formattedMemberDateOfBirth =
         memberDateOfBirth && isValidDate(memberDateOfBirth)
@@ -153,24 +141,15 @@ app.post("/import-members", upload.single("file"), async (req, res) => {
         memberRenewalDate && isValidDate(memberRenewalDate)
           ? memberRenewalDate.toISOString().split("T")[0]
           : null;
-      const formattedMemberRenewalDueDate =
-        memberRenewalDueDate && isValidDate(memberRenewalDueDate)
-          ? memberRenewalDueDate.toISOString().split("T")[0]
-          : null;
-      const formattedMemberLastRenewalDate =
-        memberLastRenewalDate && isValidDate(memberLastRenewalDate)
-          ? memberLastRenewalDate.toISOString().split("T")[0]
-          : null;
 
       const query = `
                 INSERT INTO member (
                     member_first_name, member_last_name, member_date_of_birth,
-                    member_phone_number, member_alternate_mobile_number, member_email_address, member_address, address_pincode,
-                    address_city, address_state, region_id, chapter_id, accolades_id, category_id, member_induction_date,
-                    member_category, member_current_membership, member_renewal_date, member_renewal_due_date, member_last_renewal_date,
+                    member_phone_number, member_alternate_mobile_number, member_email_address, street_address_line_1, address_pincode,
+                    address_city, address_state, region_id, chapter_id, accolades_id, member_induction_date, member_current_membership, member_renewal_date,
                     member_gst_number, member_company_name, member_company_address, member_company_state, member_company_city, member_photo,
-                    member_website, member_company_logo, member_status
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
+                    member_website, member_company_logo, member_status, delete_status, member_company_pincode,meeting_opening_balance,meeting_payable_amount,member_facebook,member_instagram,member_linkedin,member_youtube,country,street_address_line_2,gender,notification_consent,date_of_publishing,member_sponsored_by
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39)
             `;
 
       const values = [
@@ -180,20 +159,16 @@ app.post("/import-members", upload.single("file"), async (req, res) => {
         member.member_phone_number,
         member.member_alternate_mobile_number,
         member.member_email_address,
-        member.member_address,
+        member.street_address_line1,
         member.address_pincode,
         member.address_city,
         member.address_state,
         member.region_id,
         member.chapter_id,
         member.accolades_id,
-        member.category_id,
         formattedMemberInductionDate,
-        member.member_category,
         member.member_current_membership,
         formattedMemberRenewalDate,
-        formattedMemberRenewalDueDate,
-        formattedMemberLastRenewalDate,
         member.member_gst_number,
         member.member_company_name,
         member.member_company_address,
@@ -203,7 +178,22 @@ app.post("/import-members", upload.single("file"), async (req, res) => {
         member.member_website,
         member.member_company_logo,
         member.member_status,
+        0,
+        member.member_facebook,
+        member.member_instagram,
+        member.member_linkedin,
+        member.member_youtube,
+        member.country,
+        member.street_address_line2,
+        member.gender,
+        member.notification_consent,
+        member.date_of_publishing,
+        member.member_sponsored_by,
+        member.member_company_pincode,
+        member.meeting_opening_balance,
+        member.meeting_payable_amount,
       ];
+      console.log("data", values);
 
       await con.query(query, values);
     }
@@ -306,7 +296,6 @@ app.use("/api", ccavenueRoutes);
 //   console.log("cc avenue trigger");
 // ccavReqHandler.postReq(request, response);
 // });
-
 
 // app.post('/ccavResponseHandler', function (request, response){
 //     ccavResHandler.postRes(request, response);

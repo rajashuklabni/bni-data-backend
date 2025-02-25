@@ -1,6 +1,6 @@
 const { Client } = require("pg");
 const xlsx = require("xlsx");
-// const fetch = require('node-fetch'); 
+// const fetch = require('node-fetch');
 const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcrypt");
@@ -57,92 +57,93 @@ const getRegions = async (req, res) => {
 
 const getMember = async (req, res) => {
   const { member_id } = req.params;
-  console.log('🔍 Fetching member with ID:', member_id);
+  console.log("🔍 Fetching member with ID:", member_id);
 
   try {
-      const result = await con.query(
-          "SELECT * FROM member WHERE member_id = $1",
-          [member_id]
-      );
+    const result = await con.query(
+      "SELECT * FROM member WHERE member_id = $1",
+      [member_id]
+    );
 
-      if (result.rows.length === 0) {
-          console.log('❌ Member not found for ID:', member_id);
-          return res.status(404).json({ message: "Member not found" });
-      }
+    if (result.rows.length === 0) {
+      console.log("❌ Member not found for ID:", member_id);
+      return res.status(404).json({ message: "Member not found" });
+    }
 
-      // Get the member data
-      const member = result.rows[0];
-      console.log('📄 Raw member data:', member);
+    // Get the member data
+    const member = result.rows[0];
+    console.log("📄 Raw member data:", member);
 
-      // Transform the member data and add image URLs
-      const transformedMember = {
-          ...member,
-          // Add image URLs if images exist
-          member_photo_url: member.member_photo 
-              ? `https://bni-data-backend.onrender.com/api/uploads/memberLogos/${member.member_photo}`
-              : null,
-          member_company_logo_url: member.member_company_logo 
-              ? `https://bni-data-backend.onrender.com/api/uploads/memberCompanyLogos/${member.member_company_logo}`
-              : null,
-          // Parse arrays that might be stored as strings
-          accolades_id: Array.isArray(member.accolades_id)
-              ? member.accolades_id
-              : typeof member.accolades_id === 'string'
-                  ? member.accolades_id.replace(/[{}]/g, '').split(',').map(id => parseInt(id.trim()))
-                  : []
-      };
+    // Transform the member data and add image URLs
+    const transformedMember = {
+      ...member,
+      // Add image URLs if images exist
+      member_photo_url: member.member_photo
+        ? `https://bni-data-backend.onrender.com/api/uploads/memberLogos/${member.member_photo}`
+        : null,
+      member_company_logo_url: member.member_company_logo
+        ? `https://bni-data-backend.onrender.com/api/uploads/memberCompanyLogos/${member.member_company_logo}`
+        : null,
+      // Parse arrays that might be stored as strings
+      accolades_id: Array.isArray(member.accolades_id)
+        ? member.accolades_id
+        : typeof member.accolades_id === "string"
+        ? member.accolades_id
+            .replace(/[{}]/g, "")
+            .split(",")
+            .map((id) => parseInt(id.trim()))
+        : [],
+    };
 
-      console.log('✅ Processed member data:', {
-          id: transformedMember.member_id,
-          name: `${transformedMember.member_first_name} ${transformedMember.member_last_name}`,
-          photo: transformedMember.member_photo_url,
-          companyLogo: transformedMember.member_company_logo_url,
-          accolades: transformedMember.accolades_id
-      });
+    console.log("✅ Processed member data:", {
+      id: transformedMember.member_id,
+      name: `${transformedMember.member_first_name} ${transformedMember.member_last_name}`,
+      photo: transformedMember.member_photo_url,
+      companyLogo: transformedMember.member_company_logo_url,
+      accolades: transformedMember.accolades_id,
+    });
 
-      res.json(transformedMember);
-
+    res.json(transformedMember);
   } catch (error) {
-      console.error('❌ Error fetching member:', error);
-      res.status(500).json({
-          message: "Error fetching member",
-          error: error.message
-      });
+    console.error("❌ Error fetching member:", error);
+    res.status(500).json({
+      message: "Error fetching member",
+      error: error.message,
+    });
   }
 };
 
 const getChapter = async (req, res) => {
-    const { chapter_id } = req.params;
-    console.log('🔍 Fetching chapter:', chapter_id);
+  const { chapter_id } = req.params;
+  console.log("🔍 Fetching chapter:", chapter_id);
 
-    try {
-        const result = await con.query(
-            "SELECT * FROM chapter WHERE chapter_id = $1",
-            [chapter_id]
-        );
+  try {
+    const result = await con.query(
+      "SELECT * FROM chapter WHERE chapter_id = $1",
+      [chapter_id]
+    );
 
-        if (result.rows.length === 0) {
-            console.log('⚠️ Chapter not found:', chapter_id);
-            return res.status(404).json({ message: "Chapter not found" });
-        }
-
-        // Add image URL to response
-        const chapterData = result.rows[0];
-        if (chapterData.chapter_logo) {
-            chapterData.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
-            console.log('🖼️ Added logo URL:', chapterData.chapter_logo_url);
-        }
-
-        console.log('✅ Found chapter:', chapterData);
-        res.json(chapterData);
-
-    } catch (error) {
-        console.error('❌ Error fetching chapter:', error);
-        res.status(500).json({
-            message: "Error fetching chapter",
-            error: error.message
-        });
+    if (result.rows.length === 0) {
+      console.log("⚠️ Chapter not found:", chapter_id);
+      return res.status(404).json({ message: "Chapter not found" });
     }
+
+    // Add image URL to response
+    const chapterData = result.rows[0];
+    if (chapterData.chapter_logo) {
+      chapterData.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+      console.log("🖼️ Added logo URL:", chapterData.chapter_logo_url);
+    }
+
+    console.log("✅ Found chapter:", chapterData);
+    res.json(chapterData);
+  } catch (error) {
+    console.error("❌ Error fetching chapter:", error);
+    res.status(500).json({
+      message: "Error fetching chapter",
+      error: error.message,
+    });
+  }
 };
 
 const getUniversalLink = async (req, res) => {
@@ -167,70 +168,76 @@ const getUniversalLink = async (req, res) => {
 };
 
 const getRegion = async (req, res) => {
-    const { region_id } = req.params;
-    console.log('🔍 Fetching region with ID:', region_id);
+  const { region_id } = req.params;
+  console.log("🔍 Fetching region with ID:", region_id);
 
-    try {
-        const result = await con.query(
-            "SELECT * FROM region WHERE region_id = $1",
-            [region_id]
-        );
+  try {
+    const result = await con.query(
+      "SELECT * FROM region WHERE region_id = $1",
+      [region_id]
+    );
 
-        if (result.rows.length === 0) {
-            console.log('❌ Region not found for ID:', region_id);
-            return res.status(404).json({ message: "Region not found" });
-        }
-
-        // Get the region data
-        const region = result.rows[0];
-        console.log('📄 Raw region data:', region);
-
-        // Transform the logo data
-        let logoUrl = null;
-        if (region.region_logo && region.region_logo !== '{}' && region.region_logo !== 'null') {
-            logoUrl = `https://bni-data-backend.onrender.com/api/uploads/regionLogos/${region.region_logo}`;
-            console.log('🖼️ Constructed logo URL:', logoUrl);
-        }
-
-        // Prepare the response
-       // ... existing code ...
-const response = {
-  ...region,
-  region_logo_url: logoUrl,
-  // Parse the arrays and objects that are stored as strings
-  chapter_status: Array.isArray(region.chapter_status) 
-      ? region.chapter_status 
-      : typeof region.chapter_status === 'string'
-          ? region.chapter_status.replace(/[{}]/g, '').split(',').map(s => s.trim())
-          : [],
-  chapter_type: Array.isArray(region.chapter_type) 
-      ? region.chapter_type 
-      : typeof region.chapter_type === 'string'
-          ? JSON.parse(region.chapter_type)
-          : [],
-  days_of_chapter: Array.isArray(region.days_of_chapter) 
-      ? region.days_of_chapter 
-      : typeof region.days_of_chapter === 'string'
-          ? JSON.parse(region.days_of_chapter)
-          : [],
-  accolades_config: Array.isArray(region.accolades_config) 
-      ? region.accolades_config 
-      : typeof region.accolades_config === 'string'
-          ? JSON.parse(region.accolades_config)
-          : []
-};
-// ... existing code ...
-
-        console.log('✅ Processed region data:', response);
-        res.json(response);
-
-    } catch (error) {
-        console.error("❌ Error fetching Region:", error);
-        res.status(500).json({
-            message: "Error fetching Region",
-            error: error.message
-        });
+    if (result.rows.length === 0) {
+      console.log("❌ Region not found for ID:", region_id);
+      return res.status(404).json({ message: "Region not found" });
     }
+
+    // Get the region data
+    const region = result.rows[0];
+    console.log("📄 Raw region data:", region);
+
+    // Transform the logo data
+    let logoUrl = null;
+    if (
+      region.region_logo &&
+      region.region_logo !== "{}" &&
+      region.region_logo !== "null"
+    ) {
+      logoUrl = `https://bni-data-backend.onrender.com/api/uploads/regionLogos/${region.region_logo}`;
+      console.log("🖼️ Constructed logo URL:", logoUrl);
+    }
+
+    // Prepare the response
+    // ... existing code ...
+    const response = {
+      ...region,
+      region_logo_url: logoUrl,
+      // Parse the arrays and objects that are stored as strings
+      chapter_status: Array.isArray(region.chapter_status)
+        ? region.chapter_status
+        : typeof region.chapter_status === "string"
+        ? region.chapter_status
+            .replace(/[{}]/g, "")
+            .split(",")
+            .map((s) => s.trim())
+        : [],
+      chapter_type: Array.isArray(region.chapter_type)
+        ? region.chapter_type
+        : typeof region.chapter_type === "string"
+        ? JSON.parse(region.chapter_type)
+        : [],
+      days_of_chapter: Array.isArray(region.days_of_chapter)
+        ? region.days_of_chapter
+        : typeof region.days_of_chapter === "string"
+        ? JSON.parse(region.days_of_chapter)
+        : [],
+      accolades_config: Array.isArray(region.accolades_config)
+        ? region.accolades_config
+        : typeof region.accolades_config === "string"
+        ? JSON.parse(region.accolades_config)
+        : [],
+    };
+    // ... existing code ...
+
+    console.log("✅ Processed region data:", response);
+    res.json(response);
+  } catch (error) {
+    console.error("❌ Error fetching Region:", error);
+    res.status(500).json({
+      message: "Error fetching Region",
+      error: error.message,
+    });
+  }
 };
 
 const getAccolade = async (req, res) => {
@@ -279,9 +286,9 @@ const getEinvoice = async (req, res) => {
 
 const addRegion = async (req, res) => {
   try {
-    console.log('📝 Starting region addition process...');
-    console.log('📦 Received request body:', req.body);
-    console.log('🖼️ Received file:', req.file);
+    console.log("📝 Starting region addition process...");
+    console.log("📦 Received request body:", req.body);
+    console.log("🖼️ Received file:", req.file);
 
     const {
       region_name,
@@ -317,13 +324,13 @@ const addRegion = async (req, res) => {
 
     // Handle the logo file
     const region_logo = req.file ? req.file.filename : null;
-    console.log('🎨 Region logo filename:', region_logo);
+    console.log("🎨 Region logo filename:", region_logo);
 
     // Parse arrays if they're strings
     const parseArray = (value) => {
       if (Array.isArray(value)) return value;
       try {
-        return typeof value === 'string' ? JSON.parse(value) : [];
+        return typeof value === "string" ? JSON.parse(value) : [];
       } catch {
         return [];
       }
@@ -334,11 +341,11 @@ const addRegion = async (req, res) => {
     const chapterTypeArray = parseArray(chapterType);
     const accoladesArray = parseArray(accolades_config);
 
-    console.log('📅 Processed arrays:', {
+    console.log("📅 Processed arrays:", {
       days: chapterDaysArray,
       status: chapterStatusArray,
       type: chapterTypeArray,
-      accolades: accoladesArray
+      accolades: accoladesArray,
     });
 
     const result = await con.query(
@@ -387,103 +394,105 @@ const addRegion = async (req, res) => {
       ]
     );
 
-    console.log('✅ Region added successfully to database');
-    console.log('📄 Database result:', result.rows[0]);
+    console.log("✅ Region added successfully to database");
+    console.log("📄 Database result:", result.rows[0]);
 
-    res.status(201).json({ 
-      message: "Region added successfully!", 
+    res.status(201).json({
+      message: "Region added successfully!",
       data: {
         ...result.rows[0],
-        region_logo_url: region_logo ? `https://bni-data-backend.onrender.com/uploads/regionLogos/${region_logo}` : null
-      }
+        region_logo_url: region_logo
+          ? `https://bni-data-backend.onrender.com/uploads/regionLogos/${region_logo}`
+          : null,
+      },
     });
   } catch (error) {
     console.error("❌ Error adding region:", error);
     console.error("Error details:", error.message);
     res.status(500).json({
       message: "Error adding region",
-      error: error.message
+      error: error.message,
     });
   }
 };
 
 const addChapter = async (req, res) => {
-  console.log('📥 Starting addChapter process');
-  console.log('📦 Request body:', req.body);
-  console.log('📎 Request files:', req.files);
-  console.log('📄 Single file:', req.file);
-  
+  console.log("📥 Starting addChapter process");
+  console.log("📦 Request body:", req.body);
+  console.log("📎 Request files:", req.files);
+  console.log("📄 Single file:", req.file);
+
   // Log form data for debugging
   if (req.file) {
-      console.log('🖼️ Uploaded file details:', {
-          fieldname: req.file.fieldname,
-          originalname: req.file.originalname,
-          mimetype: req.file.mimetype,
-          filename: req.file.filename,
-          path: req.file.path,
-          size: req.file.size
-      });
+    console.log("🖼️ Uploaded file details:", {
+      fieldname: req.file.fieldname,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      filename: req.file.filename,
+      path: req.file.path,
+      size: req.file.size,
+    });
   } else {
-      console.log('⚠️ No file uploaded');
+    console.log("⚠️ No file uploaded");
   }
 
   const {
-      region_id,
-      chapter_name,
-      chapter_status,
-      chapter_membership_fee,
-      chapter_kitty_fees,
-      chapter_visitor_fees,
-      chapter_meeting_day,
-      one_time_registration_fee,
-      chapter_type,
-      eoi_link,
-      member_app_link,
-      chapter_membership_fee_two_year,
-      chapter_membership_fee_five_year,
-      contact_number,
-      contact_person,
-      chapter_mission,
-      chapter_vision,
-      email_id,
-      country,
-      state,
-      city,
-      street_address_line,
-      postal_code,
-      chapter_facebook,
-      chapter_instagram,
-      chapter_linkedin,
-      chapter_youtube,
-      chapter_website,
-      date_of_publishing,
-      chapter_launched_by,
-      chapter_location_note,
-      chapter_late_fees,
-      chapter_available_fund,
-      billing_frequency,
-      meeting_hotel_id,
+    region_id,
+    chapter_name,
+    chapter_status,
+    chapter_membership_fee,
+    chapter_kitty_fees,
+    chapter_visitor_fees,
+    chapter_meeting_day,
+    one_time_registration_fee,
+    chapter_type,
+    eoi_link,
+    member_app_link,
+    chapter_membership_fee_two_year,
+    chapter_membership_fee_five_year,
+    contact_number,
+    contact_person,
+    chapter_mission,
+    chapter_vision,
+    email_id,
+    country,
+    state,
+    city,
+    street_address_line,
+    postal_code,
+    chapter_facebook,
+    chapter_instagram,
+    chapter_linkedin,
+    chapter_youtube,
+    chapter_website,
+    date_of_publishing,
+    chapter_launched_by,
+    chapter_location_note,
+    chapter_late_fees,
+    chapter_available_fund,
+    billing_frequency,
+    meeting_hotel_id,
   } = req.body;
 
   // Get logo filename from uploaded file
   const logoFilename = req.file ? req.file.filename : null;
-  console.log('💾 Logo filename to store:', logoFilename);
+  console.log("💾 Logo filename to store:", logoFilename);
 
   try {
-      const checkDuplicate = await con.query(
-          `SELECT * FROM chapter WHERE chapter_name = $1`,
-          [chapter_name]
-      );
+    const checkDuplicate = await con.query(
+      `SELECT * FROM chapter WHERE chapter_name = $1`,
+      [chapter_name]
+    );
 
-      if (checkDuplicate.rows.length > 0) {
-          console.log('⚠️ Duplicate chapter name found');
-          return res.status(409).json({
-              message: "Chapter name already exists",
-          });
-      }
+    if (checkDuplicate.rows.length > 0) {
+      console.log("⚠️ Duplicate chapter name found");
+      return res.status(409).json({
+        message: "Chapter name already exists",
+      });
+    }
 
-      const result = await con.query(
-          `INSERT INTO chapter (
+    const result = await con.query(
+      `INSERT INTO chapter (
               region_id, chapter_name, chapter_logo, chapter_status, chapter_membership_fee,
               chapter_kitty_fees, chapter_visitor_fees, chapter_meeting_day, one_time_registration_fee,
               chapter_type, eoi_link, member_app_link,
@@ -499,111 +508,111 @@ const addChapter = async (req, res) => {
               $24, $25, $26, $27, $28, $29, $30,
               $31, $32, $33, $34, $35, $36
           ) RETURNING *`,
-          [
-              region_id,
-              chapter_name,
-              logoFilename, // This should now have the correct filename
-              chapter_status,
-              chapter_membership_fee,
-              chapter_kitty_fees,
-              chapter_visitor_fees,
-              chapter_meeting_day,
-              one_time_registration_fee,
-              chapter_type,
-              eoi_link,
-              member_app_link,
-              
-              chapter_membership_fee_two_year,
-              chapter_membership_fee_five_year,
-              contact_number,
-              contact_person,
-              chapter_mission,
-              chapter_vision,
-              email_id,
-              country,
-              state,
-              city,
-              street_address_line,
-              postal_code,
-              chapter_facebook,
-              chapter_instagram,
-              chapter_linkedin,
-              chapter_youtube,
-              chapter_website,
-              date_of_publishing,
-              chapter_launched_by,
-              chapter_location_note,
-              chapter_late_fees,
-              chapter_available_fund,
-              billing_frequency,
-              meeting_hotel_id
-          ]
-      );
+      [
+        region_id,
+        chapter_name,
+        logoFilename, // This should now have the correct filename
+        chapter_status,
+        chapter_membership_fee,
+        chapter_kitty_fees,
+        chapter_visitor_fees,
+        chapter_meeting_day,
+        one_time_registration_fee,
+        chapter_type,
+        eoi_link,
+        member_app_link,
 
-      // Add image URL to response
-      const chapterData = result.rows[0];
-      if (chapterData.chapter_logo) {
-          chapterData.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
-          console.log('🔗 Generated logo URL:', chapterData.chapter_logo_url);
-      }
+        chapter_membership_fee_two_year,
+        chapter_membership_fee_five_year,
+        contact_number,
+        contact_person,
+        chapter_mission,
+        chapter_vision,
+        email_id,
+        country,
+        state,
+        city,
+        street_address_line,
+        postal_code,
+        chapter_facebook,
+        chapter_instagram,
+        chapter_linkedin,
+        chapter_youtube,
+        chapter_website,
+        date_of_publishing,
+        chapter_launched_by,
+        chapter_location_note,
+        chapter_late_fees,
+        chapter_available_fund,
+        billing_frequency,
+        meeting_hotel_id,
+      ]
+    );
 
-      console.log('✅ Chapter added successfully:', chapterData);
-      res.status(201).json({ 
-          message: "Chapter added successfully!", 
-          data: chapterData 
-      });
+    // Add image URL to response
+    const chapterData = result.rows[0];
+    if (chapterData.chapter_logo) {
+      chapterData.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+      console.log("🔗 Generated logo URL:", chapterData.chapter_logo_url);
+    }
 
+    console.log("✅ Chapter added successfully:", chapterData);
+    res.status(201).json({
+      message: "Chapter added successfully!",
+      data: chapterData,
+    });
   } catch (error) {
-      console.error('❌ Error adding chapter:', error);
-      console.error('Error details:', error.stack);
-      res.status(500).json({
-          message: "Error adding chapter",
-          error: error.message
-      });
+    console.error("❌ Error adding chapter:", error);
+    console.error("Error details:", error.stack);
+    res.status(500).json({
+      message: "Error adding chapter",
+      error: error.message,
+    });
   }
 };
 
-
 const addMember = async (req, res) => {
-    console.log('📥 Starting add member process');
-    console.log('📦 Request body:', req.body);
-    console.log('📸 Files received:', req.files);
-    
+  console.log("📥 Starting add member process");
+  console.log("📦 Request body:", req.body);
+  console.log("📸 Files received:", req.files);
+
+  try {
+    // Validate required integer fields
+    const requiredIntegerFields = {
+      region_id: req.body.region_id,
+      chapter_id: req.body.chapter_id,
+      category_id: req.body.category_id,
+    };
+
+    // Check for empty or invalid integer values
+    for (const [field, value] of Object.entries(requiredIntegerFields)) {
+      if (!value || value === "") {
+        return res.status(400).json({
+          message: `${field} is required and must be a valid integer`,
+          field: field,
+        });
+      }
+    }
+
+    // Parse accolades_id and convert to PostgreSQL array format
+    let parsedAccolades;
     try {
-        // Validate required integer fields
-        const requiredIntegerFields = {
-            'region_id': req.body.region_id,
-            'chapter_id': req.body.chapter_id,
-            'category_id': req.body.category_id
-        };
+      const accoladesArray = JSON.parse(req.body.accolades_id);
+      console.log("🏆 Parsed accolades:", accoladesArray);
+      parsedAccolades = `{${accoladesArray.join(",")}}`;
+    } catch (error) {
+      console.error("❌ Error parsing accolades:", error);
+      parsedAccolades = "{}";
+    }
 
-        // Check for empty or invalid integer values
-        for (const [field, value] of Object.entries(requiredIntegerFields)) {
-            if (!value || value === '') {
-                return res.status(400).json({
-                    message: `${field} is required and must be a valid integer`,
-                    field: field
-                });
-            }
-        }
+    // Get filenames from uploaded files
+    const memberPhotoFilename =
+      req.files?.["member_photo"]?.[0]?.filename || null;
+    const companyLogoFilename =
+      req.files?.["member_company_logo"]?.[0]?.filename || null;
 
-        // Parse accolades_id and convert to PostgreSQL array format
-        let parsedAccolades;
-        try {
-            const accoladesArray = JSON.parse(req.body.accolades_id);
-            console.log('🏆 Parsed accolades:', accoladesArray);
-            parsedAccolades = `{${accoladesArray.join(',')}}`;
-        } catch (error) {
-            console.error('❌ Error parsing accolades:', error);
-            parsedAccolades = '{}';
-        }
-
-        // Get filenames from uploaded files
-        const memberPhotoFilename = req.files?.['member_photo']?.[0]?.filename || null;
-        const companyLogoFilename = req.files?.['member_company_logo']?.[0]?.filename || null;
-
-        const result = await con.query(
-            `INSERT INTO member (
+    const result = await con.query(
+      `INSERT INTO member (
                 member_first_name, member_last_name, member_date_of_birth, member_phone_number,
                 member_alternate_mobile_number, member_email_address, address_pincode,
                 address_city, address_state, region_id, chapter_id, accolades_id, category_id,
@@ -618,81 +627,81 @@ const addMember = async (req, res) => {
                      $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, 
                      $33, $34, $35, $36, $37, $38)
             RETURNING *`,
-            [
-                req.body.member_first_name,
-                req.body.member_last_name,
-                req.body.member_date_of_birth,
-                req.body.member_phone_number,
-                req.body.member_alternate_mobile_number,
-                req.body.member_email_address,
-                req.body.address_pincode,
-                req.body.address_city,
-                req.body.address_state,
-                parseInt(req.body.region_id) || null,      // Convert to integer
-                parseInt(req.body.chapter_id) || null,     // Convert to integer
-                parsedAccolades,
-                parseInt(req.body.category_id) || null,    // Convert to integer
-                req.body.member_induction_date,
-                req.body.member_current_membership,
-                req.body.member_renewal_date,
-                req.body.member_gst_number,
-                req.body.member_company_name,
-                req.body.member_company_address,
-                req.body.member_company_state,
-                req.body.member_company_city,
-                memberPhotoFilename,
-                req.body.member_website,
-                companyLogoFilename,
-                req.body.member_facebook,
-                req.body.member_instagram,
-                req.body.member_linkedin,
-                req.body.member_youtube,
-                req.body.country,
-                req.body.street_address_line_1,
-                req.body.street_address_line_2,
-                req.body.gender,
-                req.body.notification_consent,
-                req.body.date_of_publishing,
-                req.body.member_sponsored_by,
-                req.body.member_status,
-                parseFloat(req.body.meeting_opening_balance) || 0,
-                req.body.member_company_pincode
-            ]
-        );
+      [
+        req.body.member_first_name,
+        req.body.member_last_name,
+        req.body.member_date_of_birth,
+        req.body.member_phone_number,
+        req.body.member_alternate_mobile_number,
+        req.body.member_email_address,
+        req.body.address_pincode,
+        req.body.address_city,
+        req.body.address_state,
+        parseInt(req.body.region_id) || null, // Convert to integer
+        parseInt(req.body.chapter_id) || null, // Convert to integer
+        parsedAccolades,
+        parseInt(req.body.category_id) || null, // Convert to integer
+        req.body.member_induction_date,
+        req.body.member_current_membership,
+        req.body.member_renewal_date,
+        req.body.member_gst_number,
+        req.body.member_company_name,
+        req.body.member_company_address,
+        req.body.member_company_state,
+        req.body.member_company_city,
+        memberPhotoFilename,
+        req.body.member_website,
+        companyLogoFilename,
+        req.body.member_facebook,
+        req.body.member_instagram,
+        req.body.member_linkedin,
+        req.body.member_youtube,
+        req.body.country,
+        req.body.street_address_line_1,
+        req.body.street_address_line_2,
+        req.body.gender,
+        req.body.notification_consent,
+        req.body.date_of_publishing,
+        req.body.member_sponsored_by,
+        req.body.member_status,
+        parseFloat(req.body.meeting_opening_balance) || 0,
+        req.body.member_company_pincode,
+      ]
+    );
 
-        const newMember = result.rows[0];
-        const member_id = newMember.member_id;
+    const newMember = result.rows[0];
+    const member_id = newMember.member_id;
 
-        // Convert meeting_opening_balance to number or set default to 0
-        const meeting_opening_balance = parseFloat(req.body.meeting_opening_balance) || 0;
-        
-        await con.query(
-            `INSERT INTO bankorder (member_id, chapter_id, amount_to_pay) VALUES ($1, $2, $3)`,
-            [
-                member_id, 
-                parseInt(req.body.chapter_id), 
-                meeting_opening_balance
-            ]
-        );
+    // Convert meeting_opening_balance to number or set default to 0
+    const meeting_opening_balance =
+      parseFloat(req.body.meeting_opening_balance) || 0;
 
-        console.log('✅ Member added successfully:', newMember);
+    await con.query(
+      `INSERT INTO bankorder (member_id, chapter_id, amount_to_pay) VALUES ($1, $2, $3)`,
+      [member_id, parseInt(req.body.chapter_id), meeting_opening_balance]
+    );
 
-        res.status(201).json({
-            message: "Member added successfully!",
-            data: {
-                ...newMember,
-                member_photo_url: memberPhotoFilename ? `/uploads/memberPhotos/${memberPhotoFilename}` : null,
-                member_company_logo_url: companyLogoFilename ? `/uploads/memberCompanyLogos/${companyLogoFilename}` : null
-            }
-        });
+    console.log("✅ Member added successfully:", newMember);
 
-    } catch (error) {
-        console.error('❌ Error adding member:', error);
-        res.status(500).json({ 
-            message: "Error adding member", 
-            error: error.message 
-        });
-    }
+    res.status(201).json({
+      message: "Member added successfully!",
+      data: {
+        ...newMember,
+        member_photo_url: memberPhotoFilename
+          ? `/uploads/memberPhotos/${memberPhotoFilename}`
+          : null,
+        member_company_logo_url: companyLogoFilename
+          ? `/uploads/memberCompanyLogos/${companyLogoFilename}`
+          : null,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error adding member:", error);
+    res.status(500).json({
+      message: "Error adding member",
+      error: error.message,
+    });
+  }
 };
 
 const getBankOrder = async (req, res) => {
@@ -928,45 +937,51 @@ const authTokens = async (req, res) => {
 };
 
 const updateRegion = async (req, res) => {
-    console.log('🔄 Starting region update process...');
-    const { region_id } = req.params;
-    console.log('🎯 Updating region with ID:', region_id);
-    console.log('📦 Received update data:', req.body);
-    console.log('🖼️ Received file:', req.file);
+  console.log("🔄 Starting region update process...");
+  const { region_id } = req.params;
+  console.log("🎯 Updating region with ID:", region_id);
+  console.log("📦 Received update data:", req.body);
+  console.log("🖼️ Received file:", req.file);
 
-    try {
-        // Parse arrays from JSON strings if they're strings
-        const daysOfChapter = Array.isArray(req.body.days_of_chapter) 
-            ? req.body.days_of_chapter 
-            : JSON.parse(req.body.days_of_chapter);
+  try {
+    // Parse arrays from JSON strings if they're strings
+    const daysOfChapter = Array.isArray(req.body.days_of_chapter)
+      ? req.body.days_of_chapter
+      : JSON.parse(req.body.days_of_chapter);
 
-        const chapterStatus = Array.isArray(req.body.chapter_status) 
-            ? req.body.chapter_status 
-            : JSON.parse(req.body.chapter_status);
+    const chapterStatus = Array.isArray(req.body.chapter_status)
+      ? req.body.chapter_status
+      : JSON.parse(req.body.chapter_status);
 
-        const chapterType = Array.isArray(req.body.chapter_type) 
-            ? req.body.chapter_type 
-            : JSON.parse(req.body.chapter_type);
+    const chapterType = Array.isArray(req.body.chapter_type)
+      ? req.body.chapter_type
+      : JSON.parse(req.body.chapter_type);
 
-        const accoladesConfig = Array.isArray(req.body.accolades_config) 
-            ? req.body.accolades_config 
-            : JSON.parse(req.body.accolades_config);
+    const accoladesConfig = Array.isArray(req.body.accolades_config)
+      ? req.body.accolades_config
+      : JSON.parse(req.body.accolades_config);
 
-        // Convert arrays to PostgreSQL array format
-        const formattedDays = `{${daysOfChapter.map(day => `"${day}"`).join(',')}}`;
-        const formattedStatus = `{${chapterStatus.map(status => `"${status}"`).join(',')}}`;
-        const formattedType = `{${chapterType.map(type => `"${type}"`).join(',')}}`;
-        const formattedAccolades = `{${accoladesConfig.join(',')}}`;
+    // Convert arrays to PostgreSQL array format
+    const formattedDays = `{${daysOfChapter
+      .map((day) => `"${day}"`)
+      .join(",")}}`;
+    const formattedStatus = `{${chapterStatus
+      .map((status) => `"${status}"`)
+      .join(",")}}`;
+    const formattedType = `{${chapterType
+      .map((type) => `"${type}"`)
+      .join(",")}}`;
+    const formattedAccolades = `{${accoladesConfig.join(",")}}`;
 
-        console.log('📊 Formatted arrays:', {
-            days: formattedDays,
-            status: formattedStatus,
-            type: formattedType,
-            accolades: formattedAccolades
-        });
+    console.log("📊 Formatted arrays:", {
+      days: formattedDays,
+      status: formattedStatus,
+      type: formattedType,
+      accolades: formattedAccolades,
+    });
 
-        // Start building the query
-        let query = `
+    // Start building the query
+    let query = `
             UPDATE region 
             SET region_name = $1,
                 contact_person = $2,
@@ -999,101 +1014,100 @@ const updateRegion = async (req, res) => {
                 accolades_config = $29
         `;
 
-        // Add region_logo update if a new file was uploaded
-        if (req.file) {
-            query += `, region_logo = $30`;
-        }
-
-        query += ` WHERE region_id = $${req.file ? '31' : '30'} RETURNING *`;
-
-        // Prepare values array
-        const values = [
-            req.body.region_name,
-            req.body.contact_person,
-            req.body.contact_number,
-            req.body.email_id,
-            req.body.mission,
-            req.body.vision,
-            req.body.region_status,
-            req.body.one_time_registration_fee,
-            req.body.one_year_fee,
-            req.body.two_year_fee,
-            req.body.five_year_fee,
-            req.body.late_fees,
-            req.body.country,
-            req.body.state,
-            req.body.city,
-            req.body.street_address_line_1,
-            req.body.street_address_line_2,
-            req.body.postal_code,
-            req.body.social_facebook,
-            req.body.social_instagram,
-            req.body.social_linkedin,
-            req.body.social_youtube,
-            req.body.website_link,
-            req.body.date_of_publishing,
-            req.body.region_launched_by,
-            formattedDays,        // Using formatted array string
-            formattedStatus,      // Using formatted array string
-            formattedType,        // Using formatted array string
-            formattedAccolades    // Using formatted array string
-        ];
-
-        // Add file name and region_id to values array
-        if (req.file) {
-            values.push(req.file.filename);
-        }
-        values.push(region_id);
-
-        console.log('📝 Executing query with values:', values);
-
-        const result = await con.query(query, values);
-
-        if (result.rowCount === 0) {
-            console.log('❌ No region found with ID:', region_id);
-            return res.status(404).json({
-                message: "Region not found"
-            });
-        }
-
-        console.log('✅ Region updated successfully');
-        res.json({
-            message: "Region updated successfully",
-            data: result.rows[0]
-        });
-
-    } catch (error) {
-        console.error('❌ Error updating region:', error);
-        res.status(500).json({
-            message: "Error updating region",
-            error: error.message
-        });
+    // Add region_logo update if a new file was uploaded
+    if (req.file) {
+      query += `, region_logo = $30`;
     }
+
+    query += ` WHERE region_id = $${req.file ? "31" : "30"} RETURNING *`;
+
+    // Prepare values array
+    const values = [
+      req.body.region_name,
+      req.body.contact_person,
+      req.body.contact_number,
+      req.body.email_id,
+      req.body.mission,
+      req.body.vision,
+      req.body.region_status,
+      req.body.one_time_registration_fee,
+      req.body.one_year_fee,
+      req.body.two_year_fee,
+      req.body.five_year_fee,
+      req.body.late_fees,
+      req.body.country,
+      req.body.state,
+      req.body.city,
+      req.body.street_address_line_1,
+      req.body.street_address_line_2,
+      req.body.postal_code,
+      req.body.social_facebook,
+      req.body.social_instagram,
+      req.body.social_linkedin,
+      req.body.social_youtube,
+      req.body.website_link,
+      req.body.date_of_publishing,
+      req.body.region_launched_by,
+      formattedDays, // Using formatted array string
+      formattedStatus, // Using formatted array string
+      formattedType, // Using formatted array string
+      formattedAccolades, // Using formatted array string
+    ];
+
+    // Add file name and region_id to values array
+    if (req.file) {
+      values.push(req.file.filename);
+    }
+    values.push(region_id);
+
+    console.log("📝 Executing query with values:", values);
+
+    const result = await con.query(query, values);
+
+    if (result.rowCount === 0) {
+      console.log("❌ No region found with ID:", region_id);
+      return res.status(404).json({
+        message: "Region not found",
+      });
+    }
+
+    console.log("✅ Region updated successfully");
+    res.json({
+      message: "Region updated successfully",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("❌ Error updating region:", error);
+    res.status(500).json({
+      message: "Error updating region",
+      error: error.message,
+    });
+  }
 };
 
 const updateChapter = async (req, res) => {
-  console.log('🔄 Starting chapter update process');
+  console.log("🔄 Starting chapter update process");
   const { chapter_id } = req.params;
-  console.log('📝 Updating chapter ID:', chapter_id);
+  console.log("📝 Updating chapter ID:", chapter_id);
 
   try {
-      // First, get the current chapter data to preserve logo if not changed
-      const currentChapter = await con.query(
-          'SELECT chapter_logo, email_id FROM chapter WHERE chapter_id = $1',
-          [chapter_id]
-      );
-      
-      const email_id = currentChapter.rows[0]?.email_id;
-      console.log('📧 Chapter email:', email_id);
+    // First, get the current chapter data to preserve logo if not changed
+    const currentChapter = await con.query(
+      "SELECT chapter_logo, email_id FROM chapter WHERE chapter_id = $1",
+      [chapter_id]
+    );
 
-      // Determine which logo to use
-      let logoFilename = req.file ? 
-          req.file.filename : 
-          currentChapter.rows[0]?.chapter_logo;
+    const email_id = currentChapter.rows[0]?.email_id;
+    console.log("📧 Chapter email:", email_id);
 
-      console.log('🖼️ Logo to be used:', logoFilename);
+    // Determine which logo to use
+    let logoFilename = req.file
+      ? req.file.filename
+      : currentChapter.rows[0]?.chapter_logo;
 
-      const query = `
+    console.log("🖼️ Logo to be used:", logoFilename);
+
+    const query = `
           UPDATE chapter 
           SET 
               region_id = $1,
@@ -1136,198 +1150,208 @@ const updateChapter = async (req, res) => {
           RETURNING *
       `;
 
-      const values = [
-          req.body.region_id,
-          req.body.chapter_name,
-          logoFilename,
-          req.body.chapter_status,
-          req.body.chapter_membership_fee,
-          req.body.chapter_kitty_fees,
-          req.body.chapter_visitor_fees,
-          req.body.chapter_meeting_day,
-          req.body.one_time_registration_fee,
-          req.body.chapter_type,
-          req.body.eoi_link,
-          req.body.member_app_link,
-          req.body.chapter_membership_fee_two_year,
-          req.body.chapter_membership_fee_five_year,
-          req.body.contact_number,
-          req.body.contact_person,
-          req.body.chapter_mission,
-          req.body.chapter_vision,
-          req.body.email_id,
-          req.body.country,
-          req.body.state,
-          req.body.city,
-          req.body.street_address_line,
-          req.body.postal_code,
-          req.body.chapter_facebook,
-          req.body.chapter_instagram,
-          req.body.chapter_linkedin,
-          req.body.chapter_youtube,
-          req.body.chapter_website,
-          req.body.date_of_publishing,
-          req.body.chapter_launched_by,
-          req.body.chapter_location_note,
-          req.body.chapter_late_fees,
-          req.body.chapter_available_fund,
-          req.body.billing_frequency,
-          req.body.meeting_hotel_id,  // Moved to match addChapter order
-          chapter_id
-      ];
+    const values = [
+      req.body.region_id,
+      req.body.chapter_name,
+      logoFilename,
+      req.body.chapter_status,
+      req.body.chapter_membership_fee,
+      req.body.chapter_kitty_fees,
+      req.body.chapter_visitor_fees,
+      req.body.chapter_meeting_day,
+      req.body.one_time_registration_fee,
+      req.body.chapter_type,
+      req.body.eoi_link,
+      req.body.member_app_link,
+      req.body.chapter_membership_fee_two_year,
+      req.body.chapter_membership_fee_five_year,
+      req.body.contact_number,
+      req.body.contact_person,
+      req.body.chapter_mission,
+      req.body.chapter_vision,
+      req.body.email_id,
+      req.body.country,
+      req.body.state,
+      req.body.city,
+      req.body.street_address_line,
+      req.body.postal_code,
+      req.body.chapter_facebook,
+      req.body.chapter_instagram,
+      req.body.chapter_linkedin,
+      req.body.chapter_youtube,
+      req.body.chapter_website,
+      req.body.date_of_publishing,
+      req.body.chapter_launched_by,
+      req.body.chapter_location_note,
+      req.body.chapter_late_fees,
+      req.body.chapter_available_fund,
+      req.body.billing_frequency,
+      req.body.meeting_hotel_id, // Moved to match addChapter order
+      chapter_id,
+    ];
 
-      console.log('🔍 Executing update query with values:', values);
-      const result = await con.query(query, values);
+    console.log("🔍 Executing update query with values:", values);
+    const result = await con.query(query, values);
 
-      if (result.rows.length === 0) {
-          console.log('⚠️ No chapter found with ID:', chapter_id);
-          return res.status(404).json({ message: "Chapter not found" });
-      }
+    if (result.rows.length === 0) {
+      console.log("⚠️ No chapter found with ID:", chapter_id);
+      return res.status(404).json({ message: "Chapter not found" });
+    }
 
-      // If logo was updated, also update it in chapterSettings
-      if (req.file && email_id) {
-          console.log('🔄 Syncing logo update with chapterSettings...');
-          try {
-              const updateSettingsQuery = `
+    // If logo was updated, also update it in chapterSettings
+    if (req.file && email_id) {
+      console.log("🔄 Syncing logo update with chapterSettings...");
+      try {
+        const updateSettingsQuery = `
                   UPDATE chapter 
                   SET chapter_logo = $1
                   WHERE email_id = $2
               `;
-              await con.query(updateSettingsQuery, [logoFilename, email_id]);
-              console.log('✅ Logo synced successfully');
-          } catch (syncError) {
-              console.error('⚠️ Error syncing logo:', syncError);
-          }
+        await con.query(updateSettingsQuery, [logoFilename, email_id]);
+        console.log("✅ Logo synced successfully");
+      } catch (syncError) {
+        console.error("⚠️ Error syncing logo:", syncError);
       }
+    }
 
-      // Add image URL to response
-      const updatedChapter = result.rows[0];
-      if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
-          console.log('🔗 Generated logo URL:', updatedChapter.chapter_logo_url);
-      }
+    // Add image URL to response
+    const updatedChapter = result.rows[0];
+    if (updatedChapter.chapter_logo) {
+      updatedChapter.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+      console.log("🔗 Generated logo URL:", updatedChapter.chapter_logo_url);
+    }
 
-      console.log('✅ Chapter updated successfully:', updatedChapter);
-      res.json(updatedChapter);
-
+    console.log("✅ Chapter updated successfully:", updatedChapter);
+    res.json(updatedChapter);
   } catch (error) {
-      console.error('❌ Error updating chapter:', error);
-      console.error('Error details:', error.stack);
-      res.status(500).json({
-          message: "Error updating chapter",
-          error: error.message,
-          details: error.stack
-      });
+    console.error("❌ Error updating chapter:", error);
+    console.error("Error details:", error.stack);
+    res.status(500).json({
+      message: "Error updating chapter",
+      error: error.message,
+      details: error.stack,
+    });
   }
 };
 
 const updateMember = async (req, res) => {
-    console.log('📝 Starting member update process');
-    console.log('📦 Request body:', req.body);
-    console.log('📸 Files received:', req.files);
+  console.log("📝 Starting member update process");
+  console.log("📦 Request body:", req.body);
+  console.log("📸 Files received:", req.files);
 
-    try {
-        const { member_id } = req.params;
+  try {
+    const { member_id } = req.params;
 
-        // First get the existing member data
-        const existingMember = await con.query(
-            "SELECT * FROM member WHERE member_id = $1",
-            [member_id]
-        );
+    // First get the existing member data
+    const existingMember = await con.query(
+      "SELECT * FROM member WHERE member_id = $1",
+      [member_id]
+    );
 
-        if (existingMember.rows.length === 0) {
-            return res.status(404).json({
-                message: "Member not found"
-            });
-        }
+    if (existingMember.rows.length === 0) {
+      return res.status(404).json({
+        message: "Member not found",
+      });
+    }
 
-        // Handle accolades_id - keep existing if not provided in request
-        let parsedAccolades;
-        if (req.body.accolades_id) {
-            try {
-                const accoladesArray = JSON.parse(req.body.accolades_id);
-                console.log('🏆 New accolades:', accoladesArray);
-                parsedAccolades = `{${accoladesArray.join(',')}}`;
-            } catch (error) {
-                console.error('❌ Error parsing accolades:', error);
-                parsedAccolades = existingMember.rows[0].accolades_id;
-            }
-        } else {
-            // Important: Keep existing accolades if not provided in request
-            console.log('🏆 Keeping existing accolades:', existingMember.rows[0].accolades_id);
-            parsedAccolades = existingMember.rows[0].accolades_id;
-        }
+    // Handle accolades_id - keep existing if not provided in request
+    let parsedAccolades;
+    if (req.body.accolades_id) {
+      try {
+        const accoladesArray = JSON.parse(req.body.accolades_id);
+        console.log("🏆 New accolades:", accoladesArray);
+        parsedAccolades = `{${accoladesArray.join(",")}}`;
+      } catch (error) {
+        console.error("❌ Error parsing accolades:", error);
+        parsedAccolades = existingMember.rows[0].accolades_id;
+      }
+    } else {
+      // Important: Keep existing accolades if not provided in request
+      console.log(
+        "🏆 Keeping existing accolades:",
+        existingMember.rows[0].accolades_id
+      );
+      parsedAccolades = existingMember.rows[0].accolades_id;
+    }
 
-        // Get filenames from uploaded files
-        const memberPhotoFilename = req.files?.['member_photo']?.[0]?.filename;
-        const companyLogoFilename = req.files?.['member_company_logo']?.[0]?.filename;
+    // Get filenames from uploaded files
+    const memberPhotoFilename = req.files?.["member_photo"]?.[0]?.filename;
+    const companyLogoFilename =
+      req.files?.["member_company_logo"]?.[0]?.filename;
 
-        // Build the SET clause dynamically
-        const updates = [];
-        const values = [];
-        let valueCounter = 1;
+    // Build the SET clause dynamically
+    const updates = [];
+    const values = [];
+    let valueCounter = 1;
 
-        // Add all fields from request body except files and accolades
-        Object.keys(req.body).forEach(key => {
-            if (key !== 'accolades_id' && key !== 'member_photo' && key !== 'member_company_logo') {
-                updates.push(`${key} = $${valueCounter}`);
-                values.push(req.body[key]);
-                valueCounter++;
-            }
-        });
-
-        // Always include accolades in the update with the preserved value
-        updates.push(`accolades_id = $${valueCounter}`);
-        values.push(parsedAccolades);
+    // Add all fields from request body except files and accolades
+    Object.keys(req.body).forEach((key) => {
+      if (
+        key !== "accolades_id" &&
+        key !== "member_photo" &&
+        key !== "member_company_logo"
+      ) {
+        updates.push(`${key} = $${valueCounter}`);
+        values.push(req.body[key]);
         valueCounter++;
+      }
+    });
 
-        // Add photo if present, otherwise keep existing
-        if (memberPhotoFilename) {
-            updates.push(`member_photo = $${valueCounter}`);
-            values.push(memberPhotoFilename);
-            valueCounter++;
-        }
+    // Always include accolades in the update with the preserved value
+    updates.push(`accolades_id = $${valueCounter}`);
+    values.push(parsedAccolades);
+    valueCounter++;
 
-        // Add company logo if present, otherwise keep existing
-        if (companyLogoFilename) {
-            updates.push(`member_company_logo = $${valueCounter}`);
-            values.push(companyLogoFilename);
-            valueCounter++;
-        }
+    // Add photo if present, otherwise keep existing
+    if (memberPhotoFilename) {
+      updates.push(`member_photo = $${valueCounter}`);
+      values.push(memberPhotoFilename);
+      valueCounter++;
+    }
 
-        // Add member_id to values array
-        values.push(member_id);
+    // Add company logo if present, otherwise keep existing
+    if (companyLogoFilename) {
+      updates.push(`member_company_logo = $${valueCounter}`);
+      values.push(companyLogoFilename);
+      valueCounter++;
+    }
 
-        const query = `
+    // Add member_id to values array
+    values.push(member_id);
+
+    const query = `
             UPDATE member 
-            SET ${updates.join(', ')}
+            SET ${updates.join(", ")}
             WHERE member_id = $${valueCounter}
             RETURNING *
         `;
 
-        console.log('🔍 Executing query:', query);
-        console.log('📊 With values:', values);
+    console.log("🔍 Executing query:", query);
+    console.log("📊 With values:", values);
 
-        const result = await con.query(query, values);
-        const updatedMember = result.rows[0];
-        console.log('✅ Member updated successfully:', updatedMember);
+    const result = await con.query(query, values);
+    const updatedMember = result.rows[0];
+    console.log("✅ Member updated successfully:", updatedMember);
 
-        res.json({
-            message: "Member updated successfully",
-            data: {
-                ...updatedMember,
-                member_photo_url: updatedMember.member_photo ? `/uploads/memberPhotos/${updatedMember.member_photo}` : null,
-                member_company_logo_url: updatedMember.member_company_logo ? `/uploads/memberCompanyLogos/${updatedMember.member_company_logo}` : null
-            }
-        });
-
-    } catch (error) {
-        console.error('❌ Error updating member:', error);
-        res.status(500).json({
-            message: "Error updating member",
-            error: error.message
-        });
-    }
+    res.json({
+      message: "Member updated successfully",
+      data: {
+        ...updatedMember,
+        member_photo_url: updatedMember.member_photo
+          ? `/uploads/memberPhotos/${updatedMember.member_photo}`
+          : null,
+        member_company_logo_url: updatedMember.member_company_logo
+          ? `/uploads/memberCompanyLogos/${updatedMember.member_company_logo}`
+          : null,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error updating member:", error);
+    res.status(500).json({
+      message: "Error updating member",
+      error: error.message,
+    });
+  }
 };
 
 const updateUniversalLink = async (req, res) => {
@@ -1378,46 +1402,46 @@ const updateUniversalLink = async (req, res) => {
 
 const deleteRegion = async (req, res) => {
   const { region_id } = req.params;
-  
+
   if (!region_id) {
-      return res.status(400).json({ message: "Region ID is required" });
+    return res.status(400).json({ message: "Region ID is required" });
   }
 
   try {
-      // First check if region exists and isn't already deleted
-      const checkRegion = await con.query(
-          `SELECT * FROM region WHERE region_id = $1 AND delete_status = 0`,
-          [region_id]
-      );
+    // First check if region exists and isn't already deleted
+    const checkRegion = await con.query(
+      `SELECT * FROM region WHERE region_id = $1 AND delete_status = 0`,
+      [region_id]
+    );
 
-      if (checkRegion.rowCount === 0) {
-          return res.status(404).json({ 
-              message: "Region not found or already deleted" 
-          });
-      }
-
-      // Proceed with deletion
-      const result = await con.query(
-          `UPDATE region SET delete_status = 1 WHERE region_id = $1 RETURNING *`,
-          [region_id]
-      );
-
-      if (result.rowCount > 0) {
-          res.status(200).json({ 
-              message: "Region marked as deleted successfully",
-              data: result.rows[0]
-          });
-      } else {
-          res.status(500).json({ 
-              message: "Failed to delete region" 
-          });
-      }
-  } catch (error) {
-      console.error("Error deleting region:", error);
-      res.status(500).json({ 
-          message: "Error deleting region",
-          error: error.message 
+    if (checkRegion.rowCount === 0) {
+      return res.status(404).json({
+        message: "Region not found or already deleted",
       });
+    }
+
+    // Proceed with deletion
+    const result = await con.query(
+      `UPDATE region SET delete_status = 1 WHERE region_id = $1 RETURNING *`,
+      [region_id]
+    );
+
+    if (result.rowCount > 0) {
+      res.status(200).json({
+        message: "Region marked as deleted successfully",
+        data: result.rows[0],
+      });
+    } else {
+      res.status(500).json({
+        message: "Failed to delete region",
+      });
+    }
+  } catch (error) {
+    console.error("Error deleting region:", error);
+    res.status(500).json({
+      message: "Error deleting region",
+      error: error.message,
+    });
   }
 };
 
@@ -1806,14 +1830,14 @@ const exportMembersToExcel = async (req, res) => {
         member_date_of_birth, 
         member_phone_number, 
         member_alternate_mobile_number, 
-        member_email_address, 
+        member_email_address,
+         street_address_line_1, 
         address_pincode, 
         address_city, 
         address_state, 
         region_id, 
         chapter_id, 
         accolades_id, 
-        category_id, 
         member_induction_date, 
         member_current_membership, 
         member_renewal_date, 
@@ -1830,14 +1854,16 @@ const exportMembersToExcel = async (req, res) => {
         member_linkedin, 
         member_youtube, 
         country, 
-        street_address_line_1, 
         street_address_line_2, 
         gender, 
         notification_consent, 
         date_of_publishing, 
         member_sponsored_by, 
         member_status,
-        delete_status
+        delete_status,
+        member_company_pincode,
+        meeting_opening_balance,
+        meeting_payable_amount
       FROM member
     `);
 
@@ -1849,13 +1875,13 @@ const exportMembersToExcel = async (req, res) => {
       member_phone_number: member.member_phone_number,
       member_alternate_mobile_number: member.member_alternate_mobile_number,
       member_email_address: member.member_email_address,
+      street_address_line_1: member.street_address_line_1,
       address_pincode: member.address_pincode,
       address_city: member.address_city,
       address_state: member.address_state,
       region_id: member.region_id,
       chapter_id: member.chapter_id,
       accolades_id: member.accolades_id ? member.accolades_id.join(", ") : "",
-      category_id: member.category_id,
       member_induction_date: member.member_induction_date,
       member_current_membership: member.member_current_membership,
       member_renewal_date: member.member_renewal_date,
@@ -1872,7 +1898,6 @@ const exportMembersToExcel = async (req, res) => {
       member_linkedin: member.member_linkedin,
       member_youtube: member.member_youtube,
       country: member.country,
-      street_address_line_1: member.street_address_line_1,
       street_address_line_2: member.street_address_line_2,
       gender: member.gender,
       notification_consent: member.notification_consent,
@@ -1880,6 +1905,9 @@ const exportMembersToExcel = async (req, res) => {
       member_sponsored_by: member.member_sponsored_by,
       member_status: member.member_status,
       delete_status: member.delete_status,
+      member_company_pincode: member.member_company_pincode,
+      meeting_opening_balance: member.meeting_opening_balance,
+      meeting_payable_amount: member.meeting_payable_amount,
     }));
 
     // Create a new workbook and add a sheet
@@ -2430,35 +2458,34 @@ const getCurrentDate = (req, res) => {
   res.status(200).json({ currentDate: currentDate.toISOString() });
 };
 
-
 const getSpecificBankOrder = async (req, res) => {
-  console.log("getSpecificBankOrder",req.body);
+  console.log("getSpecificBankOrder", req.body);
   const { member_id, chapter_id } = req.body;
   // const result = await con.query("SELECT * FROM bankorder WHERE chapter_id = $1 AND member_id = $2", [chapter_id, member_id]);
   // res.json(result.rows);
   try {
-        // Query the database to find matching entries
-        const query = `
+    // Query the database to find matching entries
+    const query = `
             SELECT * 
             FROM bankorder 
             WHERE chapter_id = $1 AND member_id = $2
         `;
-        
-        const result = await con.query(query, [chapter_id, member_id]);
 
-        // If no rows are found, send a 404 response
-        if (result.rows.length === 0) {
-            return res.status(404).json({ message: 'No matching orders found' });
-        }
+    const result = await con.query(query, [chapter_id, member_id]);
 
-        // Send back the matching orders as the response
-        res.status(200).json(result.rows);
-    } catch (error) {
-        // Handle any database errors
-        console.error(error);
-        res.status(500).json({ message: 'Server error, please try again later' });
+    // If no rows are found, send a 404 response
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "No matching orders found" });
     }
-}
+
+    // Send back the matching orders as the response
+    res.status(200).json(result.rows);
+  } catch (error) {
+    // Handle any database errors
+    console.error(error);
+    res.status(500).json({ message: "Server error, please try again later" });
+  }
+};
 
 const addKittyPayment = async (req, res) => {
   try {
@@ -2496,7 +2523,7 @@ const addKittyPayment = async (req, res) => {
         .status(400)
         .json({ message: "A bill has already been raised for this chapter." });
     }
-    const raisedOnDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    const raisedOnDate = new Date().toISOString().split("T")[0]; // Get current date in YYYY-MM-DD format
     // If no active payment exists for this chapter_id, proceed to insert the new record raised_on payment_date
     const query = `
           INSERT INTO kittyPaymentChapter 
@@ -2525,56 +2552,68 @@ const addKittyPayment = async (req, res) => {
 
     await con.query(updateMemberQuery, [total_bill_amount, chapter_id]);
     console.log(updateMemberQuery);
-    
 
-    const response = await fetch('https://bni-data-backend.onrender.com/api/getbankOrder');
+    const response = await fetch(
+      "https://bni-data-backend.onrender.com/api/getbankOrder"
+    );
     const bankOrders = await response.json();
 
     // Filter the bank orders based on chapter_id
     // const filteredBankOrders = bankOrders.filter(order => order.chapter_id === chapter_id);
-    console.log("bankOrders",bankOrders);
-    console.log("chapter_id",chapter_id);
-    const filteredBankOrders = bankOrders.filter(order => {
+    console.log("bankOrders", bankOrders);
+    console.log("chapter_id", chapter_id);
+    const filteredBankOrders = bankOrders.filter((order) => {
       console.log("Order Chapter ID:", order.chapter_id);
       console.log("Chapter ID:", chapter_id);
       return order.chapter_id === Number(chapter_id);
     });
     // const fiterdata = bankOrders.filter(order => order.chapter_id === chapter_id);
-    console.log('Filtered Bank Orders:', filteredBankOrders);
+    console.log("Filtered Bank Orders:", filteredBankOrders);
 
     if (filteredBankOrders.length > 0) {
       // const totalAmountToPay = filteredBankOrders.reduce((acc, order) => acc + order.amount_to_pay, 0);
-      
-    
+
       for (const order of filteredBankOrders) {
         let currentAmountToPay = order.amount_to_pay;
         let noOfLatePayment = order.no_of_late_payment;
-        
+
         if (currentAmountToPay > 0) {
           // Code to handle positive amount_to_pay
-          console.log(`Processing payment for order ID: ${order.id} with amount: ${currentAmountToPay}`);
+          console.log(
+            `Processing payment for order ID: ${order.id} with amount: ${currentAmountToPay}`
+          );
           let currentDate = new Date();
-          let dueDate = order.kitty_due_date ? new Date(order.kitty_due_date) : null;
+          let dueDate = order.kitty_due_date
+            ? new Date(order.kitty_due_date)
+            : null;
           if (dueDate === null) {
             // Code to handle the case where dueDate is null
             console.log(`Order ID: ${order.id} has due date === null.`);
-          }
-          else if (currentDate > dueDate) {
+          } else if (currentDate > dueDate) {
             // Code to handle the case where the current date is greater than the due date
-            currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(order.kitty_penalty);
+            currentAmountToPay =
+              parseFloat(currentAmountToPay) + parseFloat(order.kitty_penalty);
             noOfLatePayment = parseFloat(noOfLatePayment) + 1;
-            console.log(`Order ID: ${order.id} is overdue. Processing overdue actions. added penalty ${order.kitty_penalty} and no of late payment ${noOfLatePayment}`);
+            console.log(
+              `Order ID: ${order.id} is overdue. Processing overdue actions. added penalty ${order.kitty_penalty} and no of late payment ${noOfLatePayment}`
+            );
           } else {
             // Code to handle the case where the current date is less than or equal to the due date
-            console.log(`Order ID: ${order.id} is not overdue. No action needed to add penalty.`);
+            console.log(
+              `Order ID: ${order.id} is not overdue. No action needed to add penalty.`
+            );
           }
-          currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(total_bill_amount);
+          currentAmountToPay =
+            parseFloat(currentAmountToPay) + parseFloat(total_bill_amount);
         } else {
           // Code to handle zero or negative amount_to_pay
-          console.log(`for order ID: ${order.id}. Amount to pay is ${order.amount_to_pay}`);
-          currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(total_bill_amount);
+          console.log(
+            `for order ID: ${order.id}. Amount to pay is ${order.amount_to_pay}`
+          );
+          currentAmountToPay =
+            parseFloat(currentAmountToPay) + parseFloat(total_bill_amount);
         }
-        
+
         // const currentPenalty = parseFloat(penalty_amount);
 
         const updateQuery = `
@@ -2586,24 +2625,25 @@ const addKittyPayment = async (req, res) => {
             kitty_penalty = $4 
           WHERE member_id = $5
         `;
-        
+
         const values = [
-          currentAmountToPay, 
-          due_date, 
-          noOfLatePayment, 
-          penalty_amount, 
-          order.member_id
+          currentAmountToPay,
+          due_date,
+          noOfLatePayment,
+          penalty_amount,
+          order.member_id,
         ];
-        
+
         try {
           await con.query(updateQuery, values);
           console.log(`Updated bank order for member ID: ${order.member_id}`);
         } catch (dbError) {
-          console.error(`Error updating bank order for member ID: ${order.member_id}`, dbError);
+          console.error(
+            `Error updating bank order for member ID: ${order.member_id}`,
+            dbError
+          );
         }
       }
-    
-    
     } else {
       console.log(`No member found for chapter in bank orders ${chapter_id}.`);
     }
@@ -2717,73 +2757,77 @@ const addExpenseType = async (req, res) => {
 };
 
 const addExpense = async (req, res) => {
-    try {
-        console.log('\n🚀 Starting Add Expense Process');
-        console.log('📝 Request Body:', req.body);
-        console.log('📎 File Details:', req.file);
+  try {
+    console.log("\n🚀 Starting Add Expense Process");
+    console.log("📝 Request Body:", req.body);
+    console.log("📎 File Details:", req.file);
 
-        if (!req.file) {
-            console.error('❌ No file uploaded');
-            return res.status(400).json({ message: "Bill file is required" });
-        }
+    if (!req.file) {
+      console.error("❌ No file uploaded");
+      return res.status(400).json({ message: "Bill file is required" });
+    }
 
-        // Store the original filename
-        const originalFilename = req.file.filename;
-        
-        // Insert expense record first
-        const result = await con.query(
-            `INSERT INTO expenses (
+    // Store the original filename
+    const originalFilename = req.file.filename;
+
+    // Insert expense record first
+    const result = await con.query(
+      `INSERT INTO expenses (
                 expense_type, submitted_by, description, amount, 
                 payment_status, bill_date, upload_bill, 
                 transaction_no, bill_no, chapter_id
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
             RETURNING *`,
-            [
-                req.body.expense_type,
-                req.body.submitted_by,
-                req.body.description,
-                req.body.amount,
-                req.body.payment_status,
-                req.body.bill_date,
-                originalFilename,  // Store original filename temporarily
-                req.body.transaction_no,
-                req.body.bill_no,
-                req.body.chapter_id
-            ]
-        );
+      [
+        req.body.expense_type,
+        req.body.submitted_by,
+        req.body.description,
+        req.body.amount,
+        req.body.payment_status,
+        req.body.bill_date,
+        originalFilename, // Store original filename temporarily
+        req.body.transaction_no,
+        req.body.bill_no,
+        req.body.chapter_id,
+      ]
+    );
 
-        // Get the expense_id from the inserted record
-        const expense_id = result.rows[0].expense_id;
+    // Get the expense_id from the inserted record
+    const expense_id = result.rows[0].expense_id;
 
-        // Rename the file to include expense_id
-        const fileExt = path.extname(originalFilename);
-        const newFilename = `expense_${expense_id}${fileExt}`;
-        const oldPath = path.join(__dirname, 'uploads', 'expenses', originalFilename);
-        const newPath = path.join(__dirname, 'uploads', 'expenses', newFilename);
+    // Rename the file to include expense_id
+    const fileExt = path.extname(originalFilename);
+    const newFilename = `expense_${expense_id}${fileExt}`;
+    const oldPath = path.join(
+      __dirname,
+      "uploads",
+      "expenses",
+      originalFilename
+    );
+    const newPath = path.join(__dirname, "uploads", "expenses", newFilename);
 
-        // Rename the file
-        fs.renameSync(oldPath, newPath);
+    // Rename the file
+    fs.renameSync(oldPath, newPath);
 
-        // Update the filename in database
-        await con.query(
-            'UPDATE expenses SET upload_bill = $1 WHERE expense_id = $2',
-            [newFilename, expense_id]
-        );
+    // Update the filename in database
+    await con.query(
+      "UPDATE expenses SET upload_bill = $1 WHERE expense_id = $2",
+      [newFilename, expense_id]
+    );
 
-        console.log('✅ Expense added successfully:', {
-            id: expense_id,
-            filename: newFilename
-        });
+    console.log("✅ Expense added successfully:", {
+      id: expense_id,
+      filename: newFilename,
+    });
 
-        res.status(201).json({
-            message: "Expense added successfully!",
-            data: {...result.rows[0], upload_bill: newFilename}
-        });
-
-    } catch (error) {
-        console.error('❌ Error adding expense:', error);
-        res.status(500).json({ message: "Error adding expense" });
-    }
+    res.status(201).json({
+      message: "Expense added successfully!",
+      data: { ...result.rows[0], upload_bill: newFilename },
+    });
+  } catch (error) {
+    console.error("❌ Error adding expense:", error);
+    res.status(500).json({ message: "Error adding expense" });
+  }
 };
 
 const getExpenseById = async (req, res) => {
@@ -2994,8 +3038,8 @@ const updateMemberSettings = async (req, res) => {
         member_instagram = $6,
         member_linkedin = $7,
         member_youtube = $8
-        ${photoPath ? ', member_photo = $9' : ''}
-      WHERE member_email_address = ${photoPath ? '$10' : '$9'}
+        ${photoPath ? ", member_photo = $9" : ""}
+      WHERE member_email_address = ${photoPath ? "$10" : "$9"}
       RETURNING *`;
 
     const values = [
@@ -3003,10 +3047,10 @@ const updateMemberSettings = async (req, res) => {
       member_company_address,
       member_company_name,
       member_gst_number,
-      member_facebook || '',
-      member_instagram || '',
-      member_linkedin || '',
-      member_youtube || ''
+      member_facebook || "",
+      member_instagram || "",
+      member_linkedin || "",
+      member_youtube || "",
     ];
 
     if (photoPath) {
@@ -3018,14 +3062,16 @@ const updateMemberSettings = async (req, res) => {
 
     if (result.rows.length === 0) {
       console.log("No member found with email:", member_email_address);
-      return res.status(404).json({ message: "Member not found with this email" });
+      return res
+        .status(404)
+        .json({ message: "Member not found with this email" });
     }
 
     console.log("Update successful");
     res.json({
       message: "Member settings updated successfully",
       data: result.rows[0],
-      photo_path: photoPath
+      photo_path: photoPath,
     });
   } catch (error) {
     console.error("Error in updateMemberSettings:", error);
@@ -3702,17 +3748,15 @@ const updatePaymentGatewayStatus = async (req, res) => {
 
   try {
     // Validate status
-    if (!['active', 'inactive'].includes(status)) {
-      return res.status(400).json({ 
-        message: "Status must be either 'active' or 'inactive'" 
+    if (!["active", "inactive"].includes(status)) {
+      return res.status(400).json({
+        message: "Status must be either 'active' or 'inactive'",
       });
     }
 
     // If setting to active, first set all gateways to inactive
-    if (status === 'active') {
-      await con.query(
-        "UPDATE paymentgateways SET status = 'inactive'"
-      );
+    if (status === "active") {
+      await con.query("UPDATE paymentgateways SET status = 'inactive'");
     }
 
     // Update the specified gateway
@@ -3725,45 +3769,53 @@ const updatePaymentGatewayStatus = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
-        message: "Payment gateway not found" 
+      return res.status(404).json({
+        message: "Payment gateway not found",
       });
     }
 
     res.status(200).json({
       message: "Payment gateway status updated successfully",
-      data: result.rows[0]
+      data: result.rows[0],
     });
-
   } catch (error) {
     console.error("Error updating payment gateway status:", error);
-    res.status(500).json({ 
-      message: "Error updating payment gateway status" 
+    res.status(500).json({
+      message: "Error updating payment gateway status",
     });
   }
 };
 
 // added by vasusri
-const addPendingAmount =async (req, res)=>{
-  const { 
+const addPendingAmount = async (req, res) => {
+  const {
     chapter_id,
     member_id,
     kitty_id,
     member_pending_balance,
     total_amount_paid,
     tax,
-    date_of_update
+    date_of_update,
   } = req.body;
   try {
     console.log("add Pending controller runs");
-    
-    console.log(chapter_id, member_id, kitty_id, member_pending_balance, total_amount_paid, tax, date_of_update);
+
+    console.log(
+      chapter_id,
+      member_id,
+      kitty_id,
+      member_pending_balance,
+      total_amount_paid,
+      tax,
+      date_of_update
+    );
 
     // Validate required fields
     if (!kitty_id || !chapter_id || !member_id) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Missing required fields: kitty_id, chapter_id and member_id are required" 
+      return res.status(400).json({
+        success: false,
+        message:
+          "Missing required fields: kitty_id, chapter_id and member_id are required",
       });
     }
 
@@ -3790,7 +3842,7 @@ const addPendingAmount =async (req, res)=>{
       member_pending_balance,
       total_amount_paid,
       tax,
-      date_of_update
+      date_of_update,
     ];
 
     const result = await con.query(query, values);
@@ -3798,99 +3850,117 @@ const addPendingAmount =async (req, res)=>{
     res.status(201).json({
       success: true,
       message: "Balance added successfully",
-      data: result.rows[0]
+      data: result.rows[0],
     });
-
   } catch (error) {
     console.error("Error adding pending amount:", error);
     res.status(500).json({
       success: false,
       message: "Error adding Pending amount",
-      error: error.message
+      error: error.message,
     });
   }
-}
-
+};
 
 // create by vasu Sri
 const getPendingAmount = async (req, res) => {
-  // const { member_id, chapter_id, kitty_id } = req.body; 
+  // const { member_id, chapter_id, kitty_id } = req.body;
   const { member_id, chapter_id, kitty_id } = req.query;
-  console.log("member_id, chapter_id, kitty_id",member_id, chapter_id, kitty_id);
+  console.log(
+    "member_id, chapter_id, kitty_id",
+    member_id,
+    chapter_id,
+    kitty_id
+  );
   try {
     const result = await con.query(
-          "SELECT * FROM memberpendingkittyopeningbalance WHERE member_id = $1 AND chapter_id = $2 AND kitty_id = $3",
-  [member_id, chapter_id, kitty_id]
-        );
+      "SELECT * FROM memberpendingkittyopeningbalance WHERE member_id = $1 AND chapter_id = $2 AND kitty_id = $3",
+      [member_id, chapter_id, kitty_id]
+    );
 
     // const result = await con.query(query, values);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "No Pending balance data found"
+        message: "No Pending balance data found",
       });
     }
 
     res.json({
       success: true,
       count: result.rows.length,
-      data: result.rows
+      data: result.rows,
     });
-
   } catch (error) {
     console.error("Error fetching pending balance:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching pending balance",
-      error: error.message
+      error: error.message,
     });
   }
 };
 
-
-
 // Fetch all active members
 const memberPendingKittyOpeningBalance = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM memberpendingkittyopeningbalance");
+    const result = await con.query(
+      "SELECT * FROM memberpendingkittyopeningbalance"
+    );
     res.json(result.rows);
   } catch (error) {
-    console.error("Error fetching all memberpendingkittyopeningbalance:", error);
+    console.error(
+      "Error fetching all memberpendingkittyopeningbalance:",
+      error
+    );
     res.status(500).send("Error fetching all memberpendingkittyopeningbalance");
   }
 };
 
 const updateChapterSettings = async (req, res) => {
-  console.log('Starting updateChapterSettings controller...');
-  
+  console.log("Starting updateChapterSettings controller...");
+
   try {
-      console.log('Request body:', req.body);
-      const {
-          email_id,
-          contact_number,
-          contact_person,
-          chapter_mission,
-          chapter_vision,
-          meeting_hotel_id,
-          street_address_line,
-          postal_code,
-          chapter_facebook,
-          chapter_instagram,
-          chapter_linkedin,
-          chapter_youtube
-      } = req.body;
-      console.log(email_id, contact_number, contact_person, chapter_mission, chapter_vision, meeting_hotel_id, street_address_line, postal_code, chapter_facebook, chapter_instagram, chapter_linkedin, chapter_youtube);
+    console.log("Request body:", req.body);
+    const {
+      email_id,
+      contact_number,
+      contact_person,
+      chapter_mission,
+      chapter_vision,
+      meeting_hotel_id,
+      street_address_line,
+      postal_code,
+      chapter_facebook,
+      chapter_instagram,
+      chapter_linkedin,
+      chapter_youtube,
+    } = req.body;
+    console.log(
+      email_id,
+      contact_number,
+      contact_person,
+      chapter_mission,
+      chapter_vision,
+      meeting_hotel_id,
+      street_address_line,
+      postal_code,
+      chapter_facebook,
+      chapter_instagram,
+      chapter_linkedin,
+      chapter_youtube
+    );
 
-      if (!email_id) {
-          console.error('Email ID is required');
-          return res.status(400).json({
-              success: false,
-              message: 'Email ID is required'
-          });
-      }
+    if (!email_id) {
+      console.error("Email ID is required");
+      return res.status(400).json({
+        success: false,
+        message: "Email ID is required",
+      });
+    }
 
-      let updateQuery = `
+    let updateQuery = `
           UPDATE chapter 
           SET 
               contact_number = COALESCE($1, contact_number),
@@ -3906,61 +3976,60 @@ const updateChapterSettings = async (req, res) => {
               chapter_youtube = COALESCE($11, chapter_youtube)
       `;
 
-      const queryParams = [
-          contact_number,
-          contact_person,
-          chapter_mission,
-          chapter_vision,
-          meeting_hotel_id,
-          street_address_line,
-          postal_code,
-          chapter_facebook,
-          chapter_instagram,
-          chapter_linkedin,
-          chapter_youtube
-      ];
+    const queryParams = [
+      contact_number,
+      contact_person,
+      chapter_mission,
+      chapter_vision,
+      meeting_hotel_id,
+      street_address_line,
+      postal_code,
+      chapter_facebook,
+      chapter_instagram,
+      chapter_linkedin,
+      chapter_youtube,
+    ];
 
-      // Handle file upload if present
-      if (req.file) {
-          console.log('File uploaded:', req.file);
-          const photoPath = `${req.file.filename}`;
-          updateQuery += `, chapter_logo = $12`;
-          queryParams.push(photoPath);
-      }
+    // Handle file upload if present
+    if (req.file) {
+      console.log("File uploaded:", req.file);
+      const photoPath = `${req.file.filename}`;
+      updateQuery += `, chapter_logo = $12`;
+      queryParams.push(photoPath);
+    }
 
-      updateQuery += ` WHERE email_id = $${queryParams.length + 1} RETURNING *`;
-      queryParams.push(email_id);
+    updateQuery += ` WHERE email_id = $${queryParams.length + 1} RETURNING *`;
+    queryParams.push(email_id);
 
-      const result = await con.query(updateQuery, queryParams);
+    const result = await con.query(updateQuery, queryParams);
 
-      if (result.rows.length === 0) {
-          console.error('No chapter found with email:', email_id);
-          return res.status(404).json({
-              success: false,
-              message: 'Chapter not found'
-          });
-      }
-
-      // Add the logo URL to the response
-      const updatedChapter = result.rows[0];
-      if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
-      }
-
-      console.log('Chapter updated successfully:', updatedChapter);
-      res.status(200).json({
-          success: true,
-          message: 'Chapter settings updated successfully',
-          data: updatedChapter
+    if (result.rows.length === 0) {
+      console.error("No chapter found with email:", email_id);
+      return res.status(404).json({
+        success: false,
+        message: "Chapter not found",
       });
+    }
 
+    // Add the logo URL to the response
+    const updatedChapter = result.rows[0];
+    if (updatedChapter.chapter_logo) {
+      updatedChapter.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+    }
+
+    console.log("Chapter updated successfully:", updatedChapter);
+    res.status(200).json({
+      success: true,
+      message: "Chapter settings updated successfully",
+      data: updatedChapter,
+    });
   } catch (error) {
-      console.error('Error in updateChapterSettings:', error);
-      res.status(500).json({
-          success: false,
-          message: 'Error updating chapter settings',
-          error: error.message
-      });
+    console.error("Error in updateChapterSettings:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating chapter settings",
+      error: error.message,
+    });
   }
 };
 
@@ -4028,7 +4097,8 @@ const addInvoiceManually = async (req, res) => {
       customer_details.ulid_id || defaultValues.ulid_id,
       payment_details.order_status || defaultValues.order_status,
       payment_details.payment_session_id || defaultValues.payment_session_id,
-      customer_details.one_time_registration_fee || defaultValues.one_time_registration_fee,
+      customer_details.one_time_registration_fee ||
+        defaultValues.one_time_registration_fee,
       customer_details.membership_fee || defaultValues.membership_fee,
       customer_details.tax || defaultValues.tax,
       customer_details.memberName || defaultValues.memberName,
@@ -4061,11 +4131,16 @@ const addInvoiceManually = async (req, res) => {
       payment_details.payment_status || defaultValues.payment_status,
       payment_details.payment_message || defaultValues.payment_message,
       payment_details.payment_time || defaultValues.payment_time,
-      payment_details.payment_completion_time || defaultValues.payment_completion_time,
+      payment_details.payment_completion_time ||
+        defaultValues.payment_completion_time,
       payment_details.bank_reference || defaultValues.bank_reference,
       payment_details.auth_id || defaultValues.auth_id,
-      JSON.stringify(payment_details.payment_method || defaultValues.payment_method),
-      JSON.stringify(payment_details.error_details || defaultValues.error_details),
+      JSON.stringify(
+        payment_details.payment_method || defaultValues.payment_method
+      ),
+      JSON.stringify(
+        payment_details.error_details || defaultValues.error_details
+      ),
       payment_details.gateway_order_id || defaultValues.gateway_order_id,
       payment_details.gateway_payment_id || defaultValues.gateway_payment_id,
       payment_details.payment_group || defaultValues.payment_group,
@@ -4092,7 +4167,6 @@ const addInvoiceManually = async (req, res) => {
   }
 };
 
-
 const getAllMemberCredit = async (req, res) => {
   try {
     const result = await con.query("SELECT * FROM memberkittycredit");
@@ -4103,16 +4177,14 @@ const getAllMemberCredit = async (req, res) => {
   }
 };
 
-
-
 const addMemberCredit = async (req, res) => {
-  let { member_id, chapter_id, credit_amount, credit_date, credit_type } = req.body;
+  let { member_id, chapter_id, credit_amount, credit_date, credit_type } =
+    req.body;
 
   // Ensure member_id is always an array
   if (!Array.isArray(member_id)) {
     member_id = [member_id]; // Convert single member_id to array
   }
-  
 
   try {
     const query = `
@@ -4123,38 +4195,53 @@ const addMemberCredit = async (req, res) => {
 
     let insertedRecords = [];
 
-    const response = await fetch("https://bni-data-backend.onrender.com/api/getbankOrder");
+    const response = await fetch(
+      "https://bni-data-backend.onrender.com/api/getbankOrder"
+    );
     const bankOrders = await response.json();
 
-    
     for (const id of member_id) {
-      const values = [parseInt(id), chapter_id, credit_amount, credit_date, false, credit_type]; // Ensure member_id is an integer
+      const values = [
+        parseInt(id),
+        chapter_id,
+        credit_amount,
+        credit_date,
+        false,
+        credit_type,
+      ]; // Ensure member_id is an integer
       const result = await con.query(query, values);
       insertedRecords.push(result.rows[0]);
-    const matchedBankOrder = bankOrders.find(order => parseFloat(id) === parseFloat(order.member_id) && order.chapter_id === parseFloat(chapter_id));
-    if (matchedBankOrder) {
-      console.log("Matched Bank Order:", matchedBankOrder);
-     
+      const matchedBankOrder = bankOrders.find(
+        (order) =>
+          parseFloat(id) === parseFloat(order.member_id) &&
+          order.chapter_id === parseFloat(chapter_id)
+      );
+      if (matchedBankOrder) {
+        console.log("Matched Bank Order:", matchedBankOrder);
+
         const updateQuery = `
           UPDATE bankorder 
           SET amount_to_pay = amount_to_pay - $1 
           WHERE member_id = $2 AND chapter_id = $3 
           RETURNING *;
         `;
-        const values = [credit_amount, matchedBankOrder.member_id, matchedBankOrder.chapter_id];
+        const values = [
+          credit_amount,
+          matchedBankOrder.member_id,
+          matchedBankOrder.chapter_id,
+        ];
         const updateResult = await con.query(updateQuery, values);
         console.log("Updated Matched Bank Order:", updateResult.rows[0]);
-      
-      // You can add any additional logic here if needed
-    } else {
-      console.log("No matching bank order found for member_id:", id);
+
+        // You can add any additional logic here if needed
+      } else {
+        console.log("No matching bank order found for member_id:", id);
+      }
     }
 
-    
-    }
-
-
-    res.status(201).json({ message: "Credit added successfully!", data: insertedRecords });
+    res
+      .status(201)
+      .json({ message: "Credit added successfully!", data: insertedRecords });
   } catch (error) {
     console.error("Error adding credit:", error);
     res.status(500).send("Error adding credit");
@@ -4170,7 +4257,6 @@ const getInterviewSheet = async (req, res) => {
     res.status(500).send("Error fetching interview sheet");
   }
 };
-
 
 const getCommitmentSheet = async (req, res) => {
   try {
@@ -4198,14 +4284,22 @@ const addMemberWriteOff = async (req, res) => {
     `;
 
     let insertedRecords = [];
-    
+
     for (const id of member_id) {
-      const values = [parseInt(id), chapter_id, rightoff_date, total_pending_amount]; // Ensure member_id is an integer
+      const values = [
+        parseInt(id),
+        chapter_id,
+        rightoff_date,
+        total_pending_amount,
+      ]; // Ensure member_id is an integer
       const result = await con.query(query, values);
       insertedRecords.push(result.rows[0]);
     }
 
-    res.status(201).json({ message: "Member Write Off Successfully!", data: insertedRecords });
+    res.status(201).json({
+      message: "Member Write Off Successfully!",
+      data: insertedRecords,
+    });
   } catch (error) {
     console.error("Error adding Write Off:", error);
     res.status(500).send("Error adding Write Off");
@@ -4253,7 +4347,8 @@ const createInvoice = async (req, res) => {
     console.log(req.body);
 
     // Function to remove non-numeric characters except the decimal point
-    const sanitizeAmount = (amount) => parseFloat(amount.replace(/[^\d.]/g, "")) || 0;
+    const sanitizeAmount = (amount) =>
+      parseFloat(amount.replace(/[^\d.]/g, "")) || 0;
 
     // Sanitize grand_total before inserting into the database
     const sanitizedGrandTotal = sanitizeAmount(grand_total);
@@ -4344,7 +4439,6 @@ const createInvoice = async (req, res) => {
   }
 };
 
-
 const getZones = async (req, res) => {
   try {
     const result = await con.query("SELECT * FROM zone");
@@ -4356,46 +4450,47 @@ const getZones = async (req, res) => {
 };
 
 const addZone = async (req, res) => {
+  try {
+    console.log("📝 Starting addZone process");
+    console.log("Request body:", req.body);
+    console.log("Uploaded file:", req.file);
+
+    const {
+      zone_name,
+      zone_status,
+      zone_launched_by,
+      zone_contact_number,
+      zone_email_id,
+      date_of_publishing,
+    } = req.body;
+
+    // Validate required fields
+    if (!zone_name || !zone_status || !zone_contact_number || !zone_email_id) {
+      console.error("❌ Missing required fields");
+      return res.status(400).json({
+        success: false,
+        message:
+          "Required fields missing: zone_name, zone_status, zone_contact_number, and zone_email_id are mandatory",
+      });
+    }
+
+    // Get the filename from the uploaded file
+    const zone_logo = req.file ? req.file.filename : null;
+    console.log("🖼️ Zone logo filename:", zone_logo);
+
+    // First, drop the existing unique constraint if it exists
     try {
-        console.log('📝 Starting addZone process');
-        console.log('Request body:', req.body);
-        console.log('Uploaded file:', req.file);
-
-        const {
-            zone_name,
-            zone_status,
-            zone_launched_by,
-            zone_contact_number,
-            zone_email_id,
-            date_of_publishing
-        } = req.body;
-
-        // Validate required fields
-        if (!zone_name || !zone_status || !zone_contact_number || !zone_email_id) {
-            console.error('❌ Missing required fields');
-            return res.status(400).json({
-                success: false,
-                message: "Required fields missing: zone_name, zone_status, zone_contact_number, and zone_email_id are mandatory"
-            });
-        }
-
-        // Get the filename from the uploaded file
-        const zone_logo = req.file ? req.file.filename : null;
-        console.log('🖼️ Zone logo filename:', zone_logo);
-
-        // First, drop the existing unique constraint if it exists
-        try {
-            await con.query(`
+      await con.query(`
                 ALTER TABLE zone 
                 DROP CONSTRAINT IF EXISTS zone_zone_email_id_key;
             `);
-            console.log('🔧 Dropped unique constraint on email_id if it existed');
-        } catch (error) {
-            console.log('ℹ️ No constraint to drop or already dropped');
-        }
+      console.log("🔧 Dropped unique constraint on email_id if it existed");
+    } catch (error) {
+      console.log("ℹ️ No constraint to drop or already dropped");
+    }
 
-        // Insert zone into database
-        const query = `
+    // Insert zone into database
+    const query = `
             INSERT INTO zone (
                 zone_name,
                 zone_logo,
@@ -4409,104 +4504,102 @@ const addZone = async (req, res) => {
             RETURNING *
         `;
 
-        const values = [
-            zone_name,
-            zone_logo,
-            zone_status,
-            zone_launched_by || null,
-            zone_contact_number,
-            zone_email_id,
-            date_of_publishing || new Date(),
-            false // default delete_status
-        ];
+    const values = [
+      zone_name,
+      zone_logo,
+      zone_status,
+      zone_launched_by || null,
+      zone_contact_number,
+      zone_email_id,
+      date_of_publishing || new Date(),
+      false, // default delete_status
+    ];
 
-        console.log('💾 Executing query with values:', values);
+    console.log("💾 Executing query with values:", values);
 
-        const result = await con.query(query, values);
-        console.log('✅ Zone added successfully:', result.rows[0]);
+    const result = await con.query(query, values);
+    console.log("✅ Zone added successfully:", result.rows[0]);
 
-        res.status(201).json({
-            success: true,
-            message: "Zone added successfully",
-            data: result.rows[0]
-        });
-
-    } catch (error) {
-        console.error('❌ Error in addZone:', error);
-        res.status(500).json({
-            success: false,
-            message: "Error adding zone",
-            error: error.message
-        });
-    }
+    res.status(201).json({
+      success: true,
+      message: "Zone added successfully",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("❌ Error in addZone:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error adding zone",
+      error: error.message,
+    });
+  }
 };
 
 const getZone = async (req, res) => {
-    try {
-        console.log('📥 Getting zone details for ID:', req.params.zone_id);
-        
-        const query = `
+  try {
+    console.log("📥 Getting zone details for ID:", req.params.zone_id);
+
+    const query = `
             SELECT * FROM zone 
             WHERE zone_id = $1 AND delete_status = false
         `;
-        
-        const result = await con.query(query, [req.params.zone_id]);
-        console.log('🔍 Zone details found:', result.rows[0]);
 
-        if (result.rows.length === 0) {
-            console.log('❌ No zone found with ID:', req.params.zone_id);
-            return res.status(404).json({
-                success: false,
-                message: "Zone not found"
-            });
-        }
+    const result = await con.query(query, [req.params.zone_id]);
+    console.log("🔍 Zone details found:", result.rows[0]);
 
-        // Add base URL to zone logo
-        if (result.rows[0].zone_logo) {
-            result.rows[0].zone_logo = `https://bni-data-backend.onrender.com/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
-        }
-
-        res.json({
-            success: true,
-            data: result.rows[0]
-        });
-
-    } catch (error) {
-        console.error('❌ Error in getZone:', error);
-        res.status(500).json({
-            success: false,
-            message: "Error fetching zone details",
-            error: error.message
-        });
+    if (result.rows.length === 0) {
+      console.log("❌ No zone found with ID:", req.params.zone_id);
+      return res.status(404).json({
+        success: false,
+        message: "Zone not found",
+      });
     }
+
+    // Add base URL to zone logo
+    if (result.rows[0].zone_logo) {
+      result.rows[0].zone_logo = `https://bni-data-backend.onrender.com/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
+    }
+
+    res.json({
+      success: true,
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("❌ Error in getZone:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching zone details",
+      error: error.message,
+    });
+  }
 };
 
 const updateZone = async (req, res) => {
-    try {
-        console.log('📝 Starting zone update process');
-        console.log('Request body:', req.body);
-        console.log('Uploaded file:', req.file);
+  try {
+    console.log("📝 Starting zone update process");
+    console.log("Request body:", req.body);
+    console.log("Uploaded file:", req.file);
 
-        const zone_id = req.params.zone_id;
-        const {
-            zone_name,
-            zone_status,
-            zone_launched_by,
-            zone_contact_number,
-            zone_email_id,
-            date_of_publishing
-        } = req.body;
+    const zone_id = req.params.zone_id;
+    const {
+      zone_name,
+      zone_status,
+      zone_launched_by,
+      zone_contact_number,
+      zone_email_id,
+      date_of_publishing,
+    } = req.body;
 
-        // Validate required fields
-        if (!zone_name || !zone_status || !zone_contact_number || !zone_email_id) {
-            console.error('❌ Missing required fields');
-            return res.status(400).json({
-                success: false,
-                message: "Required fields missing"
-            });
-        }
+    // Validate required fields
+    if (!zone_name || !zone_status || !zone_contact_number || !zone_email_id) {
+      console.error("❌ Missing required fields");
+      return res.status(400).json({
+        success: false,
+        message: "Required fields missing",
+      });
+    }
 
-        let updateQuery = `
+    let updateQuery = `
             UPDATE zone 
             SET zone_name = $1,
                 zone_status = $2,
@@ -4516,49 +4609,49 @@ const updateZone = async (req, res) => {
                 date_of_publishing = $6
         `;
 
-        let values = [
-            zone_name,
-            zone_status,
-            zone_launched_by,
-            zone_contact_number,
-            zone_email_id,
-            date_of_publishing || new Date()
-        ];
+    let values = [
+      zone_name,
+      zone_status,
+      zone_launched_by,
+      zone_contact_number,
+      zone_email_id,
+      date_of_publishing || new Date(),
+    ];
 
-        // If new logo is uploaded
-        if (req.file) {
-            updateQuery += `, zone_logo = $${values.length + 1}`;
-            values.push(req.file.filename);
-        }
-
-        updateQuery += ` WHERE zone_id = $${values.length + 1} RETURNING *`;
-        values.push(zone_id);
-
-        console.log('💾 Executing update query:', { query: updateQuery, values });
-
-        const result = await con.query(updateQuery, values);
-        console.log('✅ Zone updated successfully:', result.rows[0]);
-
-        res.json({
-            success: true,
-            message: "Zone updated successfully",
-            data: result.rows[0]
-        });
-
-    } catch (error) {
-        console.error('❌ Error in updateZone:', error);
-        res.status(500).json({
-            success: false,
-            message: "Error updating zone",
-            error: error.message
-        });
+    // If new logo is uploaded
+    if (req.file) {
+      updateQuery += `, zone_logo = $${values.length + 1}`;
+      values.push(req.file.filename);
     }
-};
 
+    updateQuery += ` WHERE zone_id = $${values.length + 1} RETURNING *`;
+    values.push(zone_id);
+
+    console.log("💾 Executing update query:", { query: updateQuery, values });
+
+    const result = await con.query(updateQuery, values);
+    console.log("✅ Zone updated successfully:", result.rows[0]);
+
+    res.json({
+      success: true,
+      message: "Zone updated successfully",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("❌ Error in updateZone:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating zone",
+      error: error.message,
+    });
+  }
+};
 
 const getHotels = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM hotel WHERE delete_status='0' ");
+    const result = await con.query(
+      "SELECT * FROM hotel WHERE delete_status='0' "
+    );
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching hotels:", error);
@@ -4566,38 +4659,44 @@ const getHotels = async (req, res) => {
   }
 };
 
-
 const addHotel = async (req, res) => {
   try {
-      console.log('📝 Starting addHotel process');
-      console.log('Request body:', req.body);
+    console.log("📝 Starting addHotel process");
+    console.log("Request body:", req.body);
 
-      const {
-          hotel_name,
-          hotel_address,
-          hotel_bill_amount,
-          hotel_pincode,
-          hotel_status,
-          hotel_published_by,
-          hotel_email,
-          hotel_phone,
-          date_of_publishing
-      } = req.body;
+    const {
+      hotel_name,
+      hotel_address,
+      hotel_bill_amount,
+      hotel_pincode,
+      hotel_status,
+      hotel_published_by,
+      hotel_email,
+      hotel_phone,
+      date_of_publishing,
+    } = req.body;
 
-      // Validate required fields
-      if (!hotel_name || !hotel_address || !hotel_bill_amount || !hotel_pincode || !hotel_phone) {
-          console.error('❌ Missing required fields');
-          return res.status(400).json({
-              success: false,
-              message: "Required fields missing: hotel_name, hotel_address, hotel_bill_amount, hotel_pincode and hotel_phone are mandatory"
-          });
-      }
+    // Validate required fields
+    if (
+      !hotel_name ||
+      !hotel_address ||
+      !hotel_bill_amount ||
+      !hotel_pincode ||
+      !hotel_phone
+    ) {
+      console.error("❌ Missing required fields");
+      return res.status(400).json({
+        success: false,
+        message:
+          "Required fields missing: hotel_name, hotel_address, hotel_bill_amount, hotel_pincode and hotel_phone are mandatory",
+      });
+    }
 
-      // Convert hotel_status to boolean (true for "Active", false for "Inactive")
-      const is_active = hotel_status.toLowerCase() === "active";
+    // Convert hotel_status to boolean (true for "Active", false for "Inactive")
+    const is_active = hotel_status.toLowerCase() === "active";
 
-      // Insert data into the database
-      const query = `
+    // Insert data into the database
+    const query = `
           INSERT INTO hotel (
               hotel_name,
               hotel_address,
@@ -4612,39 +4711,37 @@ const addHotel = async (req, res) => {
           RETURNING *
       `;
 
-      const values = [
-          hotel_name,
-          hotel_address,
-          hotel_bill_amount,
-          is_active, // Corrected boolean value
-          hotel_pincode,
-          hotel_published_by,
-          date_of_publishing || new Date(),
-          hotel_email,
-          hotel_phone
-      ];
+    const values = [
+      hotel_name,
+      hotel_address,
+      hotel_bill_amount,
+      is_active, // Corrected boolean value
+      hotel_pincode,
+      hotel_published_by,
+      date_of_publishing || new Date(),
+      hotel_email,
+      hotel_phone,
+    ];
 
-      console.log('💾 Executing query with values:', values);
+    console.log("💾 Executing query with values:", values);
 
-      const result = await con.query(query, values);
-      console.log('✅ Hotel added successfully:', result.rows[0]);
+    const result = await con.query(query, values);
+    console.log("✅ Hotel added successfully:", result.rows[0]);
 
-      res.status(201).json({
-          success: true,
-          message: "Hotel added successfully",
-          data: result.rows[0]
-      });
-
+    res.status(201).json({
+      success: true,
+      message: "Hotel added successfully",
+      data: result.rows[0],
+    });
   } catch (error) {
-      console.error('❌ Error in hotel adding:', error);
-      res.status(500).json({
-          success: false,
-          message: "Error adding hotel",
-          error: error.message
-      });
+    console.error("❌ Error in hotel adding:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error adding hotel",
+      error: error.message,
+    });
   }
 };
-
 
 const deleteHotel = async (req, res) => {
   const { hotel_id } = req.params;
@@ -4656,9 +4753,7 @@ const deleteHotel = async (req, res) => {
       [hotel_id]
     );
     if (result.rowCount > 0) {
-      res
-        .status(200)
-        .json({ message: "Hotel marked as deleted successfully" });
+      res.status(200).json({ message: "Hotel marked as deleted successfully" });
     } else {
       res.status(404).json({ message: "Hotel not found" });
     }
@@ -4668,35 +4763,34 @@ const deleteHotel = async (req, res) => {
   }
 };
 
-
 const updateHotel = async (req, res) => {
   try {
-      console.log('📝 Starting hotel update process');
-      console.log('Request body:', req.body);
+    console.log("📝 Starting hotel update process");
+    console.log("Request body:", req.body);
 
-      const hotel_id = req.params.hotel_id;
-      const {
-          hotel_name,
-          hotel_address,
-          hotel_bill_amount,
-          hotel_status,
-          hotel_pincode,
-          hotel_published_by,
-          date_of_publishing,
-          hotel_email,
-          hotel_phone
-      } = req.body;
+    const hotel_id = req.params.hotel_id;
+    const {
+      hotel_name,
+      hotel_address,
+      hotel_bill_amount,
+      hotel_status,
+      hotel_pincode,
+      hotel_published_by,
+      date_of_publishing,
+      hotel_email,
+      hotel_phone,
+    } = req.body;
 
-      // Validate required fields
-      if (!hotel_name || !hotel_address || !hotel_bill_amount || !hotel_phone) {
-          console.error('❌ Missing required fields');
-          return res.status(400).json({
-              success: false,
-              message: "Required fields missing"
-          });
-      }
+    // Validate required fields
+    if (!hotel_name || !hotel_address || !hotel_bill_amount || !hotel_phone) {
+      console.error("❌ Missing required fields");
+      return res.status(400).json({
+        success: false,
+        message: "Required fields missing",
+      });
+    }
 
-      let updateQuery = `
+    let updateQuery = `
           UPDATE hotel 
               SET hotel_name = $1,
               hotel_address = $2,
@@ -4709,43 +4803,40 @@ const updateHotel = async (req, res) => {
               hotel_phone = $9
       `;
 
-      let values = [
-          hotel_name,
-          hotel_address,
-          hotel_bill_amount,
-          hotel_status,
-          hotel_pincode,
-          date_of_publishing || new Date(),
-          hotel_published_by,
-          hotel_email,
-          hotel_phone
-      ];
+    let values = [
+      hotel_name,
+      hotel_address,
+      hotel_bill_amount,
+      hotel_status,
+      hotel_pincode,
+      date_of_publishing || new Date(),
+      hotel_published_by,
+      hotel_email,
+      hotel_phone,
+    ];
 
+    updateQuery += ` WHERE hotel_id = $${values.length + 1} RETURNING *`;
+    values.push(hotel_id);
 
-      updateQuery += ` WHERE hotel_id = $${values.length + 1} RETURNING *`;
-      values.push(hotel_id);
+    console.log("💾 Executing update query:", { query: updateQuery, values });
 
-      console.log('💾 Executing update query:', { query: updateQuery, values });
+    const result = await con.query(updateQuery, values);
+    console.log("✅ Hotel updated successfully:", result.rows[0]);
 
-      const result = await con.query(updateQuery, values);
-      console.log('✅ Hotel updated successfully:', result.rows[0]);
-
-      res.json({
-          success: true,
-          message: "Hotel updated successfully",
-          data: result.rows[0]
-      });
-
+    res.json({
+      success: true,
+      message: "Hotel updated successfully",
+      data: result.rows[0],
+    });
   } catch (error) {
-      console.error('❌ Error in hotel:', error);
-      res.status(500).json({
-          success: false,
-          message: "Error updating hotel",
-          error: error.message
-      });
+    console.error("❌ Error in hotel:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating hotel",
+      error: error.message,
+    });
   }
 };
-
 
 module.exports = {
   addInvoiceManually,
@@ -4856,5 +4947,5 @@ module.exports = {
   addHotel,
   deleteHotel,
   updateHotel,
-  getCancelIrn
+  getCancelIrn,
 };
