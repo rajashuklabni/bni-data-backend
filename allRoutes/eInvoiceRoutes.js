@@ -8,5 +8,4 @@ router.post("/get-token", getToken);
 router.post('/generate-irn', async (req, res) => {
     await generateIRN(req, res);
   });
-
 module.exports = router;

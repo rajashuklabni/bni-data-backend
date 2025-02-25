@@ -109,6 +109,7 @@ const {
   addHotel,
   deleteHotel,
   updateHotel,
+  getCancelIrn,
 } = require("./controllers");
 
 const path = require("path");
@@ -564,6 +565,7 @@ router.post("/markAttendence", markAttendence);
 router.post("/verify-qr-code", verifyQrCode);
 router.get("/allCheckins", allCheckins);
 router.get("/getAllKittyPayments", getAllKittyPayments);
+router.get("/getCancelIrn", getCancelIrn);
 router.get("/memberPendingKittyOpeningBalance", memberPendingKittyOpeningBalance);
 
 // added by vasusri

@@ -396,4 +396,5 @@ async function decryptIrnData(encryptedData, sek) {
   }
 }
 
-module.exports = { getToken, generateIRN };
+
+module.exports = { getToken, generateIRN};
