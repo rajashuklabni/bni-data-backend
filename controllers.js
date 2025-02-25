@@ -3686,6 +3686,16 @@ const getAllKittyPayments = async (req, res) => {
   }
 };
 
+const getCancelIrn = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM cancel_irn");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching cancel irn:", error);
+    res.status(500).send("Error fetching all cancel irn");
+  }
+};
+
 const updatePaymentGatewayStatus = async (req, res) => {
   const { gateway_id } = req.params;
   const { status } = req.body;
@@ -4845,5 +4855,6 @@ module.exports = {
   getHotels,
   addHotel,
   deleteHotel,
-  updateHotel
+  updateHotel,
+  getCancelIrn
 };
