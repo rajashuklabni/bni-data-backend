@@ -39,40 +39,97 @@ const sessionIdGenerator = async (req, res) => {
         const insertOrderData = async () => {
           try {
               // console.log(data.customer_details, "================== Customer Details =================="); // Log customer details
-              // console.log("order data", responseData);
+              console.log("data", data);
+
+              // return;
       
+              let orderValues = [];
+
+              if(data.customer_details.payment_note === 'visitor-payment' || data.customer_details.payment_note === 'Visitor-payment-fee'){
+                orderValues = [
+                  responseData.order_id,
+                  responseData.order_amount,
+                  responseData.order_currency,
+                  data.customer_details.payment_gateway_id || null, // Ensure this is available
+                  data.customer_details.member_id || null, // Use member_id from customer_details
+                  data.customer_details.chapter_id || null, // Use chapter_id from customer_details
+                  data.customer_details.region_id || null, // Use region_id from customer_details
+                  data.customer_details.universal_link_id || null, // Ensure this is available
+                  data.customer_details.ulid_id || null, // Ensure this is available
+                  responseData.order_status,
+                  responseData.payment_session_id,
+                  data.customer_details.one_time_registration_fee || 0, // New field
+                  data.customer_details.membership_fee || 0, // New field
+                  data.tax || 0, // New field
+                  data.customer_details.memberName || "Unknown", // New field
+                  data.customer_details.customer_email || "unknown@example.com", // New field
+                  data.customer_details.customer_phone || "0000000000", // New field
+                  data.memberData.member_gst_number || null, // New field
+                  data.memberData.member_company_name || "Unknown", // New field
+                  data.customer_details.mobileNumber || "0000000000", // New field
+                  data.customer_details.renewalYear || null, // New field
+                  data.customer_details.payment_note || null, // New field
+                  data.customer_details.trainingId || null, // New field
+                  data.customer_details.eventId || null, // New field
+                  data.kitty_bill_id || null,
+                  data.visitor_name.visitorName|| null,
+                  data.visitor_name.email|| null,
+                  data.visitor_name.mobileNumber|| null,
+                  data.visitor_name.address|| null,
+                  data.visitor_name.company|| null,
+                  data.visitor_name.gstin|| null,
+                  data.visitor_name.business|| null
+
+
+              ];
               await db.query(
-                  `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
-                  [
-                      responseData.order_id,
-                      responseData.order_amount,
-                      responseData.order_currency,
-                      data.customer_details.payment_gateway_id, // Ensure this is available
-                      data.customer_details.member_id, // Use member_id from customer_details
-                      data.customer_details.chapter_id, // Use chapter_id from customer_details
-                      data.customer_details.region_id, // Use region_id from customer_details
-                      data.customer_details.universal_link_id, // Ensure this is available
-                      data.customer_details.ulid_id, // Ensure this is   available
-                      responseData.order_status,
-                      responseData.payment_session_id,
-                      data.customer_details.one_time_registration_fee, // New field
-                      data.customer_details.membership_fee, // New field
-                      data.tax, // New field
-                      data.customer_details.memberName, // New field
-                      data.customer_details.customer_email, // New field
-                      data.customer_details.customer_phone, // New field
-                      data.customer_details.gstin, // New field
-                      data.customer_details.company, // New field
-                      data.customer_details.mobileNumber, // New field
-                      data.customer_details.renewalYear, // New field
-                      data.customer_details.payment_note, // New field
-                      data.customer_details.trainingId, // New field
-                      data.customer_details.eventId, // New field
-                      data.kitty_bill_id,
-                  ]
-              );
-              console.log('Order data inserted successfully');
+                `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id,visitor_name,visitor_email,visitor_mobilenumber,visitor_address,visitor_company,visitor_gstin,visitor_business)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)`,
+                orderValues
+            );
+            }
+            else {
+              orderValues = [
+                responseData.order_id,
+                responseData.order_amount,
+                responseData.order_currency,
+                data.customer_details.payment_gateway_id || null, // Ensure this is available
+                data.customer_details.member_id || null, // Use member_id from customer_details
+                data.customer_details.chapter_id || null, // Use chapter_id from customer_details
+                data.customer_details.region_id || null, // Use region_id from customer_details
+                data.customer_details.universal_link_id || null, // Ensure this is available
+                data.customer_details.ulid_id || null, // Ensure this is available
+                responseData.order_status,
+                responseData.payment_session_id,
+                data.customer_details.one_time_registration_fee || 0, // New field
+                data.customer_details.membership_fee || 0, // New field
+                data.tax || 0, // New field
+                data.customer_details.memberName || "Unknown", // New field
+                data.customer_details.customer_email || "unknown@example.com", // New field
+                data.customer_details.customer_phone || "0000000000", // New field
+                data.customer_details.gstin || null, // New field
+                data.customer_details.company || "Unknown", // New field
+                data.customer_details.mobileNumber || "0000000000", // New field
+                data.customer_details.renewalYear || null, // New field
+                data.customer_details.payment_note || null, // New field
+                data.customer_details.trainingId || null, // New field
+                data.customer_details.eventId || null, // New field
+                data.kitty_bill_id || null,
+            ];
+
+            await db.query(
+              `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+              orderValues
+          );
+            }
+
+              // await db.query(
+              //     `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id)
+              //      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+              //     orderValues
+              // );
+              console.log('Order data inserted successfully',orderValues);
               // console.log(data.tax, "============tax============");
           } catch (error) {
               console.error('Error inserting order data:', error);
@@ -185,8 +242,8 @@ console.log("paymentDetails==============================",paymentDetails);
         date_of_update:responseData1.date_of_update,
 
       }
-      console.log("separated data");
-      console.log(balance_data);
+      // console.log("separated data");
+      // console.log(balance_data);
       
         if(payment_status==='SUCCESS' && responseData1.customer_details.payment_note === 'meeting-payments'){
           // db query
@@ -230,11 +287,12 @@ console.log("paymentDetails==============================",paymentDetails);
           SET amount_to_pay = amount_to_pay - $1
           WHERE member_id = $2
       `;
-      const values = [newAmountToPay, balance_data.member_id];
+      const values = [Math.round(newAmountToPay), balance_data.member_id];
       await db.query(updateQuery, values);
       console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
     
         }
+        
 
         
       // responseData1.total_amount_paid,
