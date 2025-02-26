@@ -329,17 +329,7 @@ const getOrderStatus = async (req, res) => {
         if(payment_status==='SUCCESS' && responseData1.customer_details.payment_note === 'meeting-payments'){
           // db query
           console.log("adding in db.....");
-          await db.query(`
-      INSERT INTO memberpendingkittyopeningbalance ( chapter_id, member_id, kitty_id, member_pending_balance, total_amount_paid, tax) 
-      VALUES ($1, $2, $3, $4, $5, $6)`,[
-      balance_data.chapter_id,
-      balance_data.member_id,
-      balance_data.kitty_bill_id,
-      balance_data.member_pending_balance,
-      balance_data.total_amount_paid,
-      balance_data.tax
-    ]);
-    console.log("added in new db");
+          
     const creditResponse = await fetch("https://bni-data-backend.onrender.com/api/getAllMemberCredit");
     const creditData = await creditResponse.json();
 
