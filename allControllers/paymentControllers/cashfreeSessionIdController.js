@@ -47,108 +47,167 @@ const sessionIdGenerator = async (req, res) => {
         // Insert order details into Orders table
         const insertOrderData = async () => {
           try {
-              await db.query(
-                  `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
-                  [
-                      responseData.order_id,
-                      responseData.order_amount,
-                      responseData.order_currency,
-                      data.customer_details.payment_gateway_id,
-                      data.customer_details.member_id,
-                      data.customer_details.chapter_id,
-                      data.customer_details.region_id,
-                      data.customer_details.universal_link_id,
-                      data.customer_details.ulid_id,
-                      responseData.order_status,
-                      responseData.payment_session_id,
-                      data.customer_details.one_time_registration_fee,
-                      data.customer_details.membership_fee,
-                      data.tax,
-                      data.customer_details.memberName,
-                      data.customer_details.customer_email,
-                      data.customer_details.customer_phone,
-                      data.customer_details.gstin,
-                      data.customer_details.company,
-                      data.customer_details.mobileNumber,
-                      data.customer_details.renewalYear,
-                      data.customer_details.payment_note,
-                      data.customer_details.trainingId,
-                      data.customer_details.eventId,
-                      data.kitty_bill_id,
-                  ]
-              );
-              console.log('Order data inserted successfully');
+              // console.log(data.customer_details, "================== Customer Details =================="); // Log customer details
+              console.log("data", data);
 
+              // return;
+      
+              let orderValues = [];
+
+              if(data.customer_details.payment_note === 'visitor-payment' || data.customer_details.payment_note === 'Visitor-payment-fee'){
+                orderValues = [
+                  responseData.order_id,
+                  responseData.order_amount,
+                  responseData.order_currency,
+                  data.customer_details.payment_gateway_id || null, // Ensure this is available
+                  data.customer_details.member_id || null, // Use member_id from customer_details
+                  data.customer_details.chapter_id || null, // Use chapter_id from customer_details
+                  data.customer_details.region_id || null, // Use region_id from customer_details
+                  data.customer_details.universal_link_id || null, // Ensure this is available
+                  data.customer_details.ulid_id || null, // Ensure this is available
+                  responseData.order_status,
+                  responseData.payment_session_id,
+                  data.customer_details.one_time_registration_fee || 0, // New field
+                  data.customer_details.membership_fee || 0, // New field
+                  data.tax || 0, // New field
+                  data.customer_details.memberName || "Unknown", // New field
+                  data.customer_details.customer_email || "unknown@example.com", // New field
+                  data.customer_details.customer_phone || "0000000000", // New field
+                  data.memberData.member_gst_number || null, // New field
+                  data.memberData.member_company_name || "Unknown", // New field
+                  data.customer_details.mobileNumber || "0000000000", // New field
+                  data.customer_details.renewalYear || null, // New field
+                  data.customer_details.payment_note || null, // New field
+                  data.customer_details.trainingId || null, // New field
+                  data.customer_details.eventId || null, // New field
+                  data.kitty_bill_id || null,
+                  data.visitor_name.visitorName|| null,
+                  data.visitor_name.email|| null,
+                  data.visitor_name.mobileNumber|| null,
+                  data.visitor_name.address|| null,
+                  data.visitor_name.company|| null,
+                  data.visitor_name.gstin|| null,
+                  data.visitor_name.business|| null
+
+
+              ];
+              await db.query(
+                `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id,visitor_name,visitor_email,visitor_mobilenumber,visitor_address,visitor_company,visitor_gstin,visitor_business)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)`,
+                orderValues
+            );
+            }
+            else {
+              orderValues = [
+                responseData.order_id,
+                responseData.order_amount,
+                responseData.order_currency,
+                data.customer_details.payment_gateway_id || null, // Ensure this is available
+                data.customer_details.member_id || null, // Use member_id from customer_details
+                data.customer_details.chapter_id || null, // Use chapter_id from customer_details
+                data.customer_details.region_id || null, // Use region_id from customer_details
+                data.customer_details.universal_link_id || null, // Ensure this is available
+                data.customer_details.ulid_id || null, // Ensure this is available
+                responseData.order_status,
+                responseData.payment_session_id,
+                data.customer_details.one_time_registration_fee || 0, // New field
+                data.customer_details.membership_fee || 0, // New field
+                data.tax || 0, // New field
+                data.customer_details.memberName || "Unknown", // New field
+                data.customer_details.customer_email || "unknown@example.com", // New field
+                data.customer_details.customer_phone || "0000000000", // New field
+                data.customer_details.gstin || null, // New field
+                data.customer_details.company || "Unknown", // New field
+                data.customer_details.mobileNumber || "0000000000", // New field
+                data.customer_details.renewalYear || null, // New field
+                data.customer_details.payment_note || null, // New field
+                data.customer_details.trainingId || null, // New field
+                data.customer_details.eventId || null, // New field
+                data.kitty_bill_id || null,
+            ];
+
+            await db.query(
+              `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+              orderValues
+          );
+            }
+
+              // await db.query(
+              //     `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id)
+              //      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+              //     orderValues
+              // );
+              console.log('Order data inserted successfully',orderValues);
+              // console.log(data.tax, "============tax============");
               // Start QR code process for training payments
               if (data.customer_details.universal_link_id === '3' && data.customer_details.trainingId) {
-                  console.log('🎓 Training payment detected');
-                  
-                  try {
-                      // Get transaction details with a delay to allow transaction to be recorded
-                      setTimeout(async () => {
-                          try {
-                              console.log('🔍 Checking transaction status for order:', responseData.order_id);
-                              const transactionResponse = await axios.get('https://bni-data-backend.onrender.com/api/allTransactions');
-                              const transactions = transactionResponse.data;
-                              
-                              const relevantTransaction = transactions.find(t => t.order_id === responseData.order_id);
-                              console.log('📊 Found transaction:', relevantTransaction);
-                              
-                              if (relevantTransaction && relevantTransaction.payment_status === 'SUCCESS') {
-                                  console.log('💰 Found successful transaction:', relevantTransaction.cf_payment_id);
-                                  
-                                  // Get training details
-                                  const trainingResponse = await axios.get('https://bni-data-backend.onrender.com/api/allTrainings');
-                                  const trainings = trainingResponse.data;
-                                  
-                                  const training = trainings.find(t => t.training_id === data.customer_details.trainingId);
-                                  
-                                  if (training) {
-                                      console.log('📚 Found training details:', training);
-                                      
-                                      // Prepare data for QR code email
-                                      const qrCodeData = {
-                                          orderId: responseData.order_id,
-                                          cfPaymentId: relevantTransaction.cf_payment_id,
-                                          page_title: 'BNI Training Registration',
-                                          training_name: training.training_name,
-                                          training_venue: training.training_venue,
-                                          training_ticket_price: training.training_price,
-                                          training_date: training.training_date,
-                                          training_published_by: training.training_published_by,
-                                          training_id: training.training_id,
-                                          customerId: data.customer_details.member_id
-                                      };
-                                      
-                                      console.log('📧 Preparing to send QR code email with data:', qrCodeData);
-                                      
-                                      // Send QR code email
-                                      try {
-                                          await axios.post('https://bni-data-backend.onrender.com/api/send-qr-code', qrCodeData);
-                                          console.log('✉️ QR code email sent successfully');
-                                      } catch (emailError) {
-                                          console.error('❌ Error sending QR code email:', emailError);
-                                          console.error('Error details:', emailError.response?.data || emailError.message);
-                                      }
-                                  } else {
-                                      console.log('⚠️ Training not found for ID:', data.customer_details.trainingId);
-                                  }
-                              } else {
-                                  console.log('⏳ Payment not yet successful or transaction not found for order:', responseData.order_id);
-                              }
-                          } catch (error) {
-                              console.error('❌ Error checking transaction status:', error);
-                          }
-                      }, 30000); // Wait 5 seconds before checking transaction status
-                      
-                  } catch (error) {
-                      console.error('❌ Error in QR code process:', error);
-                  }
-              } else {
-                  console.log('📝 Not a training payment, skipping QR code process');
-              }
-
+                console.log('🎓 Training payment detected');
+                
+                try {
+                    // Get transaction details with a delay to allow transaction to be recorded
+                    setTimeout(async () => {
+                        try {
+                            console.log('🔍 Checking transaction status for order:', responseData.order_id);
+                            const transactionResponse = await axios.get('https://bni-data-backend.onrender.com/api/allTransactions');
+                            const transactions = transactionResponse.data;
+                            
+                            const relevantTransaction = transactions.find(t => t.order_id === responseData.order_id);
+                            console.log('📊 Found transaction:', relevantTransaction);
+                            
+                            if (relevantTransaction && relevantTransaction.payment_status === 'SUCCESS') {
+                                console.log('💰 Found successful transaction:', relevantTransaction.cf_payment_id);
+                                
+                                // Get training details
+                                const trainingResponse = await axios.get('https://bni-data-backend.onrender.com/api/allTrainings');
+                                const trainings = trainingResponse.data;
+                                
+                                const training = trainings.find(t => t.training_id === data.customer_details.trainingId);
+                                
+                                if (training) {
+                                    console.log('📚 Found training details:', training);
+                                    
+                                    // Prepare data for QR code email
+                                    const qrCodeData = {
+                                        orderId: responseData.order_id,
+                                        cfPaymentId: relevantTransaction.cf_payment_id,
+                                        page_title: 'BNI Training Registration',
+                                        training_name: training.training_name,
+                                        training_venue: training.training_venue,
+                                        training_ticket_price: training.training_price,
+                                        training_date: training.training_date,
+                                        training_published_by: training.training_published_by,
+                                        training_id: training.training_id,
+                                        customerId: data.customer_details.member_id
+                                    };
+                                    
+                                    console.log('📧 Preparing to send QR code email with data:', qrCodeData);
+                                    
+                                    // Send QR code email
+                                    try {
+                                        await axios.post('https://bni-data-backend.onrender.com/api/send-qr-code', qrCodeData);
+                                        console.log('✉️ QR code email sent successfully');
+                                    } catch (emailError) {
+                                        console.error('❌ Error sending QR code email:', emailError);
+                                        console.error('Error details:', emailError.response?.data || emailError.message);
+                                    }
+                                } else {
+                                    console.log('⚠️ Training not found for ID:', data.customer_details.trainingId);
+                                }
+                            } else {
+                                console.log('⏳ Payment not yet successful or transaction not found for order:', responseData.order_id);
+                            }
+                        } catch (error) {
+                            console.error('❌ Error checking transaction status:', error);
+                        }
+                    }, 30000); // Wait 5 seconds before checking transaction status
+                    
+                } catch (error) {
+                    console.error('❌ Error in QR code process:', error);
+                }
+            } else {
+                console.log('📝 Not a training payment, skipping QR code process');
+            }
           } catch (error) {
               console.error('Error inserting order data:', error);
           }
@@ -253,19 +312,24 @@ const getOrderStatus = async (req, res) => {
 
       console.log('Transaction data inserted successfully');
 
-      if(payment_status === 'SUCCESS' && orderData.payment_note === 'meeting-payments'){
-        const balance_data = {
-          chapter_id: orderData.chapter_id,
-          member_id: orderData.customer_id, // assuming this is the member_id
-          kitty_bill_id: orderData.kitty_bill_id,
-          member_pending_balance: orderData.member_pending_balance,
-          total_amount_paid: orderData.order_amount,
-          tax: orderData.tax,
-          date_of_update: new Date()
-        };
+      // here added by vasu
+      const balance_data = {
+        chapter_id: responseData1.chapter_id,
+        member_id: responseData1.member_id,
+        kitty_bill_id: responseData1.kitty_bill_id,
+        member_pending_balance: responseData1.member_pending_balance,
+        total_amount_paid:responseData1.total_amount_paid,
+        tax: responseData1.tax,
+        date_of_update:responseData1.date_of_update,
 
-        console.log("adding in db.....");
-        await db.query(`
+      }
+      // console.log("separated data");
+      // console.log(balance_data);
+      
+        if(payment_status==='SUCCESS' && responseData1.customer_details.payment_note === 'meeting-payments'){
+          // db query
+          console.log("adding in db.....");
+          await db.query(`
       INSERT INTO memberpendingkittyopeningbalance ( chapter_id, member_id, kitty_id, member_pending_balance, total_amount_paid, tax) 
       VALUES ($1, $2, $3, $4, $5, $6)`,[
       balance_data.chapter_id,
@@ -298,16 +362,17 @@ const getOrderStatus = async (req, res) => {
     console.log("Updated is_adjusted to true for filtered credits");
     const newAmountToPay = parseFloat(orderData.order_amount) - parseFloat(orderData.tax);
 
-    const updateQuery = `
-        UPDATE bankorder 
-        SET amount_to_pay = amount_to_pay - $1
-        WHERE member_id = $2
-    `;
-    const values = [newAmountToPay, balance_data.member_id];
-    await db.query(updateQuery, values);
-    console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
+      const updateQuery = `
+          UPDATE bankorder 
+          SET amount_to_pay = amount_to_pay - $1
+          WHERE member_id = $2
+      `;
+      const values = [Math.round(newAmountToPay), balance_data.member_id];
+      await db.query(updateQuery, values);
+      console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
     
-      }
+        }
+        
 
       return res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`);
     } else {
