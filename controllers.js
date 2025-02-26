@@ -282,7 +282,6 @@ const addRegion = async (req, res) => {
     console.log('📝 Starting region addition process...');
     console.log('📦 Received request body:', req.body);
     console.log('🖼️ Received file:', req.file);
-    console.log('🏨 Raw hotel_id data:', req.body.hotel_id);
 
     const {
       region_name,
@@ -293,7 +292,6 @@ const addRegion = async (req, res) => {
       chapterStatus,
       chapterType,
       accolades_config,
-      hotel_id,
       region_status,
       mission,
       vision,
@@ -317,51 +315,30 @@ const addRegion = async (req, res) => {
       postal_code,
     } = req.body;
 
+    // Handle the logo file
     const region_logo = req.file ? req.file.filename : null;
     console.log('🎨 Region logo filename:', region_logo);
 
-    // Enhanced array parsing function with better error handling
+    // Parse arrays if they're strings
     const parseArray = (value) => {
       if (Array.isArray(value)) return value;
-      if (!value) return [];
       try {
-        const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (error) {
-        console.error('Error parsing array:', error);
+        return typeof value === 'string' ? JSON.parse(value) : [];
+      } catch {
         return [];
       }
     };
 
-    // Parse all arrays
     const chapterDaysArray = parseArray(chapterDays);
     const chapterStatusArray = parseArray(chapterStatus);
     const chapterTypeArray = parseArray(chapterType);
     const accoladesArray = parseArray(accolades_config);
-    
-    // Special handling for hotel_id
-    let hotelIdArray = [];
-    try {
-      if (typeof hotel_id === 'string') {
-        // If it's a JSON string, parse it
-        hotelIdArray = JSON.parse(hotel_id);
-      } else if (Array.isArray(hotel_id)) {
-        // If it's already an array, use it directly
-        hotelIdArray = hotel_id;
-      }
-      // Ensure all values are numbers
-      hotelIdArray = hotelIdArray.map(id => parseInt(id)).filter(id => !isNaN(id));
-    } catch (error) {
-      console.error('Error processing hotel IDs:', error);
-      hotelIdArray = [];
-    }
 
     console.log('📅 Processed arrays:', {
       days: chapterDaysArray,
       status: chapterStatusArray,
       type: chapterTypeArray,
-      accolades: accoladesArray,
-      hotels: hotelIdArray
+      accolades: accoladesArray
     });
 
     const result = await con.query(
@@ -371,10 +348,10 @@ const addRegion = async (req, res) => {
           one_time_registration_fee, one_year_fee, two_year_fee, five_year_fee, late_fees, 
           country, state, city, street_address_line_1, street_address_line_2, social_facebook, 
           social_instagram, social_linkedin, social_youtube, website_link, region_launched_by, 
-          date_of_publishing, postal_code, hotel_id
+          date_of_publishing, postal_code
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 
-          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31
+          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30
         ) RETURNING *`,
       [
         region_name,
@@ -407,7 +384,6 @@ const addRegion = async (req, res) => {
         region_launched_by,
         date_of_publishing,
         postal_code,
-        `{${hotelIdArray.join(",")}}`
       ]
     );
 
@@ -520,7 +496,7 @@ const addChapter = async (req, res) => {
               $10, $11, $12, $13, $14, $15, $16,
               $17, $18, $19, $20, $21, $22, $23,
               $24, $25, $26, $27, $28, $29, $30,
-              $31, $32, $33, $34, $35, $36
+              $31, $32, $33, $34, $35
           ) RETURNING *`,
           [
               region_id,
@@ -1151,8 +1127,8 @@ const updateChapter = async (req, res) => {
               chapter_location_note = $32,
               chapter_late_fees = $33,
               available_fund = $34,
-              kitty_billing_frequency = $35,
-          WHERE chapter_id = $37
+              kitty_billing_frequency = $35
+          WHERE chapter_id = $36
           RETURNING *
       `;
 
@@ -3892,7 +3868,6 @@ const updateChapterSettings = async (req, res) => {
           contact_person,
           chapter_mission,
           chapter_vision,
-          meeting_hotel_id,
           street_address_line,
           postal_code,
           chapter_facebook,
@@ -3900,7 +3875,7 @@ const updateChapterSettings = async (req, res) => {
           chapter_linkedin,
           chapter_youtube
       } = req.body;
-      console.log(email_id, contact_number, contact_person, chapter_mission, chapter_vision, meeting_hotel_id, street_address_line, postal_code, chapter_facebook, chapter_instagram, chapter_linkedin, chapter_youtube);
+      console.log(email_id, contact_number, contact_person, chapter_mission, chapter_vision, street_address_line, postal_code, chapter_facebook, chapter_instagram, chapter_linkedin, chapter_youtube);
 
       if (!email_id) {
           console.error('Email ID is required');
@@ -3917,7 +3892,6 @@ const updateChapterSettings = async (req, res) => {
               contact_person = COALESCE($2, contact_person),
               chapter_mission = COALESCE($3, chapter_mission),
               chapter_vision = COALESCE($4, chapter_vision),
-              meeting_hotel_id = COALESCE($5, meeting_hotel_id),
               street_address_line = COALESCE($6, street_address_line),
               postal_code = COALESCE($7, postal_code),
               chapter_facebook = COALESCE($8, chapter_facebook),
@@ -3931,7 +3905,6 @@ const updateChapterSettings = async (req, res) => {
           contact_person,
           chapter_mission,
           chapter_vision,
-          meeting_hotel_id,
           street_address_line,
           postal_code,
           chapter_facebook,
