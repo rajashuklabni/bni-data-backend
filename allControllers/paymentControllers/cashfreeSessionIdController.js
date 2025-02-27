@@ -326,7 +326,7 @@ const getOrderStatus = async (req, res) => {
       // console.log("separated data");
       // console.log(balance_data);
       
-        if(payment_status==='SUCCESS' && responseData1.customer_details.payment_note === 'meeting-payments'){
+        if(payment_status==='SUCCESS' && (responseData1.customer_details.payment_note === 'meeting-payments' || responseData1.customer_details.payment_note === 'meeting-payments-opening-only')){
           // db query
           console.log("adding in db.....");
           
