@@ -400,7 +400,7 @@ const addRegion = async (req, res) => {
       message: "Region added successfully!", 
       data: {
         ...result.rows[0],
-        region_logo_url: region_logo ? `http://localhost:5000/uploads/regionLogos/${region_logo}` : null
+        region_logo_url: region_logo ? `https://bni-data-backend.onrender.com/uploads/regionLogos/${region_logo}` : null
       }
     });
   } catch (error) {
@@ -541,7 +541,7 @@ const addChapter = async (req, res) => {
       // Rest of your code remains the same...
       const chapterData = result.rows[0];
       if (chapterData.chapter_logo) {
-          chapterData.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+          chapterData.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Creation Success:');
@@ -1250,7 +1250,7 @@ const updateChapter = async (req, res) => {
 
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Update Success:');
