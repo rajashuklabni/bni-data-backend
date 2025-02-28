@@ -351,15 +351,64 @@ const getOrderStatus = async (req, res) => {
 
     console.log("Updated is_adjusted to true for filtered credits");
     const newAmountToPay = parseFloat(orderData.order_amount) - parseFloat(orderData.tax);
+    // now i have to do like if penalty is 0 then means penalty is added in orderamount
+    // else not added 
+    // so in if case i will do 
+    if(responseData1.penalty_amount > 0){
+      const updateQuery = `
+          UPDATE bankorder 
+          SET amount_to_pay = amount_to_pay - $1,
+              no_of_late_payment = $2,
+              kitty_penalty = $3
+          WHERE member_id = $4
+      `;
+      console.log("bankorder penalty ",responseData1.penalty_amount);
+      console.log("bankorder no of late payment ",responseData1.no_of_late_payment);
+
+      const values = [Math.round(newAmountToPay), responseData1.no_of_late_payment, responseData1.penalty_amount,balance_data.member_id];
+      await db.query(updateQuery, values);
+      console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
+    }
+    else{
+
+      const bankOrderResponse = await fetch("https://bni-data-backend.onrender.com/api/getbankOrder");
+      const bankOrderData = await bankOrderResponse.json();
+
+      // Filter bank orders based on member_id
+      const filteredBankOrders = bankOrderData.filter(order => order.member_id === balance_data.member_id);
+
+      console.log("Filtered bank orders for member_id:", balance_data.member_id, filteredBankOrders);
+
+
 
       const updateQuery = `
           UPDATE bankorder 
-          SET amount_to_pay = amount_to_pay - $1
-          WHERE member_id = $2
+          SET amount_to_pay = amount_to_pay + $1 - $2,
+              no_of_late_payment = $3,
+              kitty_penalty = $4
+          WHERE member_id = $5
       `;
-      const values = [Math.round(newAmountToPay), balance_data.member_id];
+      console.log("bankorder penalty ", responseData1.penalty_amount);
+      console.log("bankorder no of late payment ", responseData1.no_of_late_payment);
+
+      const values = [filteredBankOrders[0].kitty_penalty, Math.round(newAmountToPay), responseData1.no_of_late_payment, responseData1.penalty_amount, balance_data.member_id];
       await db.query(updateQuery, values);
       console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
+    }
+
+      // const updateQuery = `
+      //     UPDATE bankorder 
+      //     SET amount_to_pay = amount_to_pay - $1,
+      //         no_of_late_payment = $2,
+      //         kitty_penalty = $3
+      //     WHERE member_id = $4
+      // `;
+      // console.log("bankorder penalty ",responseData1.penalty_amount);
+      // console.log("bankorder no of late payment ",responseData1.no_of_late_payment);
+
+      // const values = [Math.round(newAmountToPay), responseData1.no_of_late_payment, responseData1.penalty_amount,balance_data.member_id];
+      // await db.query(updateQuery, values);
+      // console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
     
         }
         
