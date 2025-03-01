@@ -243,7 +243,7 @@ const memberUpload = multer({
 // Configure multer storage for member photos
 const memberPhotoStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = './uploads/memberPhotos';
+    const uploadDir = './uploads/memberLogos';
     // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
