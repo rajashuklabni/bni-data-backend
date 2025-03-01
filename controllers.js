@@ -292,6 +292,7 @@ const addRegion = async (req, res) => {
       chapterStatus,
       chapterType,
       accolades_config,
+      hotels_config,  // Add this line to destructure hotels_config
       region_status,
       mission,
       vision,
@@ -325,6 +326,7 @@ const addRegion = async (req, res) => {
       try {
         return typeof value === 'string' ? JSON.parse(value) : [];
       } catch {
+        console.log('⚠️ Error parsing array:', value);
         return [];
       }
     };
@@ -333,12 +335,14 @@ const addRegion = async (req, res) => {
     const chapterStatusArray = parseArray(chapterStatus);
     const chapterTypeArray = parseArray(chapterType);
     const accoladesArray = parseArray(accolades_config);
+    const hotelsArray = parseArray(hotels_config);  // Parse hotels array
 
     console.log('📅 Processed arrays:', {
       days: chapterDaysArray,
       status: chapterStatusArray,
       type: chapterTypeArray,
-      accolades: accoladesArray
+      accolades: accoladesArray,
+      hotels: hotelsArray  || null // Log hotels array
     });
 
     const result = await con.query(
@@ -348,10 +352,10 @@ const addRegion = async (req, res) => {
           one_time_registration_fee, one_year_fee, two_year_fee, five_year_fee, late_fees, 
           country, state, city, street_address_line_1, street_address_line_2, social_facebook, 
           social_instagram, social_linkedin, social_youtube, website_link, region_launched_by, 
-          date_of_publishing, postal_code
+          date_of_publishing, postal_code, hotel_id
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 
-          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30
+          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31
         ) RETURNING *`,
       [
         region_name,
@@ -384,11 +388,13 @@ const addRegion = async (req, res) => {
         region_launched_by,
         date_of_publishing,
         postal_code,
+        `{${hotelsArray.join(",")}}`,  // Add hotels array to the query
       ]
     );
 
     console.log('✅ Region added successfully to database');
     console.log('📄 Database result:', result.rows[0]);
+    console.log('🏨 Saved hotel IDs:', result.rows[0].hotel_id);
 
     res.status(201).json({ 
       message: "Region added successfully!", 
@@ -408,25 +414,9 @@ const addRegion = async (req, res) => {
 };
 
 const addChapter = async (req, res) => {
-  console.log('📥 Starting addChapter process');
-  console.log('📦 Request body:', req.body);
-  console.log('📎 Request files:', req.files);
-  console.log('📄 Single file:', req.file);
+  console.log('\n🏢 Starting Chapter Addition Process');
+  console.log('==================================');
   
-  // Log form data for debugging
-  if (req.file) {
-      console.log('🖼️ Uploaded file details:', {
-          fieldname: req.file.fieldname,
-          originalname: req.file.originalname,
-          mimetype: req.file.mimetype,
-          filename: req.file.filename,
-          path: req.file.path,
-          size: req.file.size
-      });
-  } else {
-      console.log('⚠️ No file uploaded');
-  }
-
   const {
       region_id,
       chapter_name,
@@ -462,11 +452,20 @@ const addChapter = async (req, res) => {
       chapter_late_fees,
       chapter_available_fund,
       billing_frequency,
+      hotel_id,
   } = req.body;
 
-  // Get logo filename from uploaded file
+  // Convert hotel_id to number if it's an array
+  let processedHotelId = Array.isArray(hotel_id) ? parseInt(hotel_id[0]) : parseInt(hotel_id);
+  processedHotelId = isNaN(processedHotelId) ? null : processedHotelId;
+  console.log('\n🏨 Hotel ID Processing:');
+  console.log('---------------------');
+  console.log('Original Hotel ID:', hotel_id);
+  console.log('Processed Hotel ID:', processedHotelId);
+  console.log('Final Hotel ID Type:', typeof processedHotelId);
+
+  // Rest of your existing code...
   const logoFilename = req.file ? req.file.filename : null;
-  console.log('💾 Logo filename to store:', logoFilename);
 
   try {
       const checkDuplicate = await con.query(
@@ -490,18 +489,19 @@ const addChapter = async (req, res) => {
               contact_person, chapter_mission, chapter_vision, email_id, country, state, city,
               street_address_line, postal_code, chapter_facebook, chapter_instagram,
               chapter_linkedin, chapter_youtube, chapter_website, date_of_publishing,
-              chapter_launched_by, chapter_location_note, chapter_late_fees, available_fund, kitty_billing_frequency
+              chapter_launched_by, chapter_location_note, chapter_late_fees, available_fund, kitty_billing_frequency,
+              hotel_id
           ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9,
               $10, $11, $12, $13, $14, $15, $16,
               $17, $18, $19, $20, $21, $22, $23,
               $24, $25, $26, $27, $28, $29, $30,
-              $31, $32, $33, $34, $35
+              $31, $32, $33, $34, $35, $36
           ) RETURNING *`,
           [
               region_id,
               chapter_name,
-              logoFilename, // This should now have the correct filename
+              logoFilename,
               chapter_status,
               chapter_membership_fee,
               chapter_kitty_fees,
@@ -533,26 +533,33 @@ const addChapter = async (req, res) => {
               chapter_location_note,
               chapter_late_fees,
               chapter_available_fund,
-              billing_frequency
+              billing_frequency,
+              processedHotelId  // Use the processed hotel_id instead of the original
           ]
       );
 
-      // Add image URL to response
+      // Rest of your code remains the same...
       const chapterData = result.rows[0];
       if (chapterData.chapter_logo) {
           chapterData.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
-          console.log('🔗 Generated logo URL:', chapterData.chapter_logo_url);
       }
 
-      console.log('✅ Chapter added successfully:', chapterData);
+      console.log('\n✅ Chapter Creation Success:');
+      console.log('-------------------------');
+      console.log('Chapter ID:', chapterData.chapter_id);
+      console.log('Chapter Name:', chapterData.chapter_name);
+      console.log('Final Hotel ID:', chapterData.hotel_id);
+
       res.status(201).json({ 
           message: "Chapter added successfully!", 
           data: chapterData 
       });
 
   } catch (error) {
-      console.error('❌ Error adding chapter:', error);
-      console.error('Error details:', error.stack);
+      console.error('\n❌ Error Adding Chapter:');
+      console.error('---------------------');
+      console.error('Error Message:', error.message);
+      console.error('Error Stack:', error.stack);
       res.status(500).json({
           message: "Error adding chapter",
           error: error.message
@@ -562,134 +569,141 @@ const addChapter = async (req, res) => {
 
 
 const addMember = async (req, res) => {
-    console.log('📥 Starting add member process');
-    console.log('📦 Request body:', req.body);
-    console.log('📸 Files received:', req.files);
-    
-    try {
-        // Validate required integer fields
-        const requiredIntegerFields = {
-            'region_id': req.body.region_id,
-            'chapter_id': req.body.chapter_id,
-            'category_id': req.body.category_id
-        };
+  console.log('📥 Starting add member process');
+  console.log('📦 Request body:', req.body);
+  console.log('📸 Files received:', req.files);
+  
+  try {
+      // Validate required integer fields
+      const requiredIntegerFields = {
+          'region_id': req.body.region_id,
+          'chapter_id': req.body.chapter_id,
+      };
 
-        // Check for empty or invalid integer values
-        for (const [field, value] of Object.entries(requiredIntegerFields)) {
-            if (!value || value === '') {
-                return res.status(400).json({
-                    message: `${field} is required and must be a valid integer`,
-                    field: field
-                });
-            }
-        }
+      // Check for empty or invalid integer values
+      for (const [field, value] of Object.entries(requiredIntegerFields)) {
+          if (!value || value === '') {
+              return res.status(400).json({
+                  message: `${field} is required and must be a valid integer`,
+                  field: field
+              });
+          }
+      }
 
-        // Parse accolades_id and convert to PostgreSQL array format
-        let parsedAccolades;
-        try {
-            const accoladesArray = JSON.parse(req.body.accolades_id);
-            console.log('🏆 Parsed accolades:', accoladesArray);
-            parsedAccolades = `{${accoladesArray.join(',')}}`;
-        } catch (error) {
-            console.error('❌ Error parsing accolades:', error);
-            parsedAccolades = '{}';
-        }
-
-        // Get filenames from uploaded files
-        const memberPhotoFilename = req.files?.['member_photo']?.[0]?.filename || null;
-        const companyLogoFilename = req.files?.['member_company_logo']?.[0]?.filename || null;
-
-        const result = await con.query(
-            `INSERT INTO member (
-                member_first_name, member_last_name, member_date_of_birth, member_phone_number,
-                member_alternate_mobile_number, member_email_address, address_pincode,
-                address_city, address_state, region_id, chapter_id, accolades_id, category_id,
-                member_induction_date, member_current_membership, member_renewal_date, member_gst_number,
-                member_company_name, member_company_address, member_company_state, member_company_city,
-                member_photo, member_website, member_company_logo,
-                member_facebook, member_instagram, member_linkedin, member_youtube, country,
-                street_address_line_1, street_address_line_2, gender, notification_consent,
-                date_of_publishing, member_sponsored_by, member_status, meeting_opening_balance,
-                member_company_pincode
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 
-                     $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, 
-                     $33, $34, $35, $36, $37, $38)
-            RETURNING *`,
-            [
-                req.body.member_first_name,
-                req.body.member_last_name,
-                req.body.member_date_of_birth,
-                req.body.member_phone_number,
-                req.body.member_alternate_mobile_number,
-                req.body.member_email_address,
-                req.body.address_pincode,
-                req.body.address_city,
-                req.body.address_state,
-                parseInt(req.body.region_id) || null,      // Convert to integer
-                parseInt(req.body.chapter_id) || null,     // Convert to integer
-                parsedAccolades,
-                parseInt(req.body.category_id) || null,    // Convert to integer
-                req.body.member_induction_date,
-                req.body.member_current_membership,
-                req.body.member_renewal_date,
-                req.body.member_gst_number,
-                req.body.member_company_name,
-                req.body.member_company_address,
-                req.body.member_company_state,
-                req.body.member_company_city,
-                memberPhotoFilename,
-                req.body.member_website,
-                companyLogoFilename,
-                req.body.member_facebook,
-                req.body.member_instagram,
-                req.body.member_linkedin,
-                req.body.member_youtube,
-                req.body.country,
-                req.body.street_address_line_1,
-                req.body.street_address_line_2,
-                req.body.gender,
-                req.body.notification_consent,
-                req.body.date_of_publishing,
-                req.body.member_sponsored_by,
-                req.body.member_status,
-                parseFloat(req.body.meeting_opening_balance) || 0,
-                req.body.member_company_pincode
-            ]
-        );
-
-        const newMember = result.rows[0];
-        const member_id = newMember.member_id;
-
-        // Convert meeting_opening_balance to number or set default to 0
-        const meeting_opening_balance = parseFloat(req.body.meeting_opening_balance) || 0;
-        
-        await con.query(
-            `INSERT INTO bankorder (member_id, chapter_id, amount_to_pay) VALUES ($1, $2, $3)`,
-            [
-                member_id, 
-                parseInt(req.body.chapter_id), 
-                meeting_opening_balance
-            ]
-        );
-
-        console.log('✅ Member added successfully:', newMember);
-
-        res.status(201).json({
-            message: "Member added successfully!",
-            data: {
-                ...newMember,
-                member_photo_url: memberPhotoFilename ? `/uploads/memberPhotos/${memberPhotoFilename}` : null,
-                member_company_logo_url: companyLogoFilename ? `/uploads/memberCompanyLogos/${companyLogoFilename}` : null
-            }
-        });
-
-    } catch (error) {
-        console.error('❌ Error adding member:', error);
-        res.status(500).json({ 
-            message: "Error adding member", 
-            error: error.message 
+       // Validate category_name is present
+       if (!req.body.category_name) {
+        return res.status(400).json({
+            message: "category_name is required",
+            field: "category_name"
         });
     }
+
+      // Parse accolades_id and convert to PostgreSQL array format
+      let parsedAccolades;
+      try {
+          const accoladesArray = JSON.parse(req.body.accolades_id);
+          console.log('🏆 Parsed accolades:', accoladesArray);
+          parsedAccolades = `{${accoladesArray.join(',')}}`;
+      } catch (error) {
+          console.error('❌ Error parsing accolades:', error);
+          parsedAccolades = '{}';
+      }
+
+      // Get filenames from uploaded files
+      const memberPhotoFilename = req.files?.['member_photo']?.[0]?.filename || null;
+      const companyLogoFilename = req.files?.['member_company_logo']?.[0]?.filename || null;
+
+      const result = await con.query(
+          `INSERT INTO member (
+              member_first_name, member_last_name, member_date_of_birth, member_phone_number,
+              member_alternate_mobile_number, member_email_address, address_pincode,
+              address_city, address_state, region_id, chapter_id, accolades_id, category_name,
+              member_induction_date, member_current_membership, member_renewal_date, member_gst_number,
+              member_company_name, member_company_address, member_company_state, member_company_city,
+              member_photo, member_website, member_company_logo,
+              member_facebook, member_instagram, member_linkedin, member_youtube, country,
+              street_address_line_1, street_address_line_2, gender, notification_consent,
+              date_of_publishing, member_sponsored_by, member_status, meeting_opening_balance,
+              member_company_pincode
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 
+                   $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, 
+                   $33, $34, $35, $36, $37, $38)
+          RETURNING *`,
+          [
+              req.body.member_first_name,
+              req.body.member_last_name,
+              req.body.member_date_of_birth,
+              req.body.member_phone_number,
+              req.body.member_alternate_mobile_number,
+              req.body.member_email_address,
+              req.body.address_pincode,
+              req.body.address_city,
+              req.body.address_state,
+              parseInt(req.body.region_id) || null,      // Convert to integer
+              parseInt(req.body.chapter_id) || null,     // Convert to integer
+              parsedAccolades,
+              req.body.category_name,    // Convert to integer
+              req.body.member_induction_date,
+              req.body.member_current_membership,
+              req.body.member_renewal_date,
+              req.body.member_gst_number,
+              req.body.member_company_name,
+              req.body.member_company_address,
+              req.body.member_company_state,
+              req.body.member_company_city,
+              memberPhotoFilename,
+              req.body.member_website,
+              companyLogoFilename,
+              req.body.member_facebook,
+              req.body.member_instagram,
+              req.body.member_linkedin,
+              req.body.member_youtube,
+              req.body.country,
+              req.body.street_address_line_1,
+              req.body.street_address_line_2,
+              req.body.gender,
+              req.body.notification_consent,
+              req.body.date_of_publishing,
+              req.body.member_sponsored_by,
+              req.body.member_status,
+              parseFloat(req.body.meeting_opening_balance) || 0,
+              req.body.member_company_pincode
+          ]
+      );
+
+      const newMember = result.rows[0];
+      const member_id = newMember.member_id;
+
+      // Convert meeting_opening_balance to number or set default to 0
+      const meeting_opening_balance = parseFloat(req.body.meeting_opening_balance) || 0;
+      
+      await con.query(
+          `INSERT INTO bankorder (member_id, chapter_id, amount_to_pay) VALUES ($1, $2, $3)`,
+          [
+              member_id, 
+              parseInt(req.body.chapter_id), 
+              meeting_opening_balance
+          ]
+      );
+
+      console.log('✅ Member added successfully:', newMember);
+
+      res.status(201).json({
+          message: "Member added successfully!",
+          data: {
+              ...newMember,
+              member_photo_url: memberPhotoFilename ? `/uploads/memberPhotos/${memberPhotoFilename}` : null,
+              member_company_logo_url: companyLogoFilename ? `/uploads/memberCompanyLogos/${companyLogoFilename}` : null
+          }
+      });
+
+  } catch (error) {
+      console.error('❌ Error adding member:', error);
+      res.status(500).json({ 
+          message: "Error adding member", 
+          error: error.message 
+      });
+  }
 };
 
 const getBankOrder = async (req, res) => {
@@ -925,170 +939,218 @@ const authTokens = async (req, res) => {
 };
 
 const updateRegion = async (req, res) => {
-    console.log('🔄 Starting region update process...');
-    const { region_id } = req.params;
-    console.log('🎯 Updating region with ID:', region_id);
-    console.log('📦 Received update data:', req.body);
-    console.log('🖼️ Received file:', req.file);
+  console.log('🔄 Starting region update process...');
+  const { region_id } = req.params;
+  console.log('🎯 Updating region with ID:', region_id);
+  console.log('📦 Received update data:', req.body);
+  console.log('🖼️ Received file:', req.file);
 
-    try {
-        // Parse arrays from JSON strings if they're strings
-        const daysOfChapter = Array.isArray(req.body.days_of_chapter) 
-            ? req.body.days_of_chapter 
-            : JSON.parse(req.body.days_of_chapter);
+  try {
+      // Parse arrays from JSON strings if they're strings
+      const daysOfChapter = Array.isArray(req.body.days_of_chapter) 
+          ? req.body.days_of_chapter 
+          : JSON.parse(req.body.days_of_chapter);
 
-        const chapterStatus = Array.isArray(req.body.chapter_status) 
-            ? req.body.chapter_status 
-            : JSON.parse(req.body.chapter_status);
+      const chapterStatus = Array.isArray(req.body.chapter_status) 
+          ? req.body.chapter_status 
+          : JSON.parse(req.body.chapter_status);
 
-        const chapterType = Array.isArray(req.body.chapter_type) 
-            ? req.body.chapter_type 
-            : JSON.parse(req.body.chapter_type);
+      const chapterType = Array.isArray(req.body.chapter_type) 
+          ? req.body.chapter_type 
+          : JSON.parse(req.body.chapter_type);
 
-        const accoladesConfig = Array.isArray(req.body.accolades_config) 
-            ? req.body.accolades_config 
-            : JSON.parse(req.body.accolades_config);
+      const accoladesConfig = Array.isArray(req.body.accolades_config) 
+          ? req.body.accolades_config 
+          : JSON.parse(req.body.accolades_config);
 
-        // Convert arrays to PostgreSQL array format
-        const formattedDays = `{${daysOfChapter.map(day => `"${day}"`).join(',')}}`;
-        const formattedStatus = `{${chapterStatus.map(status => `"${status}"`).join(',')}}`;
-        const formattedType = `{${chapterType.map(type => `"${type}"`).join(',')}}`;
-        const formattedAccolades = `{${accoladesConfig.join(',')}}`;
+      const hotelId = Array.isArray(req.body.hotels_config)
+          ? req.body.hotels_config
+          : JSON.parse(req.body.hotels_config);
 
-        console.log('📊 Formatted arrays:', {
-            days: formattedDays,
-            status: formattedStatus,
-            type: formattedType,
-            accolades: formattedAccolades
-        });
+      // Convert arrays to PostgreSQL array format
+      const formattedDays = `{${daysOfChapter.map(day => `"${day}"`).join(',')}}`;
+      const formattedStatus = `{${chapterStatus.map(status => `"${status}"`).join(',')}}`;
+      const formattedType = `{${chapterType.map(type => `"${type}"`).join(',')}}`;
+      const formattedAccolades = `{${accoladesConfig.join(',')}}`;
+      const formattedHotels = `{${hotelId.join(',')}}`;
 
-        // Start building the query
-        let query = `
-            UPDATE region 
-            SET region_name = $1,
-                contact_person = $2,
-                contact_number = $3,
-                email_id = $4,
-                mission = $5,
-                vision = $6,
-                region_status = $7,
-                one_time_registration_fee = $8,
-                one_year_fee = $9,
-                two_year_fee = $10,
-                five_year_fee = $11,
-                late_fees = $12,
-                country = $13,
-                state = $14,
-                city = $15,
-                street_address_line_1 = $16,
-                street_address_line_2 = $17,
-                postal_code = $18,
-                social_facebook = $19,
-                social_instagram = $20,
-                social_linkedin = $21,
-                social_youtube = $22,
-                website_link = $23,
-                date_of_publishing = $24,
-                region_launched_by = $25,
-                days_of_chapter = $26,
-                chapter_status = $27,
-                chapter_type = $28,
-                accolades_config = $29
-        `;
+      console.log('📊 Formatted arrays:', {
+          days: formattedDays,
+          status: formattedStatus,
+          type: formattedType,
+          accolades: formattedAccolades,
+          hotels: formattedHotels
+      });
 
-        // Add region_logo update if a new file was uploaded
-        if (req.file) {
-            query += `, region_logo = $30`;
-        }
+      // Start building the query
+      let query = `
+          UPDATE region 
+          SET region_name = $1,
+              contact_person = $2,
+              contact_number = $3,
+              email_id = $4,
+              mission = $5,
+              vision = $6,
+              region_status = $7,
+              one_time_registration_fee = $8,
+              one_year_fee = $9,
+              two_year_fee = $10,
+              five_year_fee = $11,
+              late_fees = $12,
+              country = $13,
+              state = $14,
+              city = $15,
+              street_address_line_1 = $16,
+              street_address_line_2 = $17,
+              postal_code = $18,
+              social_facebook = $19,
+              social_instagram = $20,
+              social_linkedin = $21,
+              social_youtube = $22,
+              website_link = $23,
+              date_of_publishing = $24,
+              region_launched_by = $25,
+              days_of_chapter = $26,
+              chapter_status = $27,
+              chapter_type = $28,
+              accolades_config = $29,
+              hotel_id = $30
+      `;
 
-        query += ` WHERE region_id = $${req.file ? '31' : '30'} RETURNING *`;
+      // Add region_logo update if a new file was uploaded
+      if (req.file) {
+          query += `, region_logo = $31`;
+      }
 
-        // Prepare values array
-        const values = [
-            req.body.region_name,
-            req.body.contact_person,
-            req.body.contact_number,
-            req.body.email_id,
-            req.body.mission,
-            req.body.vision,
-            req.body.region_status,
-            req.body.one_time_registration_fee,
-            req.body.one_year_fee,
-            req.body.two_year_fee,
-            req.body.five_year_fee,
-            req.body.late_fees,
-            req.body.country,
-            req.body.state,
-            req.body.city,
-            req.body.street_address_line_1,
-            req.body.street_address_line_2,
-            req.body.postal_code,
-            req.body.social_facebook,
-            req.body.social_instagram,
-            req.body.social_linkedin,
-            req.body.social_youtube,
-            req.body.website_link,
-            req.body.date_of_publishing,
-            req.body.region_launched_by,
-            formattedDays,        // Using formatted array string
-            formattedStatus,      // Using formatted array string
-            formattedType,        // Using formatted array string
-            formattedAccolades    // Using formatted array string
-        ];
+      query += ` WHERE region_id = $${req.file ? '32' : '31'} RETURNING *`;
 
-        // Add file name and region_id to values array
-        if (req.file) {
-            values.push(req.file.filename);
-        }
-        values.push(region_id);
+      // Prepare values array
+      const values = [
+          req.body.region_name,
+          req.body.contact_person,
+          req.body.contact_number,
+          req.body.email_id,
+          req.body.mission,
+          req.body.vision,
+          req.body.region_status,
+          req.body.one_time_registration_fee,
+          req.body.one_year_fee,
+          req.body.two_year_fee,
+          req.body.five_year_fee,
+          req.body.late_fees,
+          req.body.country,
+          req.body.state,
+          req.body.city,
+          req.body.street_address_line_1,
+          req.body.street_address_line_2,
+          req.body.postal_code,
+          req.body.social_facebook,
+          req.body.social_instagram,
+          req.body.social_linkedin,
+          req.body.social_youtube,
+          req.body.website_link,
+          req.body.date_of_publishing,
+          req.body.region_launched_by,
+          formattedDays,        // Using formatted array string
+          formattedStatus,      // Using formatted array string
+          formattedType,        // Using formatted array string
+          formattedAccolades,   // Using formatted array string
+          formattedHotels       // Using formatted hotels array
+      ];
 
-        console.log('📝 Executing query with values:', values);
+      // Add file name and region_id to values array
+      if (req.file) {
+          values.push(req.file.filename);
+      }
+      values.push(region_id);
 
-        const result = await con.query(query, values);
+      console.log('📝 Executing query with values:', values);
+      console.log('🏨 Hotels being updated:', formattedHotels);
 
-        if (result.rowCount === 0) {
-            console.log('❌ No region found with ID:', region_id);
-            return res.status(404).json({
-                message: "Region not found"
-            });
-        }
+      const result = await con.query(query, values);
 
-        console.log('✅ Region updated successfully');
-        res.json({
-            message: "Region updated successfully",
-            data: result.rows[0]
-        });
+      if (result.rowCount === 0) {
+          console.log('❌ No region found with ID:', region_id);
+          return res.status(404).json({
+              message: "Region not found"
+          });
+      }
 
-    } catch (error) {
-        console.error('❌ Error updating region:', error);
-        res.status(500).json({
-            message: "Error updating region",
-            error: error.message
-        });
-    }
+      console.log('✅ Region updated successfully');
+      res.json({
+          message: "Region updated successfully",
+          data: result.rows[0]
+      });
+
+  } catch (error) {
+      console.error('❌ Error updating region:', error);
+      res.status(500).json({
+          message: "Error updating region",
+          error: error.message
+      });
+  }
 };
 
 const updateChapter = async (req, res) => {
-  console.log('🔄 Starting chapter update process');
+  console.log('\n🏢 Starting Chapter Update Process');
+  console.log('==================================');
+  
   const { chapter_id } = req.params;
-  console.log('📝 Updating chapter ID:', chapter_id);
+  const {
+      region_id,
+      chapter_name,
+      chapter_status,
+      chapter_membership_fee,
+      chapter_kitty_fees,
+      chapter_visitor_fees,
+      chapter_meeting_day,
+      one_time_registration_fee,
+      chapter_type,
+      eoi_link,
+      member_app_link,
+      chapter_membership_fee_two_year,
+      chapter_membership_fee_five_year,
+      contact_number,
+      contact_person,
+      chapter_mission,
+      chapter_vision,
+      email_id,
+      country,
+      state,
+      city,
+      street_address_line,
+      postal_code,
+      chapter_facebook,
+      chapter_instagram,
+      chapter_linkedin,
+      chapter_youtube,
+      chapter_website,
+      date_of_publishing,
+      chapter_launched_by,
+      chapter_location_note,
+      chapter_late_fees,
+      chapter_available_fund,
+      billing_frequency,
+      hotel_id,
+  } = req.body;
+
+  let processedHotelId = Array.isArray(hotel_id) ? parseInt(hotel_id[0]) : parseInt(hotel_id);
+    processedHotelId = isNaN(processedHotelId) ? null : processedHotelId;
+
+  console.log('\n🏨 Hotel ID Processing in Update:');
+  console.log('---------------------');
+  console.log('Original Hotel ID:', hotel_id);
+  console.log('Processed Hotel ID:', processedHotelId);
+  console.log('Final Hotel ID Type:', typeof processedHotelId);
 
   try {
-      // First, get the current chapter data to preserve logo if not changed
       const currentChapter = await con.query(
           'SELECT chapter_logo, email_id FROM chapter WHERE chapter_id = $1',
           [chapter_id]
       );
       
-      const email_id = currentChapter.rows[0]?.email_id;
-      console.log('📧 Chapter email:', email_id);
-
-      // Determine which logo to use
-      let logoFilename = req.file ? 
-          req.file.filename : 
-          currentChapter.rows[0]?.chapter_logo;
-
-      console.log('🖼️ Logo to be used:', logoFilename);
+      const currentEmail = currentChapter.rows[0]?.email_id;
+      const logoFilename = req.file ? req.file.filename : currentChapter.rows[0]?.chapter_logo;
 
       const query = `
           UPDATE chapter 
@@ -1127,203 +1189,209 @@ const updateChapter = async (req, res) => {
               chapter_location_note = $32,
               chapter_late_fees = $33,
               available_fund = $34,
-              kitty_billing_frequency = $35
-          WHERE chapter_id = $36
+              kitty_billing_frequency = $35,
+              hotel_id = $36
+          WHERE chapter_id = $37
           RETURNING *
       `;
 
       const values = [
-          req.body.region_id,
-          req.body.chapter_name,
+          region_id,
+          chapter_name,
           logoFilename,
-          req.body.chapter_status,
-          req.body.chapter_membership_fee,
-          req.body.chapter_kitty_fees,
-          req.body.chapter_visitor_fees,
-          req.body.chapter_meeting_day,
-          req.body.one_time_registration_fee,
-          req.body.chapter_type,
-          req.body.eoi_link,
-          req.body.member_app_link,
-          req.body.chapter_membership_fee_two_year,
-          req.body.chapter_membership_fee_five_year,
-          req.body.contact_number,
-          req.body.contact_person,
-          req.body.chapter_mission,
-          req.body.chapter_vision,
-          req.body.email_id,
-          req.body.country,
-          req.body.state,
-          req.body.city,
-          req.body.street_address_line,
-          req.body.postal_code,
-          req.body.chapter_facebook,
-          req.body.chapter_instagram,
-          req.body.chapter_linkedin,
-          req.body.chapter_youtube,
-          req.body.chapter_website,
-          req.body.date_of_publishing,
-          req.body.chapter_launched_by,
-          req.body.chapter_location_note,
-          req.body.chapter_late_fees,
-          req.body.chapter_available_fund,
-          req.body.billing_frequency,
+          chapter_status,
+          chapter_membership_fee,
+          chapter_kitty_fees,
+          chapter_visitor_fees,
+          chapter_meeting_day,
+          one_time_registration_fee,
+          chapter_type,
+          eoi_link,
+          member_app_link,
+          chapter_membership_fee_two_year,
+          chapter_membership_fee_five_year,
+          contact_number,
+          contact_person,
+          chapter_mission,
+          chapter_vision,
+          email_id,
+          country,
+          state,
+          city,
+          street_address_line,
+          postal_code,
+          chapter_facebook,
+          chapter_instagram,
+          chapter_linkedin,
+          chapter_youtube,
+          chapter_website,
+          date_of_publishing,
+          chapter_launched_by,
+          chapter_location_note,
+          chapter_late_fees,
+          chapter_available_fund,
+          billing_frequency,
+          processedHotelId,
           chapter_id
       ];
 
-      console.log('🔍 Executing update query with values:', values);
       const result = await con.query(query, values);
 
       if (result.rows.length === 0) {
-          console.log('⚠️ No chapter found with ID:', chapter_id);
           return res.status(404).json({ message: "Chapter not found" });
       }
 
-      // If logo was updated, also update it in chapterSettings
-      if (req.file && email_id) {
-          console.log('🔄 Syncing logo update with chapterSettings...');
-          try {
-              const updateSettingsQuery = `
-                  UPDATE chapter 
-                  SET chapter_logo = $1
-                  WHERE email_id = $2
-              `;
-              await con.query(updateSettingsQuery, [logoFilename, email_id]);
-              console.log('✅ Logo synced successfully');
-          } catch (syncError) {
-              console.error('⚠️ Error syncing logo:', syncError);
-          }
+      if (req.file && currentEmail) {
+          await con.query(
+              `UPDATE chapter SET chapter_logo = $1 WHERE email_id = $2`,
+              [logoFilename, currentEmail]
+          );
       }
 
-      // Add image URL to response
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
           updatedChapter.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
-          console.log('🔗 Generated logo URL:', updatedChapter.chapter_logo_url);
       }
 
-      console.log('✅ Chapter updated successfully:', updatedChapter);
+      console.log('\n✅ Chapter Update Success:');
+      console.log('-------------------------');
+      console.log('Chapter ID:', updatedChapter.chapter_id);
+      console.log('Chapter Name:', updatedChapter.chapter_name);
+      console.log('Updated Hotel ID:', updatedChapter.hotel_id);
+
       res.json(updatedChapter);
 
   } catch (error) {
-      console.error('❌ Error updating chapter:', error);
-      console.error('Error details:', error.stack);
+      console.error('\n❌ Error Updating Chapter:');
+      console.error('---------------------');
+      console.error('Error Message:', error.message);
+      console.error('Error Stack:', error.stack);
       res.status(500).json({
           message: "Error updating chapter",
-          error: error.message,
-          details: error.stack
+          error: error.message
       });
   }
 };
 
 
 const updateMember = async (req, res) => {
-    console.log('📝 Starting member update process');
-    console.log('📦 Request body:', req.body);
-    console.log('📸 Files received:', req.files);
+  console.log('📝 Starting member update process');
+  console.log('📦 Request body:', req.body);
+  console.log('📸 Files received:', req.files);
 
-    try {
-        const { member_id } = req.params;
+  try {
+      const { member_id } = req.params;
 
-        // First get the existing member data
-        const existingMember = await con.query(
-            "SELECT * FROM member WHERE member_id = $1",
-            [member_id]
-        );
+      // First get the existing member data
+      const existingMember = await con.query(
+          "SELECT * FROM member WHERE member_id = $1",
+          [member_id]
+      );
 
-        if (existingMember.rows.length === 0) {
-            return res.status(404).json({
-                message: "Member not found"
-            });
-        }
+      if (existingMember.rows.length === 0) {
+          return res.status(404).json({
+              message: "Member not found"
+          });
+      }
 
-        // Handle accolades_id - keep existing if not provided in request
-        let parsedAccolades;
-        if (req.body.accolades_id) {
-            try {
-                const accoladesArray = JSON.parse(req.body.accolades_id);
-                console.log('🏆 New accolades:', accoladesArray);
-                parsedAccolades = `{${accoladesArray.join(',')}}`;
-            } catch (error) {
-                console.error('❌ Error parsing accolades:', error);
-                parsedAccolades = existingMember.rows[0].accolades_id;
-            }
-        } else {
-            // Important: Keep existing accolades if not provided in request
-            console.log('🏆 Keeping existing accolades:', existingMember.rows[0].accolades_id);
-            parsedAccolades = existingMember.rows[0].accolades_id;
-        }
+      // Handle accolades_id - keep existing if not provided in request
+      let parsedAccolades;
+      if (req.body.accolades_id) {
+          try {
+              const accoladesArray = JSON.parse(req.body.accolades_id);
+              console.log('🏆 New accolades:', accoladesArray);
+              parsedAccolades = `{${accoladesArray.join(',')}}`;
+          } catch (error) {
+              console.error('❌ Error parsing accolades:', error);
+              parsedAccolades = existingMember.rows[0].accolades_id;
+          }
+      } else {
+          // Important: Keep existing accolades if not provided in request
+          console.log('🏆 Keeping existing accolades:', existingMember.rows[0].accolades_id);
+          parsedAccolades = existingMember.rows[0].accolades_id;
+      }
 
-        // Get filenames from uploaded files
-        const memberPhotoFilename = req.files?.['member_photo']?.[0]?.filename;
-        const companyLogoFilename = req.files?.['member_company_logo']?.[0]?.filename;
+      // Get filenames from uploaded files
+      const memberPhotoFilename = req.files?.['member_photo']?.[0]?.filename;
+      const companyLogoFilename = req.files?.['member_company_logo']?.[0]?.filename;
 
-        // Build the SET clause dynamically
-        const updates = [];
-        const values = [];
-        let valueCounter = 1;
+      // Build the SET clause dynamically
+      const updates = [];
+      const values = [];
+      let valueCounter = 1;
 
-        // Add all fields from request body except files and accolades
-        Object.keys(req.body).forEach(key => {
-            if (key !== 'accolades_id' && key !== 'member_photo' && key !== 'member_company_logo') {
+      // Add all fields from request body except files and accolades
+      Object.keys(req.body).forEach(key => {
+        if (key !== 'accolades_id' && 
+            key !== 'member_photo' && 
+            key !== 'member_company_logo') {
+            
+            // Handle category_name specifically
+            if (key === 'category_name') {
+                updates.push(`category_name = $${valueCounter}`);
+                values.push(req.body.category_name);
+                valueCounter++;
+            } else {
                 updates.push(`${key} = $${valueCounter}`);
                 values.push(req.body[key]);
                 valueCounter++;
             }
-        });
-
-        // Always include accolades in the update with the preserved value
-        updates.push(`accolades_id = $${valueCounter}`);
-        values.push(parsedAccolades);
-        valueCounter++;
-
-        // Add photo if present, otherwise keep existing
-        if (memberPhotoFilename) {
-            updates.push(`member_photo = $${valueCounter}`);
-            values.push(memberPhotoFilename);
-            valueCounter++;
         }
+    });
 
-        // Add company logo if present, otherwise keep existing
-        if (companyLogoFilename) {
-            updates.push(`member_company_logo = $${valueCounter}`);
-            values.push(companyLogoFilename);
-            valueCounter++;
-        }
 
-        // Add member_id to values array
-        values.push(member_id);
+      // Always include accolades in the update with the preserved value
+      updates.push(`accolades_id = $${valueCounter}`);
+      values.push(parsedAccolades);
+      valueCounter++;
 
-        const query = `
-            UPDATE member 
-            SET ${updates.join(', ')}
-            WHERE member_id = $${valueCounter}
-            RETURNING *
-        `;
+      // Add photo if present, otherwise keep existing
+      if (memberPhotoFilename) {
+          updates.push(`member_photo = $${valueCounter}`);
+          values.push(memberPhotoFilename);
+          valueCounter++;
+      }
 
-        console.log('🔍 Executing query:', query);
-        console.log('📊 With values:', values);
+      // Add company logo if present, otherwise keep existing
+      if (companyLogoFilename) {
+          updates.push(`member_company_logo = $${valueCounter}`);
+          values.push(companyLogoFilename);
+          valueCounter++;
+      }
 
-        const result = await con.query(query, values);
-        const updatedMember = result.rows[0];
-        console.log('✅ Member updated successfully:', updatedMember);
+      // Add member_id to values array
+      values.push(member_id);
 
-        res.json({
-            message: "Member updated successfully",
-            data: {
-                ...updatedMember,
-                member_photo_url: updatedMember.member_photo ? `/uploads/memberPhotos/${updatedMember.member_photo}` : null,
-                member_company_logo_url: updatedMember.member_company_logo ? `/uploads/memberCompanyLogos/${updatedMember.member_company_logo}` : null
-            }
-        });
+      const query = `
+          UPDATE member 
+          SET ${updates.join(', ')}
+          WHERE member_id = $${valueCounter}
+          RETURNING *
+      `;
 
-    } catch (error) {
-        console.error('❌ Error updating member:', error);
-        res.status(500).json({
-            message: "Error updating member",
-            error: error.message
-        });
-    }
+      console.log('🔍 Executing query:', query);
+      console.log('📊 With values:', values);
+
+      const result = await con.query(query, values);
+      const updatedMember = result.rows[0];
+      console.log('✅ Member updated successfully:', updatedMember);
+
+      res.json({
+          message: "Member updated successfully",
+          data: {
+              ...updatedMember,
+              member_photo_url: updatedMember.member_photo ? `/uploads/memberPhotos/${updatedMember.member_photo}` : null,
+              member_company_logo_url: updatedMember.member_company_logo ? `/uploads/memberCompanyLogos/${updatedMember.member_company_logo}` : null
+          }
+      });
+
+  } catch (error) {
+      console.error('❌ Error updating member:', error);
+      res.status(500).json({
+          message: "Error updating member",
+          error: error.message
+      });
+  }
 };
 
 const updateUniversalLink = async (req, res) => {

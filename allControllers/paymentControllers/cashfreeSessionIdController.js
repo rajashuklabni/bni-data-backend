@@ -38,9 +38,11 @@ const sessionIdGenerator = async (req, res) => {
     console.log(responseData1.order_amount, "============responseData1============");
 
     try {
+      console.log("here2-----------------");
+
         const axiosResponse = await axios.post(`${process.env.cashfree_testing_url}/pg/orders`, data, { headers });
         const responseData = axiosResponse.data;
-        
+        console.log("here-----------------");
 
         // console.log(responseData, "=============session controller data");
 
@@ -73,9 +75,9 @@ const sessionIdGenerator = async (req, res) => {
                   data.customer_details.memberName || "Unknown", // New field
                   data.customer_details.customer_email || "unknown@example.com", // New field
                   data.customer_details.customer_phone || "0000000000", // New field
-                  data.memberData.member_gst_number || null, // New field
-                  data.memberData.member_company_name || "Unknown", // New field
-                  data.customer_details.mobileNumber || "0000000000", // New field
+                  (data.memberData?.member_gst_number || null), // New field
+                  data.memberData?.member_company_name || "Unknown", // New field
+                  data.customer_details?.mobileNumber || 1212121212, // New field
                   data.customer_details.renewalYear || null, // New field
                   data.customer_details.payment_note || null, // New field
                   data.customer_details.trainingId || null, // New field
@@ -326,20 +328,10 @@ const getOrderStatus = async (req, res) => {
       // console.log("separated data");
       // console.log(balance_data);
       
-        if(payment_status==='SUCCESS' && responseData1.customer_details.payment_note === 'meeting-payments'){
+        if(payment_status==='SUCCESS' && (responseData1.customer_details.payment_note === 'meeting-payments' || responseData1.customer_details.payment_note === 'meeting-payments-opening-only')){
           // db query
           console.log("adding in db.....");
-          await db.query(`
-      INSERT INTO memberpendingkittyopeningbalance ( chapter_id, member_id, kitty_id, member_pending_balance, total_amount_paid, tax) 
-      VALUES ($1, $2, $3, $4, $5, $6)`,[
-      balance_data.chapter_id,
-      balance_data.member_id,
-      balance_data.kitty_bill_id,
-      balance_data.member_pending_balance,
-      balance_data.total_amount_paid,
-      balance_data.tax
-    ]);
-    console.log("added in new db");
+          
     const creditResponse = await fetch("https://bni-data-backend.onrender.com/api/getAllMemberCredit");
     const creditData = await creditResponse.json();
 
@@ -361,15 +353,64 @@ const getOrderStatus = async (req, res) => {
 
     console.log("Updated is_adjusted to true for filtered credits");
     const newAmountToPay = parseFloat(orderData.order_amount) - parseFloat(orderData.tax);
+    // now i have to do like if penalty is 0 then means penalty is added in orderamount
+    // else not added 
+    // so in if case i will do 
+    if(responseData1.penalty_amount > 0){
+      const updateQuery = `
+          UPDATE bankorder 
+          SET amount_to_pay = amount_to_pay - $1,
+              no_of_late_payment = $2,
+              kitty_penalty = $3
+          WHERE member_id = $4
+      `;
+      console.log("bankorder penalty ",responseData1.penalty_amount);
+      console.log("bankorder no of late payment ",responseData1.no_of_late_payment);
+
+      const values = [Math.round(newAmountToPay), responseData1.no_of_late_payment, responseData1.penalty_amount,balance_data.member_id];
+      await db.query(updateQuery, values);
+      console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
+    }
+    else{
+
+      const bankOrderResponse = await fetch("https://bni-data-backend.onrender.com/api/getbankOrder");
+      const bankOrderData = await bankOrderResponse.json();
+
+      // Filter bank orders based on member_id
+      const filteredBankOrders = bankOrderData.filter(order => order.member_id === balance_data.member_id);
+
+      console.log("Filtered bank orders for member_id:", balance_data.member_id, filteredBankOrders);
+
+
 
       const updateQuery = `
           UPDATE bankorder 
-          SET amount_to_pay = amount_to_pay - $1
-          WHERE member_id = $2
+          SET amount_to_pay = amount_to_pay + $1 - $2,
+              no_of_late_payment = $3,
+              kitty_penalty = $4
+          WHERE member_id = $5
       `;
-      const values = [Math.round(newAmountToPay), balance_data.member_id];
+      console.log("bankorder penalty ", responseData1.penalty_amount);
+      console.log("bankorder no of late payment ", responseData1.no_of_late_payment);
+
+      const values = [filteredBankOrders[0].kitty_penalty, Math.round(newAmountToPay), responseData1.no_of_late_payment, responseData1.penalty_amount, balance_data.member_id];
       await db.query(updateQuery, values);
       console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
+    }
+
+      // const updateQuery = `
+      //     UPDATE bankorder 
+      //     SET amount_to_pay = amount_to_pay - $1,
+      //         no_of_late_payment = $2,
+      //         kitty_penalty = $3
+      //     WHERE member_id = $4
+      // `;
+      // console.log("bankorder penalty ",responseData1.penalty_amount);
+      // console.log("bankorder no of late payment ",responseData1.no_of_late_payment);
+
+      // const values = [Math.round(newAmountToPay), responseData1.no_of_late_payment, responseData1.penalty_amount,balance_data.member_id];
+      // await db.query(updateQuery, values);
+      // console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
     
         }
         
