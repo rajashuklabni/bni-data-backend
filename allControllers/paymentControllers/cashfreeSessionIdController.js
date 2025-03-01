@@ -38,9 +38,11 @@ const sessionIdGenerator = async (req, res) => {
     console.log(responseData1.order_amount, "============responseData1============");
 
     try {
+      console.log("here2-----------------");
+
         const axiosResponse = await axios.post(`${process.env.cashfree_testing_url}/pg/orders`, data, { headers });
         const responseData = axiosResponse.data;
-        
+        console.log("here-----------------");
 
         // console.log(responseData, "=============session controller data");
 
@@ -73,9 +75,9 @@ const sessionIdGenerator = async (req, res) => {
                   data.customer_details.memberName || "Unknown", // New field
                   data.customer_details.customer_email || "unknown@example.com", // New field
                   data.customer_details.customer_phone || "0000000000", // New field
-                  data.memberData.member_gst_number || null, // New field
-                  data.memberData.member_company_name || "Unknown", // New field
-                  data.customer_details.mobileNumber || "0000000000", // New field
+                  (data.memberData?.member_gst_number || null), // New field
+                  data.memberData?.member_company_name || "Unknown", // New field
+                  data.customer_details?.mobileNumber || 1212121212, // New field
                   data.customer_details.renewalYear || null, // New field
                   data.customer_details.payment_note || null, // New field
                   data.customer_details.trainingId || null, // New field
