@@ -397,4 +397,202 @@ async function decryptIrnData(encryptedData, sek) {
 }
 
 
-module.exports = { getToken, generateIRN};
+// ******************************* cancel irn *************************************
+
+async function cancelIRN(req, res) {
+  try {
+      const { Irn, CnlRem } = req.body;
+      console.log("req data", req.body);
+
+      // Step 1: Encrypt Cancel IRN Data
+      const sek = await getStoredSek(); // Fetch SEK from DB
+      const encryptPay = {
+        type: "SEK",
+        data: JSON.stringify({
+          "Irn": Irn,
+          "CnlRsn": "1",
+          "CnlRem": CnlRem,
+        }),
+        key: sek
+      };
+      const encryptedPayload = JSON.stringify(encryptPay);
+      console.log(encryptedPayload);
+
+      const encryptResponse = await apiClient.post('/crypto/encrypt', encryptedPayload, {
+          headers: {
+              client_id: process.env.CLIENT_ID,
+              client_secret: process.env.CLIENT_SECRET,
+              gstin: process.env.GSTIN,
+              user_name: "PrinceSachdeva",
+              AuthToken: await getStoredAuthToken() // Fetch AuthToken from DB
+          }
+      });
+
+      if (!encryptResponse.data.Data) {
+          throw new Error("Encryption failed.");
+      }
+      const encryptedData = encryptResponse.data.Data;
+
+      // Step 2: Send Encrypted Data to Cancel IRN API
+      console.log("encrypt data", encryptedData);
+
+      const cancelResponse = await apiClient.post('/eicore/v1.03/Invoice/Cancel', { Data: encryptedData }, {
+          headers: {
+              client_id: process.env.CLIENT_ID,
+              client_secret: process.env.CLIENT_SECRET,
+              gstin: process.env.GSTIN,
+              user_name: "PrinceSachdeva",
+              AuthToken: await getStoredAuthToken()
+          }
+      });
+      console.log("cancel irn response", cancelResponse.data.Data);
+
+      if (!cancelResponse.data.Data) {
+          throw new Error("IRN cancellation failed.");
+      }
+      const cancelResponseData = cancelResponse.data.Data;
+
+      // Step 3: Decrypt Cancel IRN Response Data
+      const decryptPayload = {
+          type: "SEK",
+          data: cancelResponseData,
+          key: sek
+      };
+
+      const decryptResponse = await apiClient.post('/crypto/decrypt', decryptPayload, {
+          headers: {
+              client_id: process.env.CLIENT_ID,
+              client_secret: process.env.CLIENT_SECRET,
+              gstin: process.env.GSTIN,
+              user_name: "PrinceSachdeva",
+              AuthToken: await getStoredAuthToken()
+          }
+      });
+
+      if (!decryptResponse.data.Data) {
+          throw new Error("Decryption failed.");
+      }
+
+      res.json({
+          message: "IRN cancelled successfully.",
+          decryptedData: decryptResponse.data.Data
+      });
+
+  } catch (error) {
+      console.error("Cancel IRN Error:", error.message);
+      res.status(500).json({ error: error.message });
+  }
+}
+
+// Fetch stored SEK from the database
+async function getStoredSek() {
+  const query = 'SELECT sek FROM authTokens ORDER BY created_at DESC LIMIT 1';
+  const result = await db.query(query);
+  if (result.rows.length === 0) {
+      throw new Error("SEK not found in database.");
+  }
+  return result.rows[0].sek;
+}
+
+// Fetch stored AuthToken from the database
+async function getStoredAuthToken() {
+  const query = 'SELECT authtoken FROM authTokens ORDER BY created_at DESC LIMIT 1';
+  const result = await db.query(query);
+  if (result.rows.length === 0) {
+      throw new Error("AuthToken not found in database.");
+  }
+  return result.rows[0].authToken;
+}
+
+
+
+// **************************** get gst details *************************************
+
+
+// Function to Get GST Details
+async function getGstDetails(req, res) {
+  try {
+    const gstNo = req.params.gstNo;
+
+    if (!gstNo) {
+      return res.status(400).json({ error: "GST Number is required." });
+    }
+
+    // Step 1: Retrieve stored tokens from the database
+    const query = 'SELECT * FROM authTokens ORDER BY created_at DESC LIMIT 1';
+    const result = await db.query(query);
+
+    if (result.rows.length === 0) {
+      throw new Error("No tokens found in the database.");
+    }
+
+    const { authtoken, sek } = result.rows[0];  // Fetch the most recent token
+
+    // Step 2: Call the GST API
+    const gstResponse = await apiClient.get(`/eivital/v1.04/Master/gstin/${gstNo}`, {
+      headers: {
+        client_id: process.env.CLIENT_ID,
+        client_secret: process.env.CLIENT_SECRET,
+        gstin: process.env.GSTIN,
+        user_name: "PrinceSachdeva",
+        AuthToken: authtoken
+      }
+    });
+
+    if (!gstResponse.data || !gstResponse.data.Data) {
+      throw new Error("Invalid response from GST API.");
+    }
+
+    const encryptedData = gstResponse.data.Data;
+
+    // Step 3: Decrypt the GST Data
+    const decryptResponse = await apiClient.post('/crypto/decrypt', {
+      type: "SEK",
+      data: encryptedData,
+      key: sek
+    }, {
+      headers: {
+        client_id: process.env.CLIENT_ID,
+        client_secret: process.env.CLIENT_SECRET,
+        gstin: process.env.GSTIN,
+        user_name: "PrinceSachdeva",
+        AuthToken: authtoken
+      }
+    });
+
+    if (!decryptResponse.data || !decryptResponse.data.Data) {
+      throw new Error("Failed to decrypt GST details.");
+    }
+
+    let gstDetails = decryptResponse.data.Data;
+    // Ensure gstDetails is a valid object
+    if (typeof gstDetails === 'string') {
+      gstDetails = JSON.parse(gstDetails);  // Parse if it's a string
+    }
+
+    if (!gstDetails || typeof gstDetails !== 'object') {
+      throw new Error("Invalid GST details format.");
+    }
+    // Extract GST details safely
+    const extractedDetails = {
+      gstin: gstDetails.gstin || "N/A",
+      tradeName: gstDetails.tradeName || "N/A",
+      legalName: gstDetails.legalName || "N/A",
+      address: `${gstDetails.addrBno || "N/A"}, ${gstDetails.addrFlno || "N/A"}, ${gstDetails.addrSt || "N/A"}, ${gstDetails.addrLoc || "N/A"}, ${gstDetails.stateCode || "N/A"} - ${gstDetails.addrPncd || "N/A"}`,
+      taxpayerType: gstDetails.txpType || "N/A",
+      status: gstDetails.status || "N/A",
+      registrationDate: gstDetails.dtReg || "N/A"
+    };
+
+    console.log(extractedDetails);
+
+    // Step 4: Send Response
+    res.status(200).json({ success: true, extractedDetails });
+
+  } catch (error) {
+    console.error("Error fetching GST details:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+module.exports = { getToken, generateIRN, cancelIRN, getGstDetails};
