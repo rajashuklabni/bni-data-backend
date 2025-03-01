@@ -564,17 +564,35 @@ async function getGstDetails(req, res) {
       throw new Error("Failed to decrypt GST details.");
     }
 
-    const gstDetails = decryptResponse.data.Data;
+    let gstDetails = decryptResponse.data.Data;
+    // Ensure gstDetails is a valid object
+    if (typeof gstDetails === 'string') {
+      gstDetails = JSON.parse(gstDetails);  // Parse if it's a string
+    }
+
+    if (!gstDetails || typeof gstDetails !== 'object') {
+      throw new Error("Invalid GST details format.");
+    }
+    // Extract GST details safely
+    const extractedDetails = {
+      gstin: gstDetails.gstin || "N/A",
+      tradeName: gstDetails.tradeName || "N/A",
+      legalName: gstDetails.legalName || "N/A",
+      address: `${gstDetails.addrBno || "N/A"}, ${gstDetails.addrFlno || "N/A"}, ${gstDetails.addrSt || "N/A"}, ${gstDetails.addrLoc || "N/A"}, ${gstDetails.stateCode || "N/A"} - ${gstDetails.addrPncd || "N/A"}`,
+      taxpayerType: gstDetails.txpType || "N/A",
+      status: gstDetails.status || "N/A",
+      registrationDate: gstDetails.dtReg || "N/A"
+    };
+
+    console.log(extractedDetails);
 
     // Step 4: Send Response
-    res.status(200).json({ success: true, gstDetails });
+    res.status(200).json({ success: true, extractedDetails });
 
   } catch (error) {
     console.error("Error fetching GST details:", error.message);
     res.status(500).json({ error: error.message });
   }
 }
-
-
 
 module.exports = { getToken, generateIRN, cancelIRN, getGstDetails};
