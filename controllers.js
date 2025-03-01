@@ -4655,7 +4655,7 @@ const addHotel = async (req, res) => {
       }
 
       // Convert hotel_status to boolean (true for "Active", false for "Inactive")
-      const is_active = hotel_status.toLowerCase() === "active";
+      const is_active = hotel_status;
 
       // Insert data into the database
       const query = `
@@ -4806,6 +4806,101 @@ const updateHotel = async (req, res) => {
       });
   }
 };
+const addHotelToRegion = async (req, res) => {
+  try {
+      console.log('📝 Starting addHotelAndUpdateRegion process');
+      console.log('Request body:', req.body);
+
+      const {
+          hotel_name,
+          hotel_address,
+          hotel_bill_amount,
+          hotel_pincode,
+          hotel_status,
+          hotel_published_by,
+          hotel_email,
+          hotel_phone,
+          date_of_publishing,
+          region_id
+      } = req.body;
+
+      // Validate required fields
+      if (!hotel_name || !hotel_address || !hotel_bill_amount || !hotel_pincode || !hotel_phone || !region_id) {
+          console.error('❌ Missing required fields');
+          return res.status(400).json({
+              success: false,
+              message: "Required fields missing: hotel_name, hotel_address, hotel_bill_amount, hotel_pincode, hotel_phone, and region_id are mandatory"
+          });
+      }
+
+      // Convert hotel_status to boolean (true for "Active", false for "Inactive")
+      const is_active = hotel_status;
+
+      // Insert hotel data into the database
+      const hotelQuery = `
+          INSERT INTO hotel (
+              hotel_name,
+              hotel_address,
+              hotel_bill_amount,
+              is_active,
+              hotel_pincode,
+              hotel_published_by,
+              date_of_publishing,
+              hotel_email,
+              hotel_phone
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          RETURNING *
+      `;
+
+      const hotelValues = [
+          hotel_name,
+          hotel_address,
+          hotel_bill_amount,
+          is_active,
+          hotel_pincode,
+          hotel_published_by,
+          date_of_publishing || new Date(),
+          hotel_email,
+          hotel_phone
+      ];
+
+      console.log('💾 Executing hotel query with values:', hotelValues);
+
+      const hotelResult = await con.query(hotelQuery, hotelValues);
+      const newHotelId = hotelResult.rows[0].hotel_id;
+      console.log('✅ Hotel added successfully:', hotelResult.rows[0]);
+
+      // Fetch the current region data
+      const regionResult = await con.query('SELECT hotel_id FROM region WHERE region_id = $1', [region_id]);
+      
+      if (regionResult.rows.length === 0) {
+          return res.status(404).json({ message: "Region not found" });
+      }
+
+      const currentHotelIds = regionResult.rows[0].hotel_id || [];
+
+      // Add the new hotel_id to the hotel_id array
+      const updatedHotelIds = [...currentHotelIds, newHotelId];
+
+      // Update the region with the new hotel_id
+      await con.query('UPDATE region SET hotel_id = $1 WHERE region_id = $2', [updatedHotelIds, region_id]);
+
+      res.status(201).json({
+          success: true,
+          message: "Hotel added and region updated successfully",
+          hotel: hotelResult.rows[0],
+          hotel_id: updatedHotelIds
+      });
+
+  } catch (error) {
+      console.error('❌ Error in addHotelAndUpdateRegion:', error);
+      res.status(500).json({
+          success: false,
+          message: "Error adding hotel and updating region",
+          error: error.message
+      });
+  }
+};
 
 
 module.exports = {
@@ -4917,5 +5012,6 @@ module.exports = {
   addHotel,
   deleteHotel,
   updateHotel,
-  getCancelIrn
+  getCancelIrn,
+  addHotelToRegion
 };

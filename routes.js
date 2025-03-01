@@ -110,6 +110,7 @@ const {
   deleteHotel,
   updateHotel,
   getCancelIrn,
+  addHotelToRegion,
 } = require("./controllers");
 
 const path = require("path");
@@ -215,10 +216,11 @@ const memberStorage = multer.diskStorage({
         cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+        // Use the original file name
+        cb(null, file.originalname);
     }
 });
+
 
 const memberUpload = multer({
     storage: memberStorage,
@@ -767,5 +769,6 @@ router.put("/updateHotel/:hotel_id", updateHotel);
 // Add these routes with your other routes
 router.get("/getZone/:zone_id", getZone);
 router.put("/updateZone/:zone_id", uploadZoneLogo.single('zone_logo'), updateZone);
+router.post("/addHotelToRegion", addHotelToRegion);
 
 module.exports = router;
