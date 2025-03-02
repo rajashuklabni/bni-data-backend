@@ -387,13 +387,14 @@ const getOrderStatus = async (req, res) => {
           UPDATE bankorder 
           SET amount_to_pay = amount_to_pay + $1 - $2,
               no_of_late_payment = $3,
-              kitty_penalty = $4
-          WHERE member_id = $5
+              kitty_penalty = $4,
+              kitty_due_date = $5
+          WHERE member_id = $6
       `;
       console.log("bankorder penalty ", responseData1.penalty_amount);
       console.log("bankorder no of late payment ", responseData1.no_of_late_payment);
 
-      const values = [filteredBankOrders[0].kitty_penalty, Math.round(newAmountToPay), responseData1.no_of_late_payment, responseData1.penalty_amount, balance_data.member_id];
+      const values = [filteredBankOrders[0].kitty_penalty, Math.round(newAmountToPay), responseData1.no_of_late_payment, responseData1.penalty_amount, null, balance_data.member_id];
       await db.query(updateQuery, values);
       console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
     }
