@@ -89,13 +89,14 @@ const sessionIdGenerator = async (req, res) => {
                   data.visitor_name.address|| null,
                   data.visitor_name.company|| null,
                   data.visitor_name.gstin|| null,
-                  data.visitor_name.business|| null
+                  data.visitor_name.business|| null,
+                  data.visitor_name.company_address || null
 
 
               ];
               await db.query(
-                `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id,visitor_name,visitor_email,visitor_mobilenumber,visitor_address,visitor_company,visitor_gstin,visitor_business)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)`,
+                `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id,visitor_name,visitor_email,visitor_mobilenumber,visitor_address,visitor_company,visitor_gstin,visitor_business,visitor_company_address)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)`,
                 orderValues
             );
             }
@@ -143,6 +144,57 @@ const sessionIdGenerator = async (req, res) => {
               console.log('Order data inserted successfully',orderValues);
               // console.log(data.tax, "============tax============");
               // Start QR code process for training payments
+
+
+              if(data.customer_details.payment_note === 'visitor-payment' || data.customer_details.payment_note === 'Visitor-payment-fee'){
+
+                console.log("It's a visitor payment");           
+                
+                  
+                  
+                  
+                  
+                  
+                         
+                const subtotal= parseInt(parseInt(responseData.order_amount)-parseInt(data.tax));
+              const visitorValues = {
+                region_id: data.customer_details.region_id || null,
+                chapter_id: data.customer_details.chapter_id || null,
+                invited_by: data.customer_details.member_id || null,
+                invited_by_name: data.customer_details.memberName || "Unknown",
+                visitor_name: data.visitor_name.visitorName|| null,
+                visitor_email: data.visitor_name.email|| null,
+                visitor_phone: data.visitor_name.mobileNumber|| null,
+                visitor_company_name: data.visitor_name.company|| null,
+                visitor_address: data.visitor_name.address|| null,
+                visitor_gst: data.visitor_name.gstin|| null,
+                visitor_business: data.visitor_name.business|| null,
+                visitor_category: data.visitor_name.business|| null,
+                visited_date: data.visitor_name.date || null ,
+                total_amount: responseData.order_amount,
+                sub_total: subtotal,
+                tax: data.tax,
+                delete_status: false,
+                active_status: "active",
+                order_id: responseData.order_id
+              };
+
+              await db.query(
+                `INSERT INTO Visitors (region_id, chapter_id, invited_by, invited_by_name, visitor_name, visitor_email, visitor_phone, visitor_company_name, visitor_address, visitor_gst, visitor_business, visitor_category, visited_date, total_amount, sub_total, tax, delete_status, active_status,order_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+                Object.values(visitorValues)
+              );
+              console.log('Visitor data inserted successfully', visitorValues);
+
+              }
+              else{
+                console.log("not a visitor payment");
+
+              }
+
+
+
+
               if (data.customer_details.universal_link_id === '3' && data.customer_details.trainingId) {
                 console.log('🎓 Training payment detected');
                 
