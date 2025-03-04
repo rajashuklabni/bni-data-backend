@@ -404,8 +404,16 @@ async function cancelIRN(req, res) {
       const { Irn, CnlRem } = req.body;
       console.log("req data", req.body);
 
-      // Step 1: Encrypt Cancel IRN Data
-      const sek = await getStoredSek(); // Fetch SEK from DB
+      // Step 1: Retrieve stored tokens from the database
+    const query = 'SELECT * FROM authTokens ORDER BY created_at DESC LIMIT 1';
+    const result = await db.query(query);
+
+    if (result.rows.length === 0) {
+      throw new Error("No tokens found in the database.");
+    }
+
+    const { authtoken, sek } = result.rows[0];  // Fetch the most recent token
+
       const encryptPay = {
         type: "SEK",
         data: JSON.stringify({
@@ -418,13 +426,13 @@ async function cancelIRN(req, res) {
       const encryptedPayload = JSON.stringify(encryptPay);
       console.log(encryptedPayload);
 
-      const encryptResponse = await apiClient.post('/crypto/encrypt', encryptedPayload, {
+      const encryptResponse = await apiClient.post('/crypto/encrypt', encryptPay, {
           headers: {
               client_id: process.env.CLIENT_ID,
               client_secret: process.env.CLIENT_SECRET,
               gstin: process.env.GSTIN,
               user_name: "PrinceSachdeva",
-              AuthToken: await getStoredAuthToken() // Fetch AuthToken from DB
+              AuthToken: authtoken
           }
       });
 
@@ -442,7 +450,7 @@ async function cancelIRN(req, res) {
               client_secret: process.env.CLIENT_SECRET,
               gstin: process.env.GSTIN,
               user_name: "PrinceSachdeva",
-              AuthToken: await getStoredAuthToken()
+              AuthToken: authtoken
           }
       });
       console.log("cancel irn response", cancelResponse.data.Data);
@@ -450,33 +458,21 @@ async function cancelIRN(req, res) {
       if (!cancelResponse.data.Data) {
           throw new Error("IRN cancellation failed.");
       }
-      const cancelResponseData = cancelResponse.data.Data;
 
-      // Step 3: Decrypt Cancel IRN Response Data
-      const decryptPayload = {
-          type: "SEK",
-          data: cancelResponseData,
-          key: sek
-      };
+      const decryptedCancelData = await decryptCancelIrnData(cancelResponse.data.Data, sek);  // Ensure to pass the encrypted 
 
-      const decryptResponse = await apiClient.post('/crypto/decrypt', decryptPayload, {
-          headers: {
-              client_id: process.env.CLIENT_ID,
-              client_secret: process.env.CLIENT_SECRET,
-              gstin: process.env.GSTIN,
-              user_name: "PrinceSachdeva",
-              AuthToken: await getStoredAuthToken()
-          }
+      console.log("Decrypted cancel IRN Data:", decryptedCancelData);
+
+      // Send success response to frontend
+      return res.status(200).json({
+        success: true,  // Add success field
+        message: "IRN Cancel Successfully",
+        data: {
+          irn: decryptedCancelData.Irn,
+          CancelDate: decryptedCancelData.CancelDate
+        }
       });
-
-      if (!decryptResponse.data.Data) {
-          throw new Error("Decryption failed.");
-      }
-
-      res.json({
-          message: "IRN cancelled successfully.",
-          decryptedData: decryptResponse.data.Data
-      });
+      
 
   } catch (error) {
       console.error("Cancel IRN Error:", error.message);
@@ -484,27 +480,24 @@ async function cancelIRN(req, res) {
   }
 }
 
-// Fetch stored SEK from the database
-async function getStoredSek() {
-  const query = 'SELECT sek FROM authTokens ORDER BY created_at DESC LIMIT 1';
-  const result = await db.query(query);
-  if (result.rows.length === 0) {
-      throw new Error("SEK not found in database.");
+// Function to decrypt IRN data
+async function decryptCancelIrnData(encryptedData, sek) {
+  try {
+    const payload = {
+      type: "SEK",
+      data: encryptedData,
+      key: sek
+    };
+
+    const response = await apiClient.post('/crypto/decrypt', payload);
+
+    return response.data.Data;  // Return the decrypted data directly
+
+  } catch (error) {
+    console.error("Decryption Error:", error.message);
+    throw new Error("Failed to decrypt IRN");
   }
-  return result.rows[0].sek;
 }
-
-// Fetch stored AuthToken from the database
-async function getStoredAuthToken() {
-  const query = 'SELECT authtoken FROM authTokens ORDER BY created_at DESC LIMIT 1';
-  const result = await db.query(query);
-  if (result.rows.length === 0) {
-      throw new Error("AuthToken not found in database.");
-  }
-  return result.rows[0].authToken;
-}
-
-
 
 // **************************** get gst details *************************************
 
