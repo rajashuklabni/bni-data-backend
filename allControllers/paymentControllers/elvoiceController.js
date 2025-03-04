@@ -463,6 +463,39 @@ async function cancelIRN(req, res) {
 
       console.log("Decrypted cancel IRN Data:", decryptedCancelData);
 
+      // Step 4: Fetch order_id from einvoice table where irn = Irn
+    const orderQuery = 'SELECT order_id FROM einvoice WHERE irn = $1';
+    const orderResult = await db.query(orderQuery, [Irn]);
+
+    if (orderResult.rows.length === 0) {
+      throw new Error("Order ID not found for the given IRN.");
+    }
+
+    const order_id = orderResult.rows[0].order_id;
+    console.log("Fetched Order ID:", order_id);
+
+    console.log("Inserting into cancel_irn:", {
+      irn: Irn,
+      cancel_date: decryptedCancelData.CancelDate,
+      cancel_reason: CnlRem,
+      order_id: order_id
+  });
+
+    // Step 5: Insert Cancelled IRN Data into cancel_irn table
+    const insertQuery = `
+      INSERT INTO cancel_irn (irn, cancel_date, cancel_reason, order_id) 
+      VALUES ($1, $2, $3, $4) RETURNING *`;
+
+      const insertResult = await db.query(insertQuery, [
+        Irn, 
+        decryptedCancelData.CancelDate, 
+        CnlRem, 
+        order_id
+      ]);
+
+      console.log("Inserted into cancel_irn:", insertResult.rows[0]);
+
+
       // Send success response to frontend
       return res.status(200).json({
         success: true,  // Add success field
