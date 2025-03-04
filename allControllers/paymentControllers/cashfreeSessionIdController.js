@@ -422,7 +422,7 @@ const getOrderStatus = async (req, res) => {
       // console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
     
         }
-        if(payment_status==='SUCCESS' && (data.customer_details.payment_note === 'visitor-payment' || data.customer_details.payment_note === 'Visitor-payment-fee')){
+        if(payment_status==='SUCCESS' && (responseData1.customer_details.payment_note === 'visitor-payment' || responseData1.customer_details.payment_note === 'Visitor-payment-fee')){
 
           console.log("It's a visitor payment");           
           
@@ -432,27 +432,27 @@ const getOrderStatus = async (req, res) => {
             
             
                    
-          const subtotal= parseInt(parseInt(responseData.order_amount)-parseInt(data.tax));
+          const subtotal= parseInt(parseInt(responseData1.order_amount)-parseInt(responseData1.tax));
         const visitorValues = {
-          region_id: data.customer_details.region_id || null,
-          chapter_id: data.customer_details.chapter_id || null,
-          invited_by: data.customer_details.member_id || null,
-          invited_by_name: data.customer_details.memberName || "Unknown",
-          visitor_name: data.visitor_name.visitorName|| null,
-          visitor_email: data.visitor_name.email|| null,
-          visitor_phone: data.visitor_name.mobileNumber|| null,
-          visitor_company_name: data.visitor_name.company|| null,
-          visitor_address: data.visitor_name.address|| null,
-          visitor_gst: data.visitor_name.gstin|| null,
-          visitor_business: data.visitor_name.business|| null,
-          visitor_category: data.visitor_name.business|| null,
-          visited_date: data.visitor_name.date || null ,
-          total_amount: responseData.order_amount,
+          region_id: responseData1.customer_details.region_id || null,
+          chapter_id: responseData1.customer_details.chapter_id || null,
+          invited_by: responseData1.customer_details.member_id || null,
+          invited_by_name: responseData1.customer_details.memberName || "Unknown",
+          visitor_name: responseData1.visitor_name.visitorName|| null,
+          visitor_email: responseData1.visitor_name.email|| null,
+          visitor_phone:responseData1.visitor_name.mobileNumber|| null,
+          visitor_company_name: responseData1.visitor_name.company|| null,
+          visitor_address: responseData1.visitor_name.address|| null,
+          visitor_gst: responseData1.visitor_name.gstin|| null,
+          visitor_business: responseData1.visitor_name.business|| null,
+          visitor_category: responseData1.visitor_name.business|| null,
+          visited_date: responseData1.visitor_name.date || null ,
+          total_amount: responseData1.order_amount,
           sub_total: subtotal,
-          tax: data.tax,
+          tax: responseData1.tax,
           delete_status: false,
           active_status: "active",
-          order_id: responseData.order_id
+          order_id: order_id
         };
 
         await db.query(
