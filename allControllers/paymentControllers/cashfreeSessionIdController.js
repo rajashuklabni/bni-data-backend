@@ -100,7 +100,53 @@ const sessionIdGenerator = async (req, res) => {
                 orderValues
             );
             }
-            else {
+            else if(data.customer_details.payment_note === 'New Member Payment'){
+              console.log("data.customer_detial visited_id",data?.memberData?.visitor_id ||0 );
+              orderValues = [
+                responseData.order_id,
+                responseData.order_amount,
+                responseData.order_currency,
+                data.customer_details.payment_gateway_id || null, // Ensure this is available
+                data.customer_details.member_id || null, // Use member_id from customer_details
+                data.customer_details.chapter_id || null, // Use chapter_id from customer_details
+                data.customer_details.region_id || null, // Use region_id from customer_details
+                data.customer_details.universal_link_id || null, // Ensure this is available
+                data.customer_details.ulid_id || null, // Ensure this is available
+                responseData.order_status,
+                responseData.payment_session_id,
+                data.customer_details.one_time_registration_fee || 0, // New field
+                data.customer_details.membership_fee || 0, // New field
+                data.tax || 0, // New field
+                data.memberData.invited_by_name || "Unknown", // New field  old -data.customer_details.memberName
+                data.customer_details.customer_email || "unknown@example.com", // New field
+                data.customer_details.customer_phone || "0000000000", // New field
+                (data.memberData?.member_gst_number || null), // New field
+                data.memberData?.member_company_name || "Unknown", // New field
+                data.customer_details?.mobileNumber || 1212121212, // New field
+                data.customer_details.renewalYear || null, // New field
+                data.customer_details.payment_note || null, // New field
+                data.customer_details.trainingId || null, // New field
+                data.customer_details.eventId || null, // New field
+                data.kitty_bill_id || null,
+                data.memberData.visitor_id || null,
+                data.memberData.visitor_name || null, //old -data.visitor_name.visitorName 
+                data.visitor_name.email|| null,
+                data.visitor_name.mobileNumber|| null,
+                data.visitor_name.address|| null,
+                data.visitor_name.company|| null,
+                data.visitor_name.gstin|| null,
+                data.visitor_name.business|| null,
+                data.visitor_name.company_address || null
+
+
+            ];
+            await db.query(
+              `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id,visitor_id,visitor_name,visitor_email,visitor_mobilenumber,visitor_address,visitor_company,visitor_gstin,visitor_business,visitor_company_address)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34)`,
+              orderValues
+          );
+          }
+          else {
               orderValues = [
                 responseData.order_id,
                 responseData.order_amount,
