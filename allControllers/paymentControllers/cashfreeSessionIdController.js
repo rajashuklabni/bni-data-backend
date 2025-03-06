@@ -117,7 +117,7 @@ const sessionIdGenerator = async (req, res) => {
                 data.customer_details.one_time_registration_fee || 0, // New field
                 data.customer_details.membership_fee || 0, // New field
                 data.tax || 0, // New field
-                data.memberData.invited_by_name || "Unknown", // New field  old -data.customer_details.memberName
+                data?.memberData?.invited_by_name || "Unknown", // New field  old -data.customer_details.memberName
                 data.customer_details.customer_email || "unknown@example.com", // New field
                 data.customer_details.customer_phone || "0000000000", // New field
                 (data.memberData?.member_gst_number || null), // New field
@@ -128,8 +128,8 @@ const sessionIdGenerator = async (req, res) => {
                 data.customer_details.trainingId || null, // New field
                 data.customer_details.eventId || null, // New field
                 data.kitty_bill_id || null,
-                data.memberData.visitor_id || null,
-                data.memberData.visitor_name || null, //old -data.visitor_name.visitorName 
+                data?.memberData?.visitor_id || null,
+                data.memberData?.visitor_name || data.visitor_name?.memberName, //old -data.visitor_name.visitorName 
                 data.visitor_name.email|| null,
                 data.visitor_name.mobileNumber|| null,
                 data.visitor_name.address|| null,
@@ -468,22 +468,45 @@ const getOrderStatus = async (req, res) => {
       // console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
     
         }
+        const getvisitorData = await axios.get(
+          "https://bni-data-backend.onrender.com/api/getAllVisitors"
+        );
+        // console.log("---",getvisitorData.data);
+        const matchedVisitor = getvisitorData.data.find(visitor => visitor.visitor_phone === responseData1.visitor_name.mobileNumber);
+
+        if (matchedVisitor) {
+          console.log("Matched visitor:", matchedVisitor);
+          console.log("Matched visitor:", matchedVisitor.visitor_phone);
+
+        } else {
+          console.log("No match found.");
+        }
+
+
         if(payment_status==='SUCCESS' && (responseData1.customer_details.payment_note === 'visitor-payment' || responseData1.customer_details.payment_note === 'Visitor-payment-fee')){
 
           console.log("It's a visitor payment");           
           
+          if (matchedVisitor) {
+            console.log("Matched visitor logic 2 implement");
             
-            
-            
-            
-            
-                   
-          const subtotal= parseInt(parseInt(responseData1.order_amount)-parseInt(responseData1.tax));
+            const query = 'UPDATE Visitors SET visitor_form = $1 WHERE visitor_id = $2';
+            const values = [true, matchedVisitor.visitor_id];
+
+             await db.query(query, values)
+              .then(res => console.log("Update successful"))
+              .catch(err => console.error("Error updating visitor:", err));
+              console.log('Visitor data updated successfully', );
+
+          } else {
+            console.log("No match found.");
+            const subtotal= parseInt(parseInt(responseData1.order_amount)-parseInt(responseData1.tax));
         const visitorValues = {
           region_id: responseData1.customer_details.region_id || null,
           chapter_id: responseData1.customer_details.chapter_id || null,
-          invited_by: responseData1.customer_details.member_id || null,
-          invited_by_name: responseData1.customer_details.memberName || "Unknown",
+          invited_by: responseData1?.memberData?.member_id || null,
+          invited_by_name: responseData1.customer_details?.memberName || "Unknown",
+          visitor_company_address: responseData1?.visitor_name?.company_address || null,
           visitor_name: responseData1.visitor_name.visitorName|| null,
           visitor_email: responseData1.visitor_name.email|| null,
           visitor_phone:responseData1.visitor_name.mobileNumber|| null,
@@ -498,19 +521,84 @@ const getOrderStatus = async (req, res) => {
           tax: responseData1.tax,
           delete_status: false,
           active_status: "active",
-          order_id: order_id
+          order_id: order_id,
+          visitor_form: true
         };
 
         await db.query(
-          `INSERT INTO Visitors (region_id, chapter_id, invited_by, invited_by_name, visitor_name, visitor_email, visitor_phone, visitor_company_name, visitor_address, visitor_gst, visitor_business, visitor_category, visited_date, total_amount, sub_total, tax, delete_status, active_status,order_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+          `INSERT INTO Visitors (region_id, chapter_id, invited_by, invited_by_name, visitor_company_address, visitor_name, visitor_email, visitor_phone, visitor_company_name, visitor_address, visitor_gst, visitor_business, visitor_category, visited_date, total_amount, sub_total, tax, delete_status, active_status,order_id,visitor_form)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
           Object.values(visitorValues)
         );
         console.log('Visitor data inserted successfully', visitorValues);
+          }
+                   
+          
 
         }
         else{
           console.log("not a visitor payment");
+
+        }
+        if(payment_status==='SUCCESS' && (responseData1.customer_details.payment_note === 'New Member Payment')){
+
+          console.log("It's a NEw member payment");           
+          
+            
+          if (matchedVisitor) {
+            console.log("Matched visitor:", matchedVisitor);
+            console.log("Matched visitor:", matchedVisitor.visitor_phone);
+            const query = 'UPDATE Visitors SET new_member_form = $1 WHERE visitor_id = $2';
+            const values = [true, matchedVisitor.visitor_id];
+
+             await db.query(query, values)
+              .then(res => console.log("Update successful"))
+              .catch(err => console.error("Error updating visitor:", err));
+              console.log('Visitor data updated successfully', );
+  
+          } else {
+            console.log("No match found.");
+            const subtotal= parseInt(parseInt(responseData1.order_amount)-parseInt(responseData1.tax));
+        const visitorValues = {
+          region_id: responseData1.customer_details.region_id || null,
+          chapter_id: responseData1.customer_details.chapter_id || null,
+          invited_by: responseData1.memberData?.member_id || null,
+          invited_by_name: responseData1.customer_details?.memberName || "Unknown",
+          visitor_name: responseData1.visitor_name.memberName|| null,
+          visitor_email: responseData1.visitor_name.email|| null,
+          visitor_phone:responseData1.visitor_name.mobileNumber|| null,
+          visitor_company_name: responseData1.visitor_name.company|| null,
+          visitor_company_address: responseData1?.visitor_name?.company_address || null,
+          visitor_address: responseData1.visitor_name.address|| null,
+          visitor_gst: responseData1.visitor_name.gstin|| null,
+          visitor_business: responseData1.visitor_name.business|| null,
+          visitor_category: responseData1.visitor_name.business|| null,
+          visited_date: responseData1.visitor_name.date || null ,
+          total_amount: responseData1.order_amount,
+          sub_total: subtotal,
+          tax: responseData1.tax,
+          delete_status: false,
+          active_status: "active",
+          order_id: order_id,
+          new_member_form : true
+        };
+
+        await db.query(
+          `INSERT INTO Visitors (region_id, chapter_id, invited_by, invited_by_name, visitor_name, visitor_email, visitor_phone, visitor_company_name, visitor_company_address, visitor_address, visitor_gst, visitor_business, visitor_category, visited_date, total_amount, sub_total, tax, delete_status, active_status,order_id,new_member_form)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
+          Object.values(visitorValues)
+        );
+        console.log('New member data added in Visitor db inserted successfully', visitorValues);
+          }
+            
+            
+            
+                   
+          
+
+        }
+        else{
+          console.log("not a new member payment");
 
         }
         
