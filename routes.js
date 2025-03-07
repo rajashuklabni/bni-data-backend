@@ -111,6 +111,7 @@ const {
   updateHotel,
   getCancelIrn,
   addHotelToRegion,
+  getEoiForms,
 } = require("./controllers");
 
 const path = require("path");
@@ -595,6 +596,7 @@ router.post("/getSpecificBankOrder", getSpecificBankOrder);
 router.get("/getCurrentDate", getCurrentDate);
 router.get("/getZones", getZones);
 router.get("/getHotels", getHotels);
+router.get("/getEoiForms", getEoiForms);
 
 // Route to serve the uploaded files
 router.get('/uploads/expenses/:filename', (req, res) => {
