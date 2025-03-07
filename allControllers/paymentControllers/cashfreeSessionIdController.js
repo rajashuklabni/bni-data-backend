@@ -148,12 +148,7 @@ const sessionIdGenerator = async (req, res) => {
 
               if(data.customer_details.payment_note === 'visitor-payment' || data.customer_details.payment_note === 'Visitor-payment-fee'){
 
-                console.log("It's a visitor payment");           
-                
-                  
-                  
-                  
-                  
+              console.log("It's a visitor payment");           
                   
                          
                 const subtotal= parseInt(parseInt(responseData.order_amount)-parseInt(data.tax));
@@ -191,9 +186,6 @@ const sessionIdGenerator = async (req, res) => {
                 console.log("not a visitor payment");
 
               }
-
-
-
 
               if (data.customer_details.universal_link_id === '3' && data.customer_details.trainingId) {
                 console.log('🎓 Training payment detected');
@@ -564,7 +556,7 @@ const getSettlementStatus = async (req, res) => {
     );
     
 
-      console.log('Settlement data inserted successfully');
+      // console.log('Settlement data inserted successfully');
       res.status(200).json({ message: 'Settlement data stored successfully', settlementData });
 
   } catch (error) {
