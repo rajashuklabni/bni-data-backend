@@ -2282,6 +2282,13 @@ const updateTraining = async (req, res) => {
   console.log("Received data:", linkData);
 
   try {
+    // Ensure training_venue is converted to an integer
+    const venue_id = parseInt(linkData.training_venue);
+    if (isNaN(venue_id)) {
+      return res.status(400).json({
+        message: "Invalid venue ID. Must be a number.",
+      });
+    }
     // Construct the SQL query for updating the events
     const query = `
       UPDATE training
@@ -2300,7 +2307,7 @@ const updateTraining = async (req, res) => {
     const values = [
       linkData.training_name,
       linkData.training_status,
-      linkData.training_venue,
+      venue_id,
       linkData.training_price,
       linkData.training_date,
       linkData.training_note,
@@ -2372,6 +2379,13 @@ const addTraining = async (req, res) => {
       message: "Invalid billing company ID. Must be a number.",
     });
   }
+  // Ensure training_venue is a number
+  const venue_id = parseInt(training_venue);
+  if (isNaN(venue_id)) {
+    return res.status(400).json({
+      message: "Invalid venue ID. Must be a number.",
+    });
+  }
 
   try {
     // Check if training with same name and date already exists
@@ -2409,7 +2423,7 @@ const addTraining = async (req, res) => {
         training_name,
         billing_company_id, // Using the parsed integer value
         training_status,
-        training_venue,
+        venue_id,
         training_ticket_price,
         training_date,
         training_note,
