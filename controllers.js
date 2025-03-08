@@ -4927,6 +4927,112 @@ const getEoiForms = async (req, res) => {
   }
 };
 
+const addEoiForm = async (req, res) => {
+  // Get data from the request body
+  console.log("data is",req.body);
+    const {
+      region,
+    chapter,
+    invitedBy,
+    visitDate,
+    firstName,
+    lastName,
+    companyName,
+    professionalClassification,
+    industry,
+    email,
+    mobile,
+    bestTimeToReach,
+    howHeard,
+    previousMember,
+    experienceRating,
+    membershipInterest,
+    gstin,
+    companyAddress,
+    descriptionBox,
+    visitor_id,
+    memberName,
+    member_id,
+  } = req.body;
+
+  try {
+    // Create an insert query
+    const query = `
+      INSERT INTO eoi_form (
+        is_interested, region_id, chapter_id, invited_by_member_id, member_name,
+        chapter_visit_date, first_name, last_name, visitor_id, company_name, company_address,
+        company_gstin, category, business, email, phone_no, best_time_to_reach, hear_about_us,
+        previous_member, exp_rating
+      ) 
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+      ) RETURNING *;
+    `;
+
+    // Define the values to insert
+    const values = [
+      membershipInterest, region, chapter, member_id || null , memberName,
+      visitDate, firstName, lastName, visitor_id || null, companyName, companyAddress,
+      gstin, professionalClassification, industry, email, mobile, bestTimeToReach, howHeard,
+      previousMember, experienceRating,
+    ];
+
+    // Execute the query
+
+    const result = await con.query(query, values);
+
+    // Handle Visitor Logic (Insert/Update)
+    if (!visitor_id) {
+      // If visitor_id is blank or null, insert a new visitor into the visitors table
+      const visitorInsertQuery = `
+        INSERT INTO Visitors (
+          region_id, chapter_id, invited_by, invited_by_name, visitor_name, visitor_email,
+          visitor_phone, visitor_company_name, visitor_address, visitor_gst, visitor_business,
+          visitor_category, visited_date, total_amount, sub_total, tax, delete_status, active_status,
+          order_id, visitor_form, eoi_form, new_member_form, visitor_company_address
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
+        ) RETURNING visitor_id;
+      `;
+
+      const visitorValues = [
+        region, chapter, member_id || null, memberName, firstName + " " + lastName, email,
+        mobile, companyName, companyAddress, gstin, professionalClassification, industry,
+        visitDate, null, null, null, false, "active", null, true, true, false, companyAddress || null
+      ];
+
+      const visitorResult = await con.query(visitorInsertQuery, visitorValues);
+      console.log("New Visitor Inserted with ID: ", visitorResult.rows[0].visitor_id);
+      // Inserted visitor_id to be used in the EOI form
+      const insertedVisitorId = visitorResult.rows[0].visitor_id;
+
+    } else {
+      // Else, if visitor_id is provided, update the visitor's `new_member_form` to true
+      const visitorUpdateQuery = `
+        UPDATE Visitors
+        SET  eoi_form = true
+        WHERE visitor_id = $1 RETURNING visitor_id;
+      `;
+      const visitorUpdateValues = [visitor_id];
+      const visitorUpdateResult = await con.query(visitorUpdateQuery, visitorUpdateValues);
+      console.log("Visitor with ID", visitor_id, "updated with eoi_form = true");
+    }
+
+    // Send a success response with the newly created form
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error("Error inserting EOI form:", error);
+    if (error.code === '23505' && error.constraint === 'eoi_form_email_key') {
+      return res.status(400).json({
+        message: 'Email already registered. Please try a different one.',
+      });
+    }
+
+    // Handle other errors
+    res.status(500).send("Error inserting EOI form");
+  }
+};
 
 module.exports = {
   addInvoiceManually,
@@ -5039,5 +5145,6 @@ module.exports = {
   updateHotel,
   getCancelIrn,
   addHotelToRegion,
-  getEoiForms
+  getEoiForms,
+  addEoiForm
 };
