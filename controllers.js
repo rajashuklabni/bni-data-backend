@@ -9,6 +9,8 @@ const QRCode = require("qrcode"); // Import the qrcode library
 const PDFDocument = require("pdfkit");
 const { QueryTypes } = require("sequelize"); // If using Sequelize
 const { v4: uuidv4 } = require("uuid"); // For generating unique IDs
+const { Parser } = require('json2csv');
+const ExcelJS = require('exceljs');
 
 // Instead of this:
 // const fetch = require('node-fetch');
@@ -4927,6 +4929,66 @@ const getEoiForms = async (req, res) => {
   }
 };
 
+const exportMembersExcel = async (req, res) => {
+  try {
+      const result = await con.query('SELECT * FROM member');
+
+      if (result.rows.length === 0) {
+          return res.status(404).json({ message: 'No members found' });
+      }
+
+      // Create a new Excel workbook and worksheet
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Members');
+
+      // Add headers
+      worksheet.addRow(Object.keys(result.rows[0]));
+
+      // Add data rows
+      result.rows.forEach(row => {
+          worksheet.addRow([]);
+      });
+
+      // Save the file
+      const filePath = path.join(__dirname, './exports/members.xlsx');
+      await workbook.xlsx.writeFile(filePath);
+
+      res.download(filePath, 'members.xlsx', () => {
+          fs.unlinkSync(filePath); // Delete file after download
+      });
+
+  } catch (error) {
+      console.error('Error exporting members:', error);
+      res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const exportMembersCSV = async (req, res) => {
+  try {
+      const result = await con.query('SELECT * FROM member');
+
+      if (result.rows.length === 0) {
+          return res.status(404).json({ message: 'No members found' });
+      }
+
+      // Convert to CSV
+      const fields = Object.keys(result.rows[0]);
+      const parser = new Parser({ fields });
+      const csvData = parser.parse(result.rows);
+
+      const filePath = path.join(__dirname, './exports/members.csv');
+      fs.writeFileSync(filePath, csvData);
+
+      res.download(filePath, 'members.csv', () => {
+          fs.unlinkSync(filePath); // Delete file after download
+      });
+
+  } catch (error) {
+      console.error('Error exporting members:', error);
+      res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 
 module.exports = {
   addInvoiceManually,
@@ -5039,5 +5101,7 @@ module.exports = {
   updateHotel,
   getCancelIrn,
   addHotelToRegion,
-  getEoiForms
+  getEoiForms,
+  exportMembersExcel,
+  exportMembersCSV
 };

@@ -590,11 +590,6 @@ const getOrderStatus = async (req, res) => {
         );
         console.log('New member data added in Visitor db inserted successfully', visitorValues);
           }
-            
-            
-            
-                   
-          
 
         }
         else{
