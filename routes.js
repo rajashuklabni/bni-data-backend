@@ -95,8 +95,8 @@ const {
   updateChapterSettings,
   getAllMemberCredit,
   addMemberCredit,
-  getInterviewSheet,
-  getCommitmentSheet,
+  getInterviewSheetQuestions,
+  getInterviewSheetAnswers,
   addMemberWriteOff,
   getAllMemberWriteOff,
   getAllVisitors,
@@ -589,8 +589,8 @@ router.put("/updateChapterSettings",
     uploadMainChapterLogo.single('chapter_logo'), 
     updateChapterSettings
 );
-router.get('/getInterviewSheet',getInterviewSheet);
-router.get('/getCommitmentSheet',getCommitmentSheet);
+router.get('/getInterviewSheetQuestions',getInterviewSheetQuestions);
+router.get('/getInterviewSheetAnswers',getInterviewSheetAnswers);
 router.get("/getAllVisitors", getAllVisitors);
 router.post("/add-invoice", createInvoice);
 router.get("/getBankOrder", getBankOrder);

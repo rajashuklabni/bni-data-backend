@@ -4238,24 +4238,24 @@ const addMemberCredit = async (req, res) => {
   }
 };
 
-const getInterviewSheet = async (req, res) => {
+const getInterviewSheetQuestions = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM interviewsheet");
+    const result = await con.query("SELECT * FROM interview_sheet_questions");
     res.json(result.rows);
   } catch (error) {
-    console.error("Error fetching interview sheet data:", error);
-    res.status(500).send("Error fetching interview sheet");
+    console.error("Error fetching interview sheet questions:", error);
+    res.status(500).send("Error fetching interview sheet questions");
   }
 };
 
 
-const getCommitmentSheet = async (req, res) => {
+const getInterviewSheetAnswers = async (req, res) => {
   try {
-    const result = await con.query("SELECT * FROM commitmentsheet");
+    const result = await con.query("SELECT * FROM interview_sheet_answers");
     res.json(result.rows);
   } catch (error) {
-    console.error("Error fetching commitment sheet:", error);
-    res.status(500).send("Error fetching commitment sheet");
+    console.error("Error fetching interview sheet annswers:", error);
+    res.status(500).send("Error fetching interview sheet answers");
   }
 };
 
@@ -5082,8 +5082,8 @@ module.exports = {
   updateChapterSettings,
   getAllMemberCredit,
   addMemberCredit,
-  getInterviewSheet,
-  getCommitmentSheet,
+  getInterviewSheetQuestions,
+  getInterviewSheetAnswers,
   addMemberWriteOff,
   getAllMemberWriteOff,
   getAllVisitors,
