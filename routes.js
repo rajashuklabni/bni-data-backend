@@ -97,6 +97,7 @@ const {
   addMemberCredit,
   getInterviewSheetQuestions,
   getInterviewSheetAnswers,
+  addInterviewSheetAnswers,
   addMemberWriteOff,
   getAllMemberWriteOff,
   getAllVisitors,
@@ -591,6 +592,7 @@ router.put("/updateChapterSettings",
 );
 router.get('/getInterviewSheetQuestions',getInterviewSheetQuestions);
 router.get('/getInterviewSheetAnswers',getInterviewSheetAnswers);
+router.post('/addInterviewSheetAnswers', addInterviewSheetAnswers)
 router.get("/getAllVisitors", getAllVisitors);
 router.post("/add-invoice", createInvoice);
 router.get("/getBankOrder", getBankOrder);

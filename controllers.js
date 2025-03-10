@@ -4259,6 +4259,91 @@ const getInterviewSheetAnswers = async (req, res) => {
   }
 };
 
+const addInterviewSheetAnswers = async (req, res) => {
+  try {
+    const { 
+      visitorName,
+      visitor_id,
+      interviewBy,
+      applicantSign,
+      date,
+      commitmentChapter,
+      dynamicAnswers 
+    } = req.body;
+
+    console.log("body:", req.body);
+    const insertPromises = [];
+
+    for (const [questionId, answer] of Object.entries(dynamicAnswers)) {
+    
+      if (isNaN(parseInt(questionId))) {
+        console.log(`Skipping invalid question ID: ${questionId}`);
+        continue;
+      }
+
+      const query = `
+        INSERT INTO interview_sheet_answers (
+          question_id,
+          answer,
+          delete_status,
+          status,
+          chapter_id,
+          member_name,
+          interview_by,
+          applicant_signature,
+          interview_date,
+          visitor_id
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING *;
+      `;
+
+      const parsedChapterId = parseInt(commitmentChapter);
+      if (isNaN(parsedChapterId)) {
+        throw new Error('Invalid chapter ID provided');
+      }
+
+      const values = [
+        parseInt(questionId),
+        answer,
+        false,
+        'active',
+        parsedChapterId,
+        visitorName,
+        interviewBy,
+        applicantSign,
+        date,
+        visitor_id
+      ];
+
+      insertPromises.push(con.query(query, values));
+    }
+
+    const results = await Promise.all(insertPromises);
+    console.log("added done...");
+    const updateVisitorQuery = 'UPDATE Visitors SET interview_sheet = $1 WHERE visitor_id = $2';
+    const updateValues = [true, visitor_id];
+
+    await con.query(updateVisitorQuery, updateValues)
+      .then(() => console.log("Updated visitor interview_sheet status successfully"))
+      .catch(err => console.error("Error updating visitor interview_sheet status:", err));
+    console.log("visitor data also updated");
+    res.status(201).json({
+      message: "Interview sheet answers added successfully!",
+      data: results.map(result => result.rows[0])
+    });
+
+  } catch (error) {
+    console.error("Error adding interview sheet answers:", error);
+    res.status(500).json({
+      error: "Error adding interview sheet answers",
+      details: error.message
+    });
+  }
+};
+
+
+
 const addMemberWriteOff = async (req, res) => {
   let { member_id, chapter_id, rightoff_date, total_pending_amount } = req.body;
 
@@ -5084,6 +5169,7 @@ module.exports = {
   addMemberCredit,
   getInterviewSheetQuestions,
   getInterviewSheetAnswers,
+  addInterviewSheetAnswers,
   addMemberWriteOff,
   getAllMemberWriteOff,
   getAllVisitors,
