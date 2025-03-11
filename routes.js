@@ -118,6 +118,8 @@ const {
   exportMembersCSV,
   getCommitmentSheet,
   insertCommitmentSheet,
+  getInclusionSheet,
+  addInclusionSheet
 } = require("./controllers");
 
 const path = require("path");
@@ -606,6 +608,8 @@ router.get("/getHotels", getHotels);
 router.get("/getEoiForms", getEoiForms);
 router.get("/getCommitmentSheet", getCommitmentSheet);
 router.post("/addCommitmentSheet",insertCommitmentSheet);
+router.get("/getInclusionSheet",getInclusionSheet);
+router.post("/addInclusionSheet",addInclusionSheet);
 router.post("/addEoiform",addEoiForm);
 
 // Route to serve the uploaded files
