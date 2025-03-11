@@ -8,7 +8,7 @@ const moment = require('moment');
 
 // Initialize Axios client with base URL and headers
 const apiClient = axios.create({
-  baseURL: 'https://api.sandbox.core.irisirp.com',
+  baseURL: 'https://api.prod.core.irisirp.com',
   headers: {
     'client_id': process.env.CLIENT_ID,
     'client_secret': process.env.CLIENT_SECRET,
@@ -22,7 +22,7 @@ async function encryptData() {
     const payload = {
       type: "PUB",
       data: JSON.stringify({
-        UserName: "PrinceSachdeva",
+        UserName: "sunilk",
         Password: process.env.PASSWORD,
         AppKey: process.env.APP_KEY,
         ForceRefreshAccessToken: true
@@ -305,7 +305,7 @@ console.log(cgstAmount, sgstAmount, igstAmount);
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "PrinceSachdeva",
+        user_name: "sunilk",
         AuthToken: authtoken
       }
     });
@@ -319,7 +319,7 @@ console.log(cgstAmount, sgstAmount, igstAmount);
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "PrinceSachdeva",
+        user_name: "sunilk",
         AuthToken: authtoken
       }
     });
@@ -431,7 +431,7 @@ async function cancelIRN(req, res) {
               client_id: process.env.CLIENT_ID,
               client_secret: process.env.CLIENT_SECRET,
               gstin: process.env.GSTIN,
-              user_name: "PrinceSachdeva",
+              user_name: "sunilk",
               AuthToken: authtoken
           }
       });
@@ -449,7 +449,7 @@ async function cancelIRN(req, res) {
               client_id: process.env.CLIENT_ID,
               client_secret: process.env.CLIENT_SECRET,
               gstin: process.env.GSTIN,
-              user_name: "PrinceSachdeva",
+              user_name: "sunilk",
               AuthToken: authtoken
           }
       });
@@ -560,7 +560,7 @@ async function getGstDetails(req, res) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "PrinceSachdeva",
+        user_name: "sunilk",
         AuthToken: authtoken
       }
     });
@@ -581,7 +581,7 @@ async function getGstDetails(req, res) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "PrinceSachdeva",
+        user_name: "sunilk",
         AuthToken: authtoken
       }
     });
