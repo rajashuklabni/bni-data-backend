@@ -116,6 +116,8 @@ const {
   addEoiForm,
   exportMembersExcel,
   exportMembersCSV,
+  getCommitmentSheet,
+  insertCommitmentSheet,
 } = require("./controllers");
 
 const path = require("path");
@@ -602,6 +604,8 @@ router.get("/getCurrentDate", getCurrentDate);
 router.get("/getZones", getZones);
 router.get("/getHotels", getHotels);
 router.get("/getEoiForms", getEoiForms);
+router.get("/getCommitmentSheet", getCommitmentSheet);
+router.post("/addCommitmentSheet",insertCommitmentSheet);
 router.post("/addEoiform",addEoiForm);
 
 // Route to serve the uploaded files

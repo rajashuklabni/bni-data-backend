@@ -4248,6 +4248,68 @@ const getInterviewSheetQuestions = async (req, res) => {
   }
 };
 
+const getCommitmentSheet = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM commitmentsheet");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching commitment sheet:", error);
+    res.status(500).send("Error fetching commitment sheet");
+  }
+};
+
+const insertCommitmentSheet = async (req, res) => {
+  const {
+    visitorName, chapter, chequeNum, chequeDate, bank, address,
+    agree1, agree2, agree3, agree4, agree5, agree6, agree7, agree8, agree9,
+    agree10, agree11, agree12, agree13, category, companyName, date,
+    email, gstin, inductionDate, mobile, name, neftNum, sign, sponsor,
+    visitor_id, vpsign
+  } = req.body;
+
+  console.log("data",req.body);
+
+  try {
+    const query = `
+      INSERT INTO commitmentsheet (
+        visitorName, chapter, chequeNum, chequeDate, bank, address,
+        agree1, agree2, agree3, agree4, agree5, agree6, agree7, agree8, agree9,
+        agree10, agree11, agree12, agree13, category, companyName, date,
+        email, gstin, inductionDate, mobile, name, neftNum, sign, sponsor,
+        visitor_id, vpsign
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32
+      ) RETURNING commitment_id;
+    `;
+    
+    const values = [
+      visitorName, chapter, chequeNum, chequeDate, bank, address,
+      agree1, agree2, agree3, agree4, agree5, agree6, agree7, agree8, agree9,
+      agree10, agree11, agree12, agree13, category, companyName, date,
+      email, gstin, inductionDate, mobile, name, neftNum, sign, sponsor,
+      visitor_id, vpsign
+    ];
+
+    const result = await con.query(query, values); 
+    console.log("added commitment data");
+    const updateVisitorQuery = 'UPDATE Visitors SET commitment_sheet = $1 WHERE visitor_id = $2';
+    const updateValues = [true, visitor_id];
+
+    await con.query(updateVisitorQuery, updateValues)
+      .then(() => console.log("Updated visitor commitment_sheet status successfully"))
+      .catch(err => console.error("Error updating visitor commitment_sheet status:", err));
+    console.log("visitor data also updated");
+    res.status(201).json({
+      message: 'Commitment data inserted successfully',
+      commitment_id: result.rows[0].commitment_id 
+    });
+  } catch (error) {
+    console.error("Error inserting commitment sheet:", error);
+    res.status(500).send("Error inserting commitment sheet");
+  }
+};
+
 
 const getInterviewSheetAnswers = async (req, res) => {
   try {
@@ -5275,6 +5337,8 @@ module.exports = {
   getInterviewSheetQuestions,
   getInterviewSheetAnswers,
   addInterviewSheetAnswers,
+  getCommitmentSheet,
+  insertCommitmentSheet,
   addMemberWriteOff,
   getAllMemberWriteOff,
   getAllVisitors,
