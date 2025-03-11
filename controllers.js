@@ -4297,7 +4297,7 @@ const insertCommitmentSheet = async (req, res) => {
     const updateValues = [true, visitor_id];
 
     await con.query(updateVisitorQuery, updateValues)
-      .then(() => console.log("Updated visitor interview_sheetcommitment_sheet status successfully"))
+      .then(() => console.log("Updated visitor commitment_sheet status successfully"))
       .catch(err => console.error("Error updating visitor commitment_sheet status:", err));
     console.log("visitor data also updated");
     res.status(201).json({
