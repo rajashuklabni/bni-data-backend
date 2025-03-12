@@ -33,6 +33,47 @@ const con = new Client({
 
 con.connect().then(() => console.log("Connected to render PostgreSQL"));
 
+
+const transporter = nodemailer.createTransport({
+  host: "server.bninewdelhi.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: "ceo@bninewdelhi.in",
+    pass: "OBAFRu4mXOwGO8i",
+  },
+});
+
+// Render the email page
+const renderEmailPage = (req, res) => {
+  res.send(`
+    <h2>Send Email</h2>
+    <form action="/api/send-mail" method="POST">
+      <input type="email" name="email" placeholder="Enter email" required />
+      <button type="submit">Send Mail</button>
+    </form>
+  `);
+};
+
+// Handle sending the email
+const sendEmail = (req, res) => {
+  const { email } = req.body;
+
+  const mailOptions = {
+    from: "ceo@bninewdelhi.in",
+    to: email,
+    subject: "Test Email",
+    text: "This is a test email from our application.",
+  };
+
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      return res.send(`Error sending email: ${error.message}`);
+    }
+    res.send(`Email sent successfully to ${email}`);
+  });
+};
+
 // Backend: Adjusted to filter based on query parameter
 const getRegions = async (req, res) => {
   try {
@@ -5359,5 +5400,7 @@ module.exports = {
   getEoiForms,
   addEoiForm,
   exportMembersExcel,
-  exportMembersCSV
+  exportMembersCSV,
+  renderEmailPage,
+  sendEmail
 };
