@@ -7,15 +7,14 @@ require('dotenv').config();
 
 // Create a transporter for Hostinger's SMTP service
 const transporter = nodemailer.createTransport({
-  service: "gmail",
-  host: "smtp.gmail.com",
-  port:  587,
-  secure: false, // Use `true` for port 465, `false` for all other ports
-  auth: {
-    user: "as9467665000@gmail.com",
-    pass: "ddle kjkt haxu vfmz",
-  },
-});
+    host: "server.bninewdelhi.com",
+    port: 587,
+    secure: false,
+    auth: {
+      user: "ceo@bninewdelhi.in",
+      pass: "OBAFRu4mXOwGO8i",
+    },
+  });
 
 const sendOtpEmail = (email, otp) => {
   const mailOptions = {

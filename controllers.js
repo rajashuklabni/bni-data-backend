@@ -3554,10 +3554,12 @@ const sendQrCodeByEmail = async (req, res) => {
 
       // Set up nodemailer transporter
       const transporter = nodemailer.createTransport({
-        service: "gmail", // Use your email service
+        host: "server.bninewdelhi.com",
+        port: 587,
+        secure: false,
         auth: {
-          user: "as9467665000@gmail.com", // Your email
-          pass: "ddle kjkt haxu vfmz", // Your email password
+          user: "ceo@bninewdelhi.in",
+          pass: "OBAFRu4mXOwGO8i",
         },
       });
 
@@ -3576,7 +3578,7 @@ const sendQrCodeByEmail = async (req, res) => {
 
       // Email options
       const mailOptions = {
-        from: "as9467665000@gmail.com",
+        from: "ceo@bninewdelhi.in",
         to: customerEmail,
         subject: `Training Details & QR Code for ${training_name}`,
         html: emailContent,
