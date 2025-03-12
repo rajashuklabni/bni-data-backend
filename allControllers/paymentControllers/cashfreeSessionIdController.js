@@ -9,7 +9,7 @@ const app = express();
 // Set up Cashfree SDK with environment variables
 Cashfree.XClientId = process.env.x_client_id;
 Cashfree.XClientSecret = process.env.x_client_secret;
-Cashfree.XEnvironment = Cashfree.Environment.PRODUCTION; // Use SANDBOX for testing
+Cashfree.XEnvironment = Cashfree.Environment.SANDBOX;  // Use SANDBOX for testing
 
 const headers = {
     'x-client-id': process.env.x_client_id,
@@ -590,6 +590,11 @@ const getOrderStatus = async (req, res) => {
         );
         console.log('New member data added in Visitor db inserted successfully', visitorValues);
           }
+            
+            
+            
+                   
+          
 
         }
         else{

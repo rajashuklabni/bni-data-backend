@@ -4445,6 +4445,116 @@ const addInterviewSheetAnswers = async (req, res) => {
   }
 };
 
+const getInclusionSheet = async (req, res) => {
+  try {
+    // Query to select all data from the inclusionSheet table
+    const result = await con.query("SELECT * FROM inclusionSheet");
+    
+    // Responding with the rows from the query result
+    res.json(result.rows);
+  } catch (error) {
+    // Error handling if something goes wrong
+    console.error("Error fetching inclusion sheet:", error);
+    res.status(500).send("Error fetching inclusion sheet");
+  }
+};
+
+
+const addInclusionSheet = async (req, res) => {
+  try {
+    const { 
+      memberName,
+      visitorName,
+      chapter,
+      category,
+      chapterName,
+      classificationExcludes,
+      confirmation1,
+      confirmation2,
+      confirmation3,
+      confirmation4,
+      date,
+      signature,
+      visitor_id,
+      vpSign,
+      areaOfExpertise
+    } = req.body;
+
+    console.log("body:", req.body);
+
+    // Validate if `chapter` is a valid number
+    const parsedChapterId = parseInt(chapter);
+    if (isNaN(parsedChapterId)) {
+      throw new Error('Invalid chapter ID provided');
+    }
+
+    // Query to insert into inclusionSheet table
+    const query = `
+      INSERT INTO inclusionSheet (
+        memberName,
+        visitorName,
+        chapter,
+        category,
+        chapterName,
+        classificationExcludes,
+        confirmation1,
+        confirmation2,
+        confirmation3,
+        confirmation4,
+        date,
+        signature,
+        visitor_id,
+        vpSign,
+        areaofexpertise
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      RETURNING *;
+    `;
+
+    const values = [
+      memberName,
+      visitorName,
+      parsedChapterId,
+      category,
+      chapterName,
+      classificationExcludes,
+      confirmation1,
+      confirmation2,
+      confirmation3,
+      confirmation4,
+      date,
+      signature,
+      visitor_id,
+      vpSign,
+      areaOfExpertise
+    ];
+
+    // Execute the query to insert data into the table
+    const result = await con.query(query, values);
+    
+    console.log("Inclusion sheet added:", result.rows[0]);
+
+    // Optionally, update the visitor's status or any other related data
+    const updateVisitorQuery = 'UPDATE Visitors SET inclusion_exclusion_sheet = $1 WHERE visitor_id = $2';
+    const updateValues = [true, visitor_id];
+
+    await con.query(updateVisitorQuery, updateValues)
+      .then(() => console.log("Updated visitor inclusion_sheet status successfully"))
+      .catch(err => console.error("Error updating visitor inclusion_sheet status:", err));
+
+    res.status(201).json({
+      message: "Inclusion sheet added successfully!",
+      data: result.rows[0] // Returning the inserted row data
+    });
+
+  } catch (error) {
+    console.error("Error adding inclusion sheet:", error);
+    res.status(500).json({
+      error: "Error adding inclusion sheet",
+      details: error.message
+    });
+  }
+};
 
 
 const addMemberWriteOff = async (req, res) => {
@@ -5402,5 +5512,7 @@ module.exports = {
   exportMembersExcel,
   exportMembersCSV,
   renderEmailPage,
-  sendEmail
+  sendEmail,
+  getInclusionSheet,
+  addInclusionSheet
 };
