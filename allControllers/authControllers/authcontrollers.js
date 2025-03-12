@@ -17,12 +17,12 @@ const transporter = nodemailer.createTransport({
   });
 
 const sendOtpEmail = (email, otp) => {
-  const mailOptions = {
-      from: 'api',
-      to: email,
-      subject: 'Your OTP Code',
-      text: `Your OTP code is: ${otp}`,
-  };
+    const mailOptions = {
+        from: "ceo@bninewdelhi.in",
+        to: email,
+        subject: `Your OTP Code`,
+        text: `Your OTP code is: ${otp}`,
+      };
 
   return transporter.sendMail(mailOptions);
 };
