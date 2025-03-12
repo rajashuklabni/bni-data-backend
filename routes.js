@@ -121,7 +121,8 @@ const {
   renderEmailPage,
   sendEmail,
   getInclusionSheet,
-  addInclusionSheet
+  addInclusionSheet,
+  getMembershipPending
 } = require("./controllers");
 
 const path = require("path");
@@ -796,5 +797,6 @@ router.get("/send-mail", renderEmailPage);
 
 // Route to send email
 router.post("/send-mail", sendEmail);
+router.get("/getMembershipPending", getMembershipPending);
 
 module.exports = router;

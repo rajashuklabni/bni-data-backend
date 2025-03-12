@@ -5393,6 +5393,17 @@ const exportMembersCSV = async (req, res) => {
 };
 
 
+const getMembershipPending = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM new_member_membership");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching pending membership details:", error);
+    res.status(500).send("Error fetching pending membership details");
+  }
+};
+
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -5514,5 +5525,6 @@ module.exports = {
   renderEmailPage,
   sendEmail,
   getInclusionSheet,
-  addInclusionSheet
+  addInclusionSheet,
+  getMembershipPending
 };
