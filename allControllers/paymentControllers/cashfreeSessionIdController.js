@@ -547,7 +547,7 @@ const getOrderStatus = async (req, res) => {
             
           if (matchedVisitor) {
             console.log("Matched visitor:", matchedVisitor);
-            console.log("Matched visitor:", matchedVisitor.visitor_phone);
+            console.log("Matched visitor:", matchedVisitor.visitor_id);
             const query = 'UPDATE Visitors SET new_member_form = $1 WHERE visitor_id = $2';
             const values = [true, matchedVisitor.visitor_id];
 
@@ -555,6 +555,78 @@ const getOrderStatus = async (req, res) => {
               .then(res => console.log("Update successful"))
               .catch(err => console.error("Error updating visitor:", err));
               console.log('Visitor data updated successfully', );
+
+          // Get membership pending details from API
+          try {
+            const membershipResponse = await axios.get(`https://bni-data-backend.onrender.com/api/getMembershipPending`);
+            const membershipData = membershipResponse.data;
+
+            // Check if visitor_id exists in API response
+            const existingMembership = membershipData.find(item => item.visitor_id === matchedVisitor.visitor_id);
+
+            if (existingMembership) {
+              // Update existing membership record
+              console.log("found previous data:",existingMembership);
+
+              const previousPay = parseFloat(existingMembership.paid_amount);
+              
+              // incoming - gst
+              const payingGst = (parseFloat(responseData1.order_amount)*18)/118 ;
+              const payingAmountWithoutGST = parseFloat(responseData1.order_amount) - payingGst;
+              const currpaid = previousPay + payingAmountWithoutGST;
+              const pending = parseFloat(existingMembership.due_balance) - parseFloat(payingAmountWithoutGST);
+          
+              const updateQuery = `
+                UPDATE new_member_membership 
+                SET paid_amount = $1, 
+                    order_id = $2,
+                    due_balance = $3
+                WHERE visitor_id = $4
+              `;
+              const updateValues = [
+                currpaid,
+                order_id,
+                pending, // previous subtract incoming
+                matchedVisitor.visitor_id
+              ];
+
+              await db.query(updateQuery, updateValues);
+              console.log('Membership pending record updated successfully');
+
+            } else {
+              // Insert new membership record
+              const insertQuery = `
+                INSERT INTO new_member_membership (
+                  visitor_id, total_amount, paid_amount, membership_yr,
+                  date_of_purchase, order_id, due_balance
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+              `;
+              // Calculate total amount as tax + subtotal
+              const totalAmount = parseFloat(responseData1.customer_details.sub_total);
+              // incoming - gst
+              const payingGst = (parseFloat(responseData1.order_amount)*18)/118 ;
+              const payingAmountWithoutGST = parseFloat(responseData1.order_amount) - payingGst;
+              const pending = parseFloat(totalAmount) - parseFloat(payingAmountWithoutGST);
+              const myear = responseData1.customer_details.renewalYear === "1Year" ? 1 : responseData1.customer_details.renewalYear === "2Year" ? 2 : null;
+
+              const insertValues = [
+                matchedVisitor.visitor_id,
+                totalAmount,
+                payingAmountWithoutGST,
+                myear, // membership_yr
+                responseData1.customer_details.date, // current date
+                order_id,
+                pending
+              ];
+
+              await db.query(insertQuery, insertValues);
+              console.log('New membership pending record inserted successfully');
+            }
+
+          } catch (error) {
+            console.error('Error handling membership pending data:', error);
+          }
   
           } else {
             console.log("No match found.");
@@ -575,7 +647,7 @@ const getOrderStatus = async (req, res) => {
           visitor_category: responseData1.visitor_name.business|| null,
           visited_date: responseData1.visitor_name.date || null ,
           total_amount: responseData1.order_amount,
-          sub_total: subtotal,
+          sub_total: subtotal || null,
           tax: responseData1.tax,
           delete_status: false,
           active_status: "active",
@@ -583,12 +655,41 @@ const getOrderStatus = async (req, res) => {
           new_member_form : true
         };
 
-        await db.query(
+        const result = await db.query(
           `INSERT INTO Visitors (region_id, chapter_id, invited_by, invited_by_name, visitor_name, visitor_email, visitor_phone, visitor_company_name, visitor_company_address, visitor_address, visitor_gst, visitor_business, visitor_category, visited_date, total_amount, sub_total, tax, delete_status, active_status,order_id,new_member_form)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING visitor_id`,
           Object.values(visitorValues)
         );
+        console.log("Newly inserted visitor ID:", result.rows[0].visitor_id);
         console.log('New member data added in Visitor db inserted successfully', visitorValues);
+
+        // Insert new membership record
+        const insertQuery = `
+        INSERT INTO new_member_membership (
+          visitor_id, total_amount, paid_amount, membership_yr,
+          date_of_purchase, order_id, due_balance
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `;
+      // Calculate total amount as tax + subtotal
+      const totalAmount = parseFloat(responseData1.customer_details.sub_total);
+      // incoming - gst
+      const payingGst = (parseFloat(responseData1.order_amount)*18)/118 ;
+      const payingAmountWithoutGST = parseFloat(responseData1.order_amount) - payingGst;
+      const pending = parseFloat(totalAmount) - parseFloat(payingAmountWithoutGST);
+      const myear = responseData1.customer_details.renewalYear === "1Year" ? 1 : responseData1.customer_details.renewalYear === "2Year" ? 2 : null;
+      const insertValues = [
+        result.rows[0].visitor_id,
+        totalAmount,
+        payingAmountWithoutGST,
+        myear, // membership_yr
+        responseData1.customer_details.date, // current date
+        order_id,
+        pending
+      ];
+
+      await db.query(insertQuery, insertValues);
+      console.log('New membership pending record inserted successfully');
           }
             
             
