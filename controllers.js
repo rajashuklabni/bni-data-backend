@@ -11,6 +11,10 @@ const { QueryTypes } = require("sequelize"); // If using Sequelize
 const { v4: uuidv4 } = require("uuid"); // For generating unique IDs
 const { Parser } = require('json2csv');
 const ExcelJS = require('exceljs');
+const multer = require('multer');
+const csv = require('csv-parser');
+const format = require('pg-format'); // Import pg-format for PostgreSQL queries
+
 
 // Instead of this:
 // const fetch = require('node-fetch');
@@ -5406,6 +5410,119 @@ const getMembershipPending = async (req, res) => {
 };
 
 
+
+
+const importMembersCSV = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    const rows = [];
+
+    // Temporary storage for checking duplicate values
+    const phoneNumbers = new Set();
+    const emailAddresses = new Set();
+    const gstNumbers = new Set();
+
+    // Read and parse CSV file
+    fs.createReadStream(filePath)
+      .pipe(csv())
+      .on('data', (data) => {
+        // Convert accolades_id from string to array format
+        if (data.accolades_id) {
+          try {
+            data.accolades_id = JSON.parse(data.accolades_id.replace(/'/g, '"')); // Convert to valid JSON array
+          } catch (error) {
+            console.error("Error parsing accolades_id:", data.accolades_id);
+            data.accolades_id = []; // Default to empty array if error
+          }
+        }
+
+        // Collect unique phone numbers, emails, and GST numbers for validation
+        phoneNumbers.add(data.member_phone_number);
+        emailAddresses.add(data.member_email_address);
+        gstNumbers.add(data.member_gst_number);
+
+        // Convert row object to array
+        rows.push([
+          data.member_first_name, data.member_last_name, data.member_date_of_birth, data.member_phone_number,
+          data.member_alternate_mobile_number, data.member_email_address, data.street_address_line_1, data.address_pincode,
+          data.address_city, data.address_state, data.region_id, data.chapter_id, `{${data.accolades_id.join(',')}}`, // PostgreSQL array format
+          data.member_induction_date, data.member_current_membership, data.member_renewal_date, data.member_gst_number,
+          data.member_company_name, data.member_company_address, data.member_company_state, data.member_company_city,
+          data.member_photo, data.member_website, data.member_company_logo, data.member_facebook, data.member_instagram,
+          data.member_linkedin, data.member_youtube, data.country, data.street_address_line_2, data.gender,
+          data.notification_consent, data.date_of_publishing, data.member_sponsored_by, data.member_status,
+          data.delete_status, data.member_company_pincode, data.meeting_opening_balance, data.meeting_payable_amount,
+          data.category_name
+        ]);
+      })
+      .on('end', async () => {
+        fs.unlinkSync(filePath); // Delete file after reading
+
+        if (rows.length === 0) {
+          return res.status(400).json({ message: 'No data found in file' });
+        }
+
+        // **Check for duplicate phone numbers, emails, or GST numbers in the database**
+        try {
+          const existingQuery = `
+            SELECT member_phone_number, member_email_address, member_gst_number 
+            FROM member 
+            WHERE member_phone_number = ANY($1) 
+            OR member_email_address = ANY($2) 
+            OR member_gst_number = ANY($3)
+          `;
+
+          const { rows: existingMembers } = await con.query(existingQuery, [
+            Array.from(phoneNumbers),
+            Array.from(emailAddresses),
+            Array.from(gstNumbers),
+          ]);
+
+          if (existingMembers.length > 0) {
+            return res.status(400).json({
+              message: "Duplicate data found for phone, email, or GST. Please review your file.",
+              duplicates: existingMembers.map(
+                (m) =>
+                  `Phone: ${m.member_phone_number}, Email: ${m.member_email_address}, GST: ${m.member_gst_number}`
+              ),
+            });
+          }          
+
+          // **Properly format SQL query using pg-format**
+          const query = format(`INSERT INTO member (
+              member_first_name, member_last_name, member_date_of_birth, member_phone_number,
+              member_alternate_mobile_number, member_email_address, street_address_line_1, address_pincode,
+              address_city, address_state, region_id, chapter_id, accolades_id, member_induction_date,
+              member_current_membership, member_renewal_date, member_gst_number, member_company_name,
+              member_company_address, member_company_state, member_company_city, member_photo, member_website,
+              member_company_logo, member_facebook, member_instagram, member_linkedin, member_youtube,
+              country, street_address_line_2, gender, notification_consent, date_of_publishing,
+              member_sponsored_by, member_status, delete_status, member_company_pincode,
+              meeting_opening_balance, meeting_payable_amount, category_name
+            ) VALUES %L`, rows);
+
+          await con.query(query);
+          res.status(200).json({ message: 'Members imported successfully!' });
+
+        } catch (dbError) {
+          console.error('Database error:', dbError);
+          res.status(500).json({ message: 'Database insertion failed. Please try again.' });
+        }
+      });
+
+  } catch (error) {
+    console.error('Error importing members:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+
+
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -5528,5 +5645,6 @@ module.exports = {
   sendEmail,
   getInclusionSheet,
   addInclusionSheet,
-  getMembershipPending
+  getMembershipPending,
+  importMembersCSV
 };

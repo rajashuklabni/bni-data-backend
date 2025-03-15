@@ -122,7 +122,8 @@ const {
   sendEmail,
   getInclusionSheet,
   addInclusionSheet,
-  getMembershipPending
+  getMembershipPending,
+  importMembersCSV
 } = require("./controllers");
 
 const path = require("path");
@@ -791,6 +792,21 @@ router.put("/updateZone/:zone_id", uploadZoneLogo.single('zone_logo'), updateZon
 router.post("/addHotelToRegion", addHotelToRegion);
 router.get('/export-members-excel', exportMembersExcel);
 router.get('/export-members-csv', exportMembersCSV);
+
+// Configure multer storage
+const storagee = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, path.join(__dirname, 'uploads/bulk-upload')); // Ensure 'uploads/' directory exists
+    },
+    filename: (req, file, cb) => {
+      cb(null, `members-${Date.now()}${path.extname(file.originalname)}`);
+    }
+  });
+  
+  const uploadd = multer({ storage: storagee });
+  
+  // CSV Import Route
+  router.post('/import-members', uploadd.single('bulkUploadFile'), importMembersCSV);
 
 // Route to render the email page
 router.get("/send-mail", renderEmailPage);

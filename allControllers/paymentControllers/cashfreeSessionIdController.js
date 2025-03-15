@@ -642,6 +642,7 @@ const getSettlementStatus = async (req, res) => {
       );
 
       const settlementData = settlementResponse.data;
+      console.log(settlementData);
 
       // Extract settlement details
       const {
