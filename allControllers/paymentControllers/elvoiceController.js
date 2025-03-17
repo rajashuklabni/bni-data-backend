@@ -261,10 +261,10 @@ console.log(cgstAmount, sgstAmount, igstAmount);
         "ItemList": [
           {
             "SlNo": "1",
-            "PrdDesc": "BNI Service",
+            "PrdDesc": "Rice",
             "IsServc": "N",
-            "HsnCd": "999511",
-            "Barcde": "999511",
+            "HsnCd": "1001",
+            "Barcde": "123456",
             "Qty": 1,
             "Unit": "BAG",
             "UnitPrice": basePrice,
