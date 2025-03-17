@@ -288,7 +288,7 @@ console.log(cgstAmount, sgstAmount, igstAmount);
         "PayDtls": {
           "Nm": req.body.gatewayName,
           "AccDet": "5697389713210",
-          "Mode": req.body.transactionId.payment_method,
+          "Mode": "cash",
           "PayTerm": "100",
           "PayInstr": req.body.orderId.payment_note,
         },
