@@ -5531,8 +5531,16 @@ const memberApplicationFormNewMember = async (req, res) => {
   }
 };
 
+
 const addMemberApplication = async (req, res) => {
   try {
+    // Log incoming data
+    console.log("Received Form Data:", {
+      ...req.body,
+      reference_consent: !!req.body.reference_consent, // Convert to boolean
+      terms_accepted: !!req.body.terms_accepted // Convert to boolean
+    });
+
     const {
       applicationType,
       region,
@@ -5579,6 +5587,21 @@ const addMemberApplication = async (req, res) => {
       reference_consent,
       terms_accepted
     } = req.body;
+
+    // Log processed values before query
+    console.log("Processed Values:", {
+      q1_experience: q1_experience?.substring(0, 1),
+      q2_length_time: q2_length_time?.substring(0, 1),
+      q3_education: q3_education?.substring(0, 1),
+      q4_license: q4_license?.substring(0, 1),
+      q5_primary_occupation: q5_primary_occupation?.substring(0, 1),
+      q6_weekly_commitment: q6_weekly_commitment?.substring(0, 1),
+      q7_substitute_commitment: q7_substitute_commitment?.substring(0, 1),
+      q8_referral_commitment: q8_referral_commitment?.substring(0, 1),
+      q9_referral_ability,
+      q10_previous_member: q10_previous_member?.substring(0, 1),
+      q11_other_networks: q11_other_networks?.substring(0, 1)
+    });
 
     // Convert invited_by_member to integer if it's a number string
     const invited_by_member_id = parseInt(invited_by_member) || null;
@@ -5656,17 +5679,17 @@ const addMemberApplication = async (req, res) => {
       memberName,
       secondaryPhone,
       businessWebsite,
-      q1_experience,
-      q2_length_time,
-      q3_education,
-      q4_license,
-      q5_primary_occupation,
-      q6_weekly_commitment,
-      q7_substitute_commitment,
-      q8_referral_commitment,
+      q1_experience?.substring(0, 1),    // Ensure single character
+      q2_length_time?.substring(0, 1),   // Ensure single character
+      q3_education?.substring(0, 1),     // Ensure single character
+      q4_license?.substring(0, 1),       // Ensure single character
+      q5_primary_occupation?.substring(0, 1),  // Ensure single character
+      q6_weekly_commitment?.substring(0, 1),   // Ensure single character
+      q7_substitute_commitment?.substring(0, 1), // Ensure single character
+      q8_referral_commitment?.substring(0, 1),  // Ensure single character
       q9_referral_ability,
-      q10_previous_member,
-      q11_other_networks,
+      q10_previous_member?.substring(0, 1),    // Ensure single character
+      q11_other_networks?.substring(0, 1),     // Ensure single character
       ref1_first_name,
       ref1_last_name,
       ref1_business_name,
@@ -5709,8 +5732,6 @@ const addMemberApplication = async (req, res) => {
     });
   }
 };
-
-
 
 
 module.exports = {
