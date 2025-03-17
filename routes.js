@@ -123,7 +123,9 @@ const {
   getInclusionSheet,
   addInclusionSheet,
   getMembershipPending,
-  importMembersCSV
+  importMembersCSV,
+  memberApplicationFormNewMember,
+  addMemberApplication
 } = require("./controllers");
 
 const path = require("path");
@@ -792,6 +794,9 @@ router.put("/updateZone/:zone_id", uploadZoneLogo.single('zone_logo'), updateZon
 router.post("/addHotelToRegion", addHotelToRegion);
 router.get('/export-members-excel', exportMembersExcel);
 router.get('/export-members-csv', exportMembersCSV);
+router.get("/memberApplicationFormNewMember", memberApplicationFormNewMember);
+
+router.post("/addMemberApplication",addMemberApplication);
 
 // Configure multer storage
 const storagee = multer.diskStorage({

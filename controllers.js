@@ -5521,6 +5521,197 @@ const importMembersCSV = async (req, res) => {
 };
 
 
+const memberApplicationFormNewMember = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM member_application_form_new_member");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching all new member form for member application:", error);
+    res.status(500).send("Error fetching all new member form for member application");
+  }
+};
+
+const addMemberApplication = async (req, res) => {
+  try {
+    const {
+      applicationType,
+      region,
+      chapter,
+      invited_by_member,
+      visitDate,
+      firstName,
+      lastName,
+      companyName,
+      professionalClassification,
+      industry,
+      email,
+      mobile,
+      howHeard,
+      gstin,
+      companyAddress,
+      visitor_id,
+      memberName,
+      secondaryPhone,
+      businessWebsite,
+      q1_experience,
+      q2_length_time,
+      q3_education,
+      q4_license,
+      q5_primary_occupation,
+      q6_weekly_commitment,
+      q7_substitute_commitment,
+      q8_referral_commitment,
+      q9_referral_ability,
+      q10_previous_member,
+      q11_other_networks,
+      ref1_first_name,
+      ref1_last_name,
+      ref1_business_name,
+      ref1_phone,
+      ref1_email,
+      ref1_relationship,
+      ref2_first_name,
+      ref2_last_name,
+      ref2_business_name,
+      ref2_phone,
+      ref2_email,
+      ref2_relationship,
+      reference_consent,
+      terms_accepted
+    } = req.body;
+
+    // Convert invited_by_member to integer if it's a number string
+    const invited_by_member_id = parseInt(invited_by_member) || null;
+
+    const query = `
+      INSERT INTO member_application_form_new_member (
+        application_type,
+        region_id,
+        chapter_id,
+        invited_by_member_id,
+        visit_date,
+        first_name,
+        last_name,
+        company_name,
+        professional_classification,
+        industry,
+        email,
+        mobile,
+        how_heard,
+        gstin,
+        company_address,
+        visitor_id,
+        member_name,
+        secondary_phone,
+        business_website,
+        q1_experience,
+        q2_length_time,
+        q3_education,
+        q4_license,
+        q5_primary_occupation,
+        q6_weekly_commitment,
+        q7_substitute_commitment,
+        q8_referral_commitment,
+        q9_referral_ability,
+        q10_previous_member,
+        q11_other_networks,
+        ref1_first_name,
+        ref1_last_name,
+        ref1_business_name,
+        ref1_phone,
+        ref1_email,
+        ref1_relationship,
+        ref2_first_name,
+        ref2_last_name,
+        ref2_business_name,
+        ref2_phone,
+        ref2_email,
+        ref2_relationship,
+        reference_consent,
+        terms_accepted,
+        application_status
+      ) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 
+              $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, 
+              $39, $40, $41, $42, $43, $44, 'false')
+      RETURNING *;
+    `;
+
+    const values = [
+      applicationType,
+      region,
+      chapter,
+      invited_by_member_id,
+      visitDate,
+      firstName,
+      lastName,
+      companyName,
+      professionalClassification,
+      industry,
+      email,
+      mobile,
+      howHeard,
+      gstin,
+      companyAddress,
+      visitor_id,
+      memberName,
+      secondaryPhone,
+      businessWebsite,
+      q1_experience,
+      q2_length_time,
+      q3_education,
+      q4_license,
+      q5_primary_occupation,
+      q6_weekly_commitment,
+      q7_substitute_commitment,
+      q8_referral_commitment,
+      q9_referral_ability,
+      q10_previous_member,
+      q11_other_networks,
+      ref1_first_name,
+      ref1_last_name,
+      ref1_business_name,
+      ref1_phone,
+      ref1_email,
+      ref1_relationship,
+      ref2_first_name,
+      ref2_last_name,
+      ref2_business_name,
+      ref2_phone,
+      ref2_email,
+      ref2_relationship,
+      reference_consent,
+      terms_accepted
+    ];
+
+    const result = await con.query(query, values);
+
+    res.status(201).json({
+      success: true,
+      message: "Member application submitted successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Error submitting member application:", error);
+    
+    // Handle duplicate email error
+    if (error.code === '23505' && error.constraint === 'member_applications_email_key') {
+      return res.status(400).json({
+        success: false,
+        message: "Email already registered. Please try a different one."
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Error submitting member application",
+      error: error.message
+    });
+  }
+};
+
+
 
 
 module.exports = {
@@ -5646,5 +5837,7 @@ module.exports = {
   getInclusionSheet,
   addInclusionSheet,
   getMembershipPending,
-  importMembersCSV
+  importMembersCSV,
+  memberApplicationFormNewMember,
+  addMemberApplication
 };
