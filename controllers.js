@@ -5585,25 +5585,25 @@ const addMemberApplication = async (req, res) => {
 
     const query = `
       INSERT INTO member_application_form_new_member (
-        application_type,
-        region_id,
-        chapter_id,
-        invited_by_member_id,
-        visit_date,
-        first_name,
-        last_name,
-        company_name,
-        professional_classification,
+        applicationtype,
+        region,
+        chapter,
+        invited_by_member,
+        visitdate,
+        firstname,
+        lastname,
+        companyname,
+        professionalclassification,
         industry,
         email,
         mobile,
-        how_heard,
+        howheard,
         gstin,
-        company_address,
+        companyaddress,
         visitor_id,
-        member_name,
-        secondary_phone,
-        business_website,
+        membername,
+        secondaryphone,
+        businesswebsite,
         q1_experience,
         q2_length_time,
         q3_education,
@@ -5628,12 +5628,11 @@ const addMemberApplication = async (req, res) => {
         ref2_email,
         ref2_relationship,
         reference_consent,
-        terms_accepted,
-        application_status
+        terms_accepted
       ) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 
               $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, 
-              $39, $40, $41, $42, $43, $44, 'false')
+              $39, $40, $41, $42, $43, $44)
       RETURNING *;
     `;
 
