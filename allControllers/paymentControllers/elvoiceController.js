@@ -246,11 +246,11 @@ console.log(cgstAmount, sgstAmount, igstAmount);
           "Dt": docDate
         },
         "SellerDtls": {
-          "Gstin": "07EVVPS9453K4Z8",
-          "LglNm": "National Marketing Projects INC.",
-          "TrdNm": "National Marketing Projects INC.",
-          "Addr1": "DDA SFS Flat Flat No. 12 Pocket 1 Sector 19 Dwarka Delhi",
-          "Loc": "GANDHINAGAR",
+          "Gstin": "07AHIPK0486D1ZH",
+          "LglNm": "ADI CORPORATE TRAINING",
+          "TrdNm": "ADI CORPORATE TRAINING",
+          "Addr1": "Flat No.09, Pocket 1, Sector 19, Dwarka, Delhi",
+          "Loc": "Dwarka",
           "Pin": 110075,
           "Stcd": "07",
           "Ph": "9000000000",
