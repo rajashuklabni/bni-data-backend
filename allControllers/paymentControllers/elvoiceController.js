@@ -171,7 +171,7 @@ async function generateIRN(req, res) {
     const { authtoken, sek } = result.rows[0];  // Fetch the most recent token
     const member_id = req.body.orderId.customer_id;
     console.log("member id", member_id);
-    const memberResponse = await axios.get(`https://bni-data-backend.onrender.com/api/getMember/${member_id}`);
+    const memberResponse = await axios.get(`http://backend.bninewdelhi.com/api/getMember/${member_id}`);
     const memberData = memberResponse.data;
     const gstin = memberData.member_gst_number;
 
@@ -261,10 +261,10 @@ console.log(cgstAmount, sgstAmount, igstAmount);
         "ItemList": [
           {
             "SlNo": "1",
-            "PrdDesc": "Rice",
+            "PrdDesc": "BNI Service",
             "IsServc": "N",
-            "HsnCd": "1001",
-            "Barcde": "123456",
+            "HsnCd": "999511",
+            "Barcde": "999511",
             "Qty": 1,
             "Unit": "BAG",
             "UnitPrice": basePrice,
@@ -288,7 +288,7 @@ console.log(cgstAmount, sgstAmount, igstAmount);
         "PayDtls": {
           "Nm": req.body.gatewayName,
           "AccDet": "5697389713210",
-          "Mode": "Cash",
+          "Mode": req.body.transactionId.payment_method,
           "PayTerm": "100",
           "PayInstr": req.body.orderId.payment_note,
         },
