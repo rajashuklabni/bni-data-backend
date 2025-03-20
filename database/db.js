@@ -9,7 +9,7 @@ const db = new Client({
   password: "8UGkmCixOpO5Gb89BSBI8aPPapoAW6fD",
   database: "bni_dashboard_backend_database",
   ssl: {
-    rejectUnauthorized: false, // Required for secure connections to Render
+    rejectUnauthorized: false,
   },
 });
 

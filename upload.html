@@ -17,16 +17,16 @@
         <link rel="icon" href="https://www.bni.com/wp-content/uploads/2020/05/bni_white_red.png?x13567" type="image/x-icon">
 
         <!-- Main Theme Js -->
-        <script src="http://localhost:3000/assets/authentication-main-1.js"></script>
+        <script src="https://dashboard.bninewdelhi.com/assets/authentication-main-1.js"></script>
 
         <!-- Bootstrap Css -->
-        <link id="style" href="http://localhost:3000/assets/libs/bootstrap/css/bootstrap.min-6.css" rel="stylesheet">
+        <link id="style" href="https://dashboard.bninewdelhi.com/assets/libs/bootstrap/css/bootstrap.min-6.css" rel="stylesheet">
 
         <!-- ICONS CSS -->
-        <link href="http://localhost:3000/assets/icon-fonts/icons-6.css" rel="stylesheet">
+        <link href="https://dashboard.bninewdelhi.com/assets/icon-fonts/icons-6.css" rel="stylesheet">
 
         <!-- APP CSS & APP SCSS -->
-        <link rel="preload" as="style" href="http://localhost:3000/assets/app-BXaKe1N--6.css"><link rel="stylesheet" href="http://localhost:3000/assets/app-BXaKe1N--6.css">
+        <link rel="preload" as="style" href="https://dashboard.bninewdelhi.com/assets/app-BXaKe1N--6.css"><link rel="stylesheet" href="https://dashboard.bninewdelhi.com/assets/app-BXaKe1N--6.css">
 
         <style>
             .authentication-background {
@@ -503,18 +503,18 @@
                 cursor: pointer;
             }
         </style>
-        <script src="http://localhost:3000/assets/libs/bootstrap/js/bootstrap.bundle.min-6.js"></script>
+        <script src="https://dashboard.bninewdelhi.com/assets/libs/bootstrap/js/bootstrap.bundle.min-6.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
         <script>
             // Fetch logo on page load
             document.addEventListener('DOMContentLoaded', function() {
-                fetch("https://bni-data-backend.onrender.com/api/getDisplayLogo")
+                fetch("https://backend.bninewdelhi.com/api/getDisplayLogo")
                     .then(response => response.json())
                     .then(data => {
                         if (data.length > 0 && data[0].display_image_name) {
                             const displayImageName = data[0].display_image_name;
-                            const imagePath = `https://bni-data-backend.onrender.com/uploads/dynamicLogo/${displayImageName}`;
+                            const imagePath = `https://backend.bninewdelhi.com/uploads/dynamicLogo/${displayImageName}`;
                             
                             // Update both logo images
                             document.getElementById("dynamic-logo").src = imagePath;

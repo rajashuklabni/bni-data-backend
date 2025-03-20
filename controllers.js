@@ -126,10 +126,10 @@ const getMember = async (req, res) => {
           ...member,
           // Add image URLs if images exist
           member_photo_url: member.member_photo 
-              ? `https://bni-data-backend.onrender.com/api/uploads/memberLogos/${member.member_photo}`
+              ? `https://backend.bninewdelhi.com/api/uploads/memberLogos/${member.member_photo}`
               : null,
           member_company_logo_url: member.member_company_logo 
-              ? `https://bni-data-backend.onrender.com/api/uploads/memberCompanyLogos/${member.member_company_logo}`
+              ? `https://backend.bninewdelhi.com/api/uploads/memberCompanyLogos/${member.member_company_logo}`
               : null,
           // Parse arrays that might be stored as strings
           accolades_id: Array.isArray(member.accolades_id)
@@ -176,7 +176,7 @@ const getChapter = async (req, res) => {
         // Add image URL to response
         const chapterData = result.rows[0];
         if (chapterData.chapter_logo) {
-            chapterData.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+            chapterData.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
             console.log('🖼️ Added logo URL:', chapterData.chapter_logo_url);
         }
 
@@ -235,7 +235,7 @@ const getRegion = async (req, res) => {
         // Transform the logo data
         let logoUrl = null;
         if (region.region_logo && region.region_logo !== '{}' && region.region_logo !== 'null') {
-            logoUrl = `https://bni-data-backend.onrender.com/api/uploads/regionLogos/${region.region_logo}`;
+            logoUrl = `http://localhost:5000/api/uploads/regionLogos/${region.region_logo}`;
             console.log('🖼️ Constructed logo URL:', logoUrl);
         }
 
@@ -447,7 +447,7 @@ const addRegion = async (req, res) => {
       message: "Region added successfully!", 
       data: {
         ...result.rows[0],
-        region_logo_url: region_logo ? `https://bni-data-backend.onrender.com/uploads/regionLogos/${region_logo}` : null
+        region_logo_url: region_logo ? `http://localhost:5000/uploads/regionLogos/${region_logo}` : null
       }
     });
   } catch (error) {
@@ -588,7 +588,7 @@ const addChapter = async (req, res) => {
       // Rest of your code remains the same...
       const chapterData = result.rows[0];
       if (chapterData.chapter_logo) {
-          chapterData.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+          chapterData.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Creation Success:');
@@ -1297,7 +1297,7 @@ const updateChapter = async (req, res) => {
 
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Update Success:');
@@ -2652,7 +2652,7 @@ const addKittyPayment = async (req, res) => {
     console.log(updateMemberQuery);
     
 
-    const response = await fetch('https://bni-data-backend.onrender.com/api/getbankOrder');
+    const response = await fetch('https://backend.bninewdelhi.com/api/getbankOrder');
     const bankOrders = await response.json();
 
     // Filter the bank orders based on chapter_id
@@ -3085,8 +3085,9 @@ const deleteExpense = async (req, res) => {
 
 const updateMemberSettings = async (req, res) => {
   try {
-    console.log("Received update request:", req.body);
-    console.log("Received file:", req.file);
+    console.log("🚀 Starting member settings update");
+    console.log("📝 Received request body:", req.body);
+    console.log("📎 Received files:", req.files);
 
     const {
       member_email_address,
@@ -3100,30 +3101,50 @@ const updateMemberSettings = async (req, res) => {
       member_youtube,
     } = req.body;
 
-    // Get just the original filename if a file was uploaded
+    // Initialize file paths
     let photoPath = null;
-    if (req.file) {
-      // Use the original filename directly
-      photoPath = req.file.originalname;
+    let aadharPath = null;
+    let panPath = null;
+    let gstCertPath = null;
+
+    // Handle multiple file uploads
+    if (req.files) {
+      console.log("📁 Processing uploaded files");
+      
+      if (req.files.member_photo) {
+        photoPath = req.files.member_photo[0].filename;
+        console.log("🖼️ Member photo uploaded:", photoPath);
+      }
+      
+      if (req.files.member_aadhar) {
+        aadharPath = req.files.member_aadhar[0].filename;
+        console.log("📄 Aadhar card uploaded:", aadharPath);
+      }
+      
+      if (req.files.member_pan) {
+        panPath = req.files.member_pan[0].filename;
+        console.log("📄 PAN card uploaded:", panPath);
+      }
+      
+      if (req.files.member_gst_cert) {
+        gstCertPath = req.files.member_gst_cert[0].filename;
+        console.log("📄 GST certificate uploaded:", gstCertPath);
+      }
     }
 
-    // Update query
-    const query = `
-      UPDATE member 
-      SET 
-        member_phone_number = $1,
-        member_company_address = $2,
-        member_company_name = $3,
-        member_gst_number = $4,
-        member_facebook = $5,
-        member_instagram = $6,
-        member_linkedin = $7,
-        member_youtube = $8
-        ${photoPath ? ', member_photo = $9' : ''}
-      WHERE member_email_address = ${photoPath ? '$10' : '$9'}
-      RETURNING *`;
+    // Dynamically build the query
+    let queryParts = [
+      'member_phone_number = $1',
+      'member_company_address = $2',
+      'member_company_name = $3',
+      'member_gst_number = $4',
+      'member_facebook = $5',
+      'member_instagram = $6',
+      'member_linkedin = $7',
+      'member_youtube = $8'
+    ];
 
-    const values = [
+    let values = [
       member_phone_number,
       member_company_address,
       member_company_name,
@@ -3134,33 +3155,69 @@ const updateMemberSettings = async (req, res) => {
       member_youtube || ''
     ];
 
+    let paramCounter = 9;
+
+    // Add file paths to query if they exist
     if (photoPath) {
+      queryParts.push(`member_photo = $${paramCounter}`);
       values.push(photoPath);
+      paramCounter++;
     }
+    if (aadharPath) {
+      queryParts.push(`member_aadhar_image = $${paramCounter}`);
+      values.push(aadharPath);
+      paramCounter++;
+    }
+    if (panPath) {
+      queryParts.push(`member_PAN_image = $${paramCounter}`);
+      values.push(panPath);
+      paramCounter++;
+    }
+    if (gstCertPath) {
+      queryParts.push(`member_GST_certificate_image = $${paramCounter}`);
+      values.push(gstCertPath);
+      paramCounter++;
+    }
+
+    // Add email to values array
     values.push(member_email_address);
+
+    // Construct the final query
+    const query = `
+      UPDATE member 
+      SET ${queryParts.join(', ')}
+      WHERE member_email_address = $${paramCounter}
+      RETURNING *`;
+
+    console.log("🔍 Executing query:", query);
+    console.log("📊 Query values:", values);
 
     const result = await con.query(query, values);
 
     if (result.rows.length === 0) {
-      console.log("No member found with email:", member_email_address);
+      console.log("❌ No member found with email:", member_email_address);
       return res.status(404).json({ message: "Member not found with this email" });
     }
 
-    console.log("Update successful");
+    console.log("✅ Update successful");
     res.json({
       message: "Member settings updated successfully",
       data: result.rows[0],
-      photo_path: photoPath
+      files: {
+        photo: photoPath,
+        aadhar: aadharPath,
+        pan: panPath,
+        gst_cert: gstCertPath
+      }
     });
   } catch (error) {
-    console.error("Error in updateMemberSettings:", error);
+    console.error("❌ Error in updateMemberSettings:", error);
     res.status(500).json({
       message: "Error updating member settings",
       error: error.message,
     });
   }
 };
-
 const updateUserSettings = async (req, res) => {
   try {
     const {
@@ -3489,7 +3546,7 @@ const sendQrCodeByEmail = async (req, res) => {
   try {
     // Fetch order details to get customer email
     const orderResponse = await fetch(
-      `https://bni-data-backend.onrender.com/api/allOrders`
+      `https://backend.bninewdelhi.com/api/allOrders`
     );
     const orders = await orderResponse.json();
 
@@ -4068,7 +4125,7 @@ const updateChapterSettings = async (req, res) => {
       // Add the logo URL to the response
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `https://bni-data-backend.onrender.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('Chapter updated successfully:', updatedChapter);
@@ -4247,7 +4304,7 @@ const addMemberCredit = async (req, res) => {
 
     let insertedRecords = [];
 
-    const response = await fetch("https://bni-data-backend.onrender.com/api/getbankOrder");
+    const response = await fetch("https://backend.bninewdelhi.com/api/getbankOrder");
     const bankOrders = await response.json();
 
     
@@ -4844,7 +4901,7 @@ const getZone = async (req, res) => {
 
         // Add base URL to zone logo
         if (result.rows[0].zone_logo) {
-            result.rows[0].zone_logo = `https://bni-data-backend.onrender.com/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
+            result.rows[0].zone_logo = `https://backend.bninewdelhi.com/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
         }
 
         res.json({
@@ -5409,9 +5466,6 @@ const getMembershipPending = async (req, res) => {
   }
 };
 
-
-
-
 const importMembersCSV = async (req, res) => {
   try {
     if (!req.file) {
@@ -5531,16 +5585,49 @@ const memberApplicationFormNewMember = async (req, res) => {
   }
 };
 
-
 const addMemberApplication = async (req, res) => {
   try {
-    // Log incoming data
-    console.log("Received Form Data:", {
+    // 1. Log incoming request
+    console.log("\n🚀 New Member Application Request Received");
+    console.log("==================================");
+
+    // 2. Log and validate incoming data
+    console.log("📝 Form Data Received:", {
       ...req.body,
-      reference_consent: !!req.body.reference_consent, // Convert to boolean
-      terms_accepted: !!req.body.terms_accepted // Convert to boolean
+      reference_consent: !!req.body.reference_consent,
+      terms_accepted: !!req.body.terms_accepted
     });
 
+    // 3. Check for required fields
+    const requiredFields = ['email', 'firstName', 'lastName', 'mobile'];
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    
+    if (missingFields.length > 0) {
+      console.log("❌ Missing Required Fields:", missingFields);
+      return res.status(400).json({
+        success: false,
+        message: `Missing required fields: ${missingFields.join(', ')}`
+      });
+    }
+
+    // 4. Check for existing email
+    console.log("🔍 Checking for existing email:", req.body.email);
+    const emailCheckQuery = `
+      SELECT email FROM member_application_form_new_member 
+      WHERE email = $1
+    `;
+    const emailCheck = await con.query(emailCheckQuery, [req.body.email]);
+
+    if (emailCheck.rows.length > 0) {
+      console.log("❌ Email already exists:", req.body.email);
+      return res.status(400).json({
+        success: false,
+        message: "This email is already registered. Please use a different email address."
+      });
+    }
+    console.log("✅ Email check passed");
+
+    // 5. Destructure and process form data
     const {
       applicationType,
       region,
@@ -5588,11 +5675,11 @@ const addMemberApplication = async (req, res) => {
       terms_accepted
     } = req.body;
 
-    // Log processed values before query
-    console.log("Processed Values:", {
-      q1_experience: q1_experience?.substring(0, 1),
-      q2_length_time: q2_length_time?.substring(0, 1),
-      q3_education: q3_education?.substring(0, 1),
+    // 6. Log processed values for questionnaire
+    console.log("📋 Processing Questionnaire Responses:", {
+      q1_experience: q1_experience,
+      q2_length_time: q2_length_time,
+      q3_education: q3_education,
       q4_license: q4_license?.substring(0, 1),
       q5_primary_occupation: q5_primary_occupation?.substring(0, 1),
       q6_weekly_commitment: q6_weekly_commitment?.substring(0, 1),
@@ -5603,62 +5690,34 @@ const addMemberApplication = async (req, res) => {
       q11_other_networks: q11_other_networks?.substring(0, 1)
     });
 
-    // Convert invited_by_member to integer if it's a number string
+    // 7. Process member ID
     const invited_by_member_id = parseInt(invited_by_member) || null;
+    console.log("👤 Invited by member ID:", invited_by_member_id);
 
+    // 8. Construct query
+    console.log("🔧 Preparing database query");
     const query = `
       INSERT INTO member_application_form_new_member (
-        applicationtype,
-        region,
-        chapter,
-        invited_by_member,
-        visitdate,
-        firstname,
-        lastname,
-        companyname,
-        professionalclassification,
-        industry,
-        email,
-        mobile,
-        howheard,
-        gstin,
-        companyaddress,
-        visitor_id,
-        membername,
-        secondaryphone,
-        businesswebsite,
-        q1_experience,
-        q2_length_time,
-        q3_education,
-        q4_license,
-        q5_primary_occupation,
-        q6_weekly_commitment,
-        q7_substitute_commitment,
-        q8_referral_commitment,
-        q9_referral_ability,
-        q10_previous_member,
-        q11_other_networks,
-        ref1_first_name,
-        ref1_last_name,
-        ref1_business_name,
-        ref1_phone,
-        ref1_email,
-        ref1_relationship,
-        ref2_first_name,
-        ref2_last_name,
-        ref2_business_name,
-        ref2_phone,
-        ref2_email,
-        ref2_relationship,
-        reference_consent,
-        terms_accepted
+        applicationtype, region, chapter, invited_by_member, visitdate,
+        firstname, lastname, companyname, professionalclassification,
+        industry, email, mobile, howheard, gstin, companyaddress,
+        visitor_id, membername, secondaryphone, businesswebsite,
+        q1_experience, q2_length_time, q3_education, q4_license,
+        q5_primary_occupation, q6_weekly_commitment, q7_substitute_commitment,
+        q8_referral_commitment, q9_referral_ability, q10_previous_member,
+        q11_other_networks, ref1_first_name, ref1_last_name,
+        ref1_business_name, ref1_phone, ref1_email, ref1_relationship,
+        ref2_first_name, ref2_last_name, ref2_business_name, ref2_phone,
+        ref2_email, ref2_relationship, reference_consent, terms_accepted
       ) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 
-              $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 
+              $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, 
+              $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, 
               $39, $40, $41, $42, $43, $44)
       RETURNING *;
     `;
 
+    // 9. Prepare values array
     const values = [
       applicationType,
       region,
@@ -5679,17 +5738,17 @@ const addMemberApplication = async (req, res) => {
       memberName,
       secondaryPhone,
       businessWebsite,
-      q1_experience?.substring(0, 1),    // Ensure single character
-      q2_length_time?.substring(0, 1),   // Ensure single character
-      q3_education?.substring(0, 1),     // Ensure single character
-      q4_license?.substring(0, 1),       // Ensure single character
-      q5_primary_occupation?.substring(0, 1),  // Ensure single character
-      q6_weekly_commitment?.substring(0, 1),   // Ensure single character
-      q7_substitute_commitment?.substring(0, 1), // Ensure single character
-      q8_referral_commitment?.substring(0, 1),  // Ensure single character
+      q1_experience,
+      q2_length_time,
+      q3_education,
+      q4_license?.substring(0, 1),
+      q5_primary_occupation?.substring(0, 1),
+      q6_weekly_commitment?.substring(0, 1),
+      q7_substitute_commitment?.substring(0, 1),
+      q8_referral_commitment?.substring(0, 1),
       q9_referral_ability,
-      q10_previous_member?.substring(0, 1),    // Ensure single character
-      q11_other_networks?.substring(0, 1),     // Ensure single character
+      q10_previous_member?.substring(0, 1),
+      q11_other_networks?.substring(0, 1),
       ref1_first_name,
       ref1_last_name,
       ref1_business_name,
@@ -5706,8 +5765,47 @@ const addMemberApplication = async (req, res) => {
       terms_accepted
     ];
 
+    // 10. Execute query
+    console.log("💾 Executing database insert");
     const result = await con.query(query, values);
+    console.log("✅ Database insert successful");
 
+    // 11. Update visitor's member_application status
+    if (visitor_id) {
+      console.log("🔄 Updating visitor member_application status for visitor_id:", visitor_id);
+      const updateVisitorQuery = `
+        UPDATE Visitors 
+        SET member_application_form = true 
+        WHERE visitor_id = $1 
+        RETURNING visitor_id, visitor_name, member_application_form`;
+      
+      try {
+        const visitorUpdateResult = await con.query(updateVisitorQuery, [visitor_id]);
+        if (visitorUpdateResult.rows.length > 0) {
+          console.log("✅ Visitor status updated successfully:", {
+            visitor_id: visitorUpdateResult.rows[0].visitor_id,
+            visitor_name: visitorUpdateResult.rows[0].visitor_name,
+            member_application: visitorUpdateResult.rows[0].member_application_form
+          });
+        } else {
+          console.log("⚠️ No visitor found with ID:", visitor_id);
+        }
+      } catch (updateError) {
+        console.error("⚠️ Warning: Failed to update visitor status:", updateError.message);
+        // We don't want to fail the whole operation if just the visitor update fails
+      }
+    } else {
+      console.log("ℹ️ No visitor_id provided, skipping visitor status update");
+    }
+
+    // 12. Log successful result (existing code)
+    console.log("🎉 Application submitted successfully:", {
+      application_id: result.rows[0].application_id,
+      email: result.rows[0].email,
+      name: `${result.rows[0].firstname} ${result.rows[0].lastname}`
+    });
+
+    // 13. Send success response
     res.status(201).json({
       success: true,
       message: "Member application submitted successfully",
@@ -5715,21 +5813,203 @@ const addMemberApplication = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error submitting member application:", error);
+    // 14. Error handling with detailed logging
+    console.error("\n❌ Error in addMemberApplication:");
+    console.error("Type:", error.name);
+    console.error("Message:", error.message);
+    console.error("Stack:", error.stack);
     
-    // Handle duplicate email error
-    if (error.code === '23505' && error.constraint === 'member_applications_email_key') {
-      return res.status(400).json({
-        success: false,
-        message: "Email already registered. Please try a different one."
-      });
+    // Handle specific errors
+    if (error.code === '23505') {
+      if (error.constraint === 'member_applications_email_key') {
+        console.log("📧 Duplicate email error caught");
+        return res.status(400).json({
+          success: false,
+          message: "This email is already registered. Please use a different email address."
+        });
+      }
     }
 
+    // Log database-specific errors
+    if (error.code) {
+      console.error("Database Error Code:", error.code);
+      console.error("Constraint:", error.constraint);
+      console.error("Detail:", error.detail);
+    }
+
+    // Send error response
     res.status(500).json({
       success: false,
       message: "Error submitting member application",
       error: error.message
     });
+  } finally {
+    console.log("==================================\n");
+  }
+};
+
+const markTrainingCompleted = async (req, res) => {
+  console.log('\n🎯 Starting markTrainingCompleted controller');
+  console.log('==================================');
+
+  try {
+      // 1. Log incoming request data
+      const { training_id } = req.body;
+      console.log('📝 Received training_id:', training_id);
+
+      if (!training_id) {
+          console.log('❌ Error: No training_id provided');
+          return res.status(400).json({
+              success: false,
+              message: 'Training ID is required'
+          });
+      }
+
+      // 2. Verify training exists
+      console.log('🔍 Checking if training exists...');
+      const checkQuery = 'SELECT training_status FROM training WHERE training_id = $1';
+      const checkResult = await con.query(checkQuery, [training_id]);
+
+      if (checkResult.rows.length === 0) {
+          console.log('❌ Error: Training not found with ID:', training_id);
+          return res.status(404).json({
+              success: false,
+              message: 'Training not found'
+          });
+      }
+
+      // 3. Check if already completed
+      if (checkResult.rows[0].training_status === 'Completed') {
+          console.log('ℹ️ Training already marked as completed');
+          return res.status(400).json({
+              success: false,
+              message: 'Training is already marked as completed'
+          });
+      }
+
+      // 4. Update training status
+      console.log('📝 Updating training status to Completed...');
+      const updateQuery = `
+          UPDATE training
+          SET training_status = 'Completed' 
+          WHERE training_id = $1 
+          RETURNING training_id, training_name, training_status
+      `;
+      
+      const result = await con.query(updateQuery, [training_id]);
+
+      // 5. Log success and send response
+      console.log('✅ Training status updated successfully:', result.rows[0]);
+      console.log('==================================\n');
+
+      res.status(200).json({
+          success: true,
+          message: 'Training marked as completed successfully',
+          data: result.rows[0]
+      });
+
+  } catch (error) {
+      // 6. Error handling with detailed logging
+      console.error('\n❌ Error in markTrainingCompleted:');
+      console.error('Type:', error.name);
+      console.error('Message:', error.message);
+      console.error('Stack:', error.stack);
+      console.error('==================================\n');
+
+      res.status(500).json({
+          success: false,
+          message: 'Error marking training as completed',
+          error: error.message
+      });
+  }
+};
+
+
+const updateMemberApplicationDocs = async (req, res) => {
+  try {
+      console.log("\n📄 Updating Member Application Documents");
+      console.log("=====================================");
+      
+      const { application_id } = req.params;
+      const { aadhar_card_number, pan_card_number } = req.body;
+
+      console.log("📝 Request Data:", {
+          application_id,
+          aadhar_card_number,
+          pan_card_number,
+          files: req.files
+      });
+
+      // Initialize file paths
+      let aadharPath = null;
+      let panPath = null;
+      let gstPath = null;
+
+      // Handle file uploads
+      if (req.files) {
+          if (req.files.aadhar_card_img) {
+              aadharPath = req.files.aadhar_card_img[0].filename;
+              console.log("📄 Aadhar card uploaded:", aadharPath);
+          }
+          
+          if (req.files.pan_card_img) {
+              panPath = req.files.pan_card_img[0].filename;
+              console.log("📄 PAN card uploaded:", panPath);
+          }
+          
+          if (req.files.gst_certificate) {
+              gstPath = req.files.gst_certificate[0].filename;
+              console.log("📄 GST certificate uploaded:", gstPath);
+          }
+      }
+
+      // Update query without the documents_submitted field
+      const query = `
+          UPDATE member_application_form_new_member 
+          SET 
+              aadhar_card_number = COALESCE($1, aadhar_card_number),
+              pan_card_number = COALESCE($2, pan_card_number),
+              aadhar_card_img = COALESCE($3, aadhar_card_img),
+              pan_card_img = COALESCE($4, pan_card_img),
+              gst_certificate = COALESCE($5, gst_certificate)
+          WHERE application_id = $6
+          RETURNING *;
+      `;
+
+      const values = [
+          aadhar_card_number || null,
+          pan_card_number || null,
+          aadharPath,
+          panPath,
+          gstPath,
+          application_id
+      ];
+
+      console.log("💾 Executing database update");
+      const result = await con.query(query, values);
+
+      if (result.rows.length === 0) {
+          console.log("❌ No application found with ID:", application_id);
+          return res.status(404).json({
+              success: false,
+              message: "Application not found"
+          });
+      }
+
+      console.log("✅ Documents updated successfully");
+      res.status(200).json({
+          success: true,
+          message: "Documents uploaded successfully",
+          data: result.rows[0]
+      });
+
+  } catch (error) {
+      console.error("❌ Error updating documents:", error);
+      res.status(500).json({
+          success: false,
+          message: "Error updating documents",
+          error: error.message
+      });
   }
 };
 
@@ -5859,5 +6139,7 @@ module.exports = {
   getMembershipPending,
   importMembersCSV,
   memberApplicationFormNewMember,
-  addMemberApplication
+  addMemberApplication,
+  markTrainingCompleted,
+  updateMemberApplicationDocs
 };

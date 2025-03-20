@@ -205,7 +205,7 @@ const sessionIdGenerator = async (req, res) => {
                     setTimeout(async () => {
                         try {
                             console.log('🔍 Checking transaction status for order:', responseData.order_id);
-                            const transactionResponse = await axios.get('https://bni-data-backend.onrender.com/api/allTransactions');
+                            const transactionResponse = await axios.get('https://backend.bninewdelhi.com/api/allTransactions');
                             const transactions = transactionResponse.data;
                             
                             const relevantTransaction = transactions.find(t => t.order_id === responseData.order_id);
@@ -215,7 +215,7 @@ const sessionIdGenerator = async (req, res) => {
                                 console.log('💰 Found successful transaction:', relevantTransaction.cf_payment_id);
                                 
                                 // Get training details
-                                const trainingResponse = await axios.get('https://bni-data-backend.onrender.com/api/allTrainings');
+                                const trainingResponse = await axios.get('https://backend.bninewdelhi.com/api/allTrainings');
                                 const trainings = trainingResponse.data;
                                 
                                 const training = trainings.find(t => t.training_id === data.customer_details.trainingId);
@@ -241,7 +241,7 @@ const sessionIdGenerator = async (req, res) => {
                                     
                                     // Send QR code email
                                     try {
-                                        await axios.post('https://bni-data-backend.onrender.com/api/send-qr-code', qrCodeData);
+                                        await axios.post('https://backend.bninewdelhi.com/api/send-qr-code', qrCodeData);
                                         console.log('✉️ QR code email sent successfully');
                                     } catch (emailError) {
                                         console.error('❌ Error sending QR code email:', emailError);
@@ -386,7 +386,7 @@ const getOrderStatus = async (req, res) => {
           // db query
           console.log("adding in db.....");
           
-    const creditResponse = await fetch("https://bni-data-backend.onrender.com/api/getAllMemberCredit");
+    const creditResponse = await fetch("https://backend.bninewdelhi.com/api/getAllMemberCredit");
     const creditData = await creditResponse.json();
 
     // Filter credits based on member_id and chapter_id
@@ -427,7 +427,7 @@ const getOrderStatus = async (req, res) => {
     }
     else{
 
-      const bankOrderResponse = await fetch("https://bni-data-backend.onrender.com/api/getbankOrder");
+      const bankOrderResponse = await fetch("https://backend.bninewdelhi.com/api/getbankOrder");
       const bankOrderData = await bankOrderResponse.json();
 
       // Filter bank orders based on member_id
@@ -469,7 +469,7 @@ const getOrderStatus = async (req, res) => {
     
         }
         const getvisitorData = await axios.get(
-          "https://bni-data-backend.onrender.com/api/getAllVisitors"
+          "https://backend.bninewdelhi.com/api/getAllVisitors"
         );
         // console.log("---",getvisitorData.data);
         const matchedVisitor = getvisitorData.data.find(visitor => visitor.visitor_phone === responseData1.visitor_name.mobileNumber);
@@ -558,7 +558,7 @@ const getOrderStatus = async (req, res) => {
 
           // Get membership pending details from API
           try {
-            const membershipResponse = await axios.get(`https://bni-data-backend.onrender.com/api/getMembershipPending`);
+            const membershipResponse = await axios.get(`https://backend.bninewdelhi.com/api/getMembershipPending`);
             const membershipData = membershipResponse.data;
 
             // Check if visitor_id exists in API response

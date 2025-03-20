@@ -125,12 +125,90 @@ const {
   getMembershipPending,
   importMembersCSV,
   memberApplicationFormNewMember,
-  addMemberApplication
+  addMemberApplication,
+  markTrainingCompleted,
+  updateMemberApplicationDocs
 } = require("./controllers");
 
 const path = require("path");
 const multer = require("multer");
 const fs = require("fs");
+
+const memberDocsStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        let uploadDir;
+        
+        switch (file.fieldname) {
+            case 'member_photo':
+                uploadDir = './uploads/memberLogos';
+                break;
+            case 'member_aadhar':
+                uploadDir = './uploads/aadharCards';
+                break;
+            case 'member_pan':
+                uploadDir = './uploads/panCards';
+                break;
+            case 'member_gst_cert':
+                uploadDir = './uploads/gstCertificates';
+                break;
+            
+            case 'aadhar_card_img':
+                uploadDir = './uploads/aadharCards';
+                break;
+            case 'pan_card_img':
+                uploadDir = './uploads/panCards';
+                break;
+            case 'gst_certificate':
+                uploadDir = './uploads/gstCertificates';
+                break;
+            default:
+                uploadDir = './uploads/others';
+        }
+
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+            console.log('✨ Created new directory:', uploadDir);
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const filename = file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname);
+        console.log('📝 Generated filename:', filename);
+        cb(null, filename);
+    }
+});
+
+const uploadMemberDocs = multer({
+    storage: memberDocsStorage,
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png|pdf/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        console.log('🔍 Validating document:', {
+            fieldname: file.fieldname,
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            isValid: extname && mimetype
+        });
+
+        if (extname && mimetype) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only .png, .jpg, .jpeg and .pdf format allowed!'));
+        }
+    }
+});
+
+
+// Helper function for determining content type
+function getContentType(filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    return ext === '.pdf' ? 'application/pdf' : 'image/jpeg';
+}
+
+
 const con = new Client({
   host: "dpg-cs0d2hi3esus739088bg-a.oregon-postgres.render.com",
   user: "bni_dashboard_backend_database_user",
@@ -569,7 +647,15 @@ router.post("/addExpense", (req, res, next) => {
 }, expenseUpload.single("upload_bill"), addExpense);
 router.put("/expense/:expense_id", expenseUpload.single("upload_bill"), updateExpense);
 router.delete("/expense/:expense_id", deleteExpense);
-router.put("/updateMemberSettings", uploadMemberPhoto.single('member_photo'), updateMemberSettings);
+router.put("/updateMemberSettings", 
+    uploadMemberDocs.fields([
+        { name: 'member_photo', maxCount: 1 },
+        { name: 'member_aadhar', maxCount: 1 },
+        { name: 'member_pan', maxCount: 1 },
+        { name: 'member_gst_cert', maxCount: 1 }
+    ]), 
+    updateMemberSettings
+);
 router.put("/updateUserSettings", updateUserSettings);
 router.put("/updateLogo", updateLogo);
 router.put("/updateGstTypeValues", updateGstTypeValues);
@@ -819,5 +905,58 @@ router.get("/send-mail", renderEmailPage);
 // Route to send email
 router.post("/send-mail", sendEmail);
 router.get("/getMembershipPending", getMembershipPending);
+
+// / Routes for serving the documents
+router.get('/uploads/aadharCards/:filename', (req, res) => {
+    const filePath = path.join(__dirname, 'uploads', 'aadharCards', req.params.filename);
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ 
+            message: 'Aadhar card not found',
+            requestedFile: req.params.filename
+        });
+    }
+    res.setHeader('Content-Type', getContentType(filePath));
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(filePath);
+});
+
+router.get('/uploads/panCards/:filename', (req, res) => {
+    const filePath = path.join(__dirname, 'uploads', 'panCards', req.params.filename);
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ 
+            message: 'PAN card not found',
+            requestedFile: req.params.filename
+        });
+    }
+    res.setHeader('Content-Type', getContentType(filePath));
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(filePath);
+});
+
+router.get('/uploads/gstCertificates/:filename', (req, res) => {
+    const filePath = path.join(__dirname, 'uploads', 'gstCertificates', req.params.filename);
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ 
+            message: 'GST certificate not found',
+            requestedFile: req.params.filename
+        });
+    }
+    res.setHeader('Content-Type', getContentType(filePath));
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(filePath);
+});
+
+router.put("/markTrainingCompleted",markTrainingCompleted);
+
+// Add this with your other routes
+router.put("/updateMemberApplicationDocs/:application_id", 
+    uploadMemberDocs.fields([
+        { name: 'aadhar_card_img', maxCount: 1 },
+        { name: 'pan_card_img', maxCount: 1 },
+        { name: 'gst_certificate', maxCount: 1 }
+    ]), 
+    updateMemberApplicationDocs
+);
+
 
 module.exports = router;
