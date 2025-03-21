@@ -39,7 +39,9 @@ const allowedOrigins = [
   "https://54.39.51.161:3000",
   "http://54.39.51.161:3000",
   "http://localhost:5000/",
-  "http://localhost:5000"
+  "http://localhost:5000",
+  "https://backend.bninewdelhi.com/",
+  "https://backend.bninewdelhi.com"
 ];
 
 const corsOptions = {
