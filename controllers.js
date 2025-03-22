@@ -1344,19 +1344,26 @@ const updateMember = async (req, res) => {
       // Handle accolades_id - keep existing if not provided in request
       let parsedAccolades;
       if (req.body.accolades_id) {
-          try {
-              const accoladesArray = JSON.parse(req.body.accolades_id);
-              console.log('🏆 New accolades:', accoladesArray);
-              parsedAccolades = `{${accoladesArray.join(',')}}`;
-          } catch (error) {
-              console.error('❌ Error parsing accolades:', error);
-              parsedAccolades = existingMember.rows[0].accolades_id;
-          }
-      } else {
-          // Important: Keep existing accolades if not provided in request
-          console.log('🏆 Keeping existing accolades:', existingMember.rows[0].accolades_id);
-          parsedAccolades = existingMember.rows[0].accolades_id;
-      }
+        try {
+            // Split the comma-separated string and convert to array of numbers
+            const accoladesArray = req.body.accolades_id
+                .split(',')
+                .map(id => parseInt(id.trim()))
+                .filter(id => !isNaN(id)); // Remove any invalid numbers
+            
+            console.log('🏆 New accolades array:', accoladesArray);
+            // Format for PostgreSQL array
+            parsedAccolades = `{${accoladesArray.join(',')}}`;
+            console.log('🏆 Formatted accolades for PostgreSQL:', parsedAccolades);
+        } catch (error) {
+            console.error('❌ Error parsing accolades:', error);
+            parsedAccolades = existingMember.rows[0].accolades_id;
+        }
+    } else {
+        // Important: Keep existing accolades if not provided in request
+        console.log('🏆 Keeping existing accolades:', existingMember.rows[0].accolades_id);
+        parsedAccolades = existingMember.rows[0].accolades_id;
+    }
 
       // Get filenames from uploaded files
       const memberPhotoFilename = req.files?.['member_photo']?.[0]?.filename;
@@ -6014,6 +6021,76 @@ const updateMemberApplicationDocs = async (req, res) => {
 };
 
 
+const updateOnboardingCall = async (req, res) => {
+  try {
+      console.log('📝 Starting onboarding call update process');
+      
+      const visitor_id = req.params.visitor_id;
+      const filename = req.file ? req.file.filename : null;
+
+      console.log('🔍 Update details:', {
+          visitor_id: visitor_id,
+          filename: filename
+      });
+
+      if (!filename) {
+          console.error('❌ No file uploaded');
+          return res.status(400).json({
+              success: false,
+              message: "No file uploaded"
+          });
+      }
+
+      // Update the visitors table
+      const updateQuery = `
+          UPDATE Visitors 
+          SET onboarding_call = $1
+          WHERE visitor_id = $2 
+          RETURNING visitor_id, visitor_name, onboarding_call
+      `;
+
+      const result = await con.query(updateQuery, [filename, visitor_id]);
+
+      if (result.rows.length === 0) {
+          console.error('❌ No visitor found with ID:', visitor_id);
+          return res.status(404).json({
+              success: false,
+              message: "Visitor not found"
+          });
+      }
+
+      const updatedVisitor = result.rows[0];
+      
+      // Add the full URL for the uploaded image
+      const imageUrl = `https://backend.bninewdelhi.com/api/uploads/onboardingCalls/${filename}`;
+      
+      console.log('✅ Onboarding call updated successfully:', {
+          visitor_id: updatedVisitor.visitor_id,
+          visitor_name: updatedVisitor.visitor_name,
+          filename: updatedVisitor.onboarding_call,
+          imageUrl: imageUrl
+      });
+
+      res.json({
+          success: true,
+          message: "Onboarding call screenshot uploaded successfully",
+          data: {
+              ...updatedVisitor,
+              imageUrl: imageUrl
+          }
+      });
+
+  } catch (error) {
+      console.error('❌ Error in updateOnboardingCall:', error);
+      res.status(500).json({
+          success: false,
+          message: "Error updating onboarding call",
+          error: error.message
+      });
+  }
+};
+
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -6141,5 +6218,6 @@ module.exports = {
   memberApplicationFormNewMember,
   addMemberApplication,
   markTrainingCompleted,
-  updateMemberApplicationDocs
+  updateMemberApplicationDocs,
+  updateOnboardingCall
 };

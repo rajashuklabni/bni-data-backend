@@ -127,7 +127,8 @@ const {
   memberApplicationFormNewMember,
   addMemberApplication,
   markTrainingCompleted,
-  updateMemberApplicationDocs
+  updateMemberApplicationDocs,
+  updateOnboardingCall
 } = require("./controllers");
 
 const path = require("path");
@@ -957,6 +958,61 @@ router.put("/updateMemberApplicationDocs/:application_id",
     ]), 
     updateMemberApplicationDocs
 );
+
+
+// Multer configuration for onboarding calls
+const onboardingCallStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = './uploads/onboardingCalls';
+        
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+            console.log('✨ Created new directory:', uploadDir);
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const filename = 'onboarding-' + uniqueSuffix + path.extname(file.originalname);
+        console.log('📝 Generated filename:', filename);
+        cb(null, filename);
+    }
+});
+
+const uploadOnboardingCall = multer({
+    storage: onboardingCallStorage,
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        console.log('🔍 Validating file:', {
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            isValid: extname && mimetype
+        });
+
+        if (extname && mimetype) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
+        }
+    }
+});
+
+// Add the route
+router.put(
+    '/updateOnboardingCall/:visitor_id',
+    uploadOnboardingCall.single('onboarding_call_img'),
+    updateOnboardingCall
+);
+
+// Route to serve onboarding call images
+router.get('/uploads/onboardingCalls/:filename', (req, res) => {
+    const filePath = path.join(__dirname, 'uploads', 'onboardingCalls', req.params.filename);
+    res.sendFile(filePath);
+});
 
 
 module.exports = router;
