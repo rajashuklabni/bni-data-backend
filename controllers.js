@@ -4087,12 +4087,12 @@ const updateChapterSettings = async (req, res) => {
               contact_person = COALESCE($2, contact_person),
               chapter_mission = COALESCE($3, chapter_mission),
               chapter_vision = COALESCE($4, chapter_vision),
-              street_address_line = COALESCE($6, street_address_line),
-              postal_code = COALESCE($7, postal_code),
-              chapter_facebook = COALESCE($8, chapter_facebook),
-              chapter_instagram = COALESCE($9, chapter_instagram),
-              chapter_linkedin = COALESCE($10, chapter_linkedin),
-              chapter_youtube = COALESCE($11, chapter_youtube)
+              street_address_line = COALESCE($5, street_address_line),
+              postal_code = COALESCE($6, postal_code),
+              chapter_facebook = COALESCE($7, chapter_facebook),
+              chapter_instagram = COALESCE($8, chapter_instagram),
+              chapter_linkedin = COALESCE($9, chapter_linkedin),
+              chapter_youtube = COALESCE($10, chapter_youtube)
       `;
 
       const queryParams = [
