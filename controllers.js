@@ -4112,7 +4112,7 @@ const updateChapterSettings = async (req, res) => {
       if (req.file) {
           console.log('File uploaded:', req.file);
           const photoPath = `${req.file.filename}`;
-          updateQuery += `, chapter_logo = $12`;
+          updateQuery += `, chapter_logo = $11`;
           queryParams.push(photoPath);
       }
 
