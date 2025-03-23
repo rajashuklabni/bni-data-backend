@@ -128,7 +128,8 @@ const {
   addMemberApplication,
   markTrainingCompleted,
   updateMemberApplicationDocs,
-  updateOnboardingCall
+  updateOnboardingCall,
+  exportMemberWiseAccolades
 } = require("./controllers");
 
 const path = require("path");
@@ -671,6 +672,7 @@ router.get("/allCheckins", allCheckins);
 router.get("/getAllKittyPayments", getAllKittyPayments);
 router.get("/getCancelIrn", getCancelIrn);
 router.get("/memberPendingKittyOpeningBalance", memberPendingKittyOpeningBalance);
+router.get('/exportMemberWiseAccolades', exportMemberWiseAccolades);
 
 // added by vasusri
 router.post('/addPendingAmount',addPendingAmount);

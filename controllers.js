@@ -6090,6 +6090,49 @@ const updateOnboardingCall = async (req, res) => {
   }
 };
 
+const exportMemberWiseAccolades = async (req, res) => {
+  try {
+    // Corrected SQL query to join members and accolades using accolades_id array
+    const query = `
+      SELECT 
+        CONCAT(m.member_first_name, ' ', m.member_last_name) AS member_name,
+        a.accolade_name
+      FROM member m
+      JOIN accolades a ON a.accolade_id = ANY(m.accolades_id)
+      ORDER BY m.member_first_name, a.accolade_name;
+    `;
+
+    const { rows: membersData } = await con.query(query);
+
+    // Create Excel workbook and worksheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Member Accolades Data');
+
+    // Define columns
+    worksheet.columns = [
+      { header: 'Member Name', key: 'member_name', width: 25 },
+      { header: 'Accolade Name', key: 'accolade_name', width: 30 },
+    ];
+
+    // Add data rows
+    membersData.forEach(row => worksheet.addRow(row));
+
+    // Set response headers for file download
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', 'attachment; filename="member_accolades.xlsx"');
+
+    // Write the Excel file to response
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Error exporting member accolades data:', error);
+    res.status(500).json({ message: 'Failed to export data' });
+  }
+};
+
 
 module.exports = {
   addInvoiceManually,
@@ -6219,5 +6262,6 @@ module.exports = {
   addMemberApplication,
   markTrainingCompleted,
   updateMemberApplicationDocs,
-  updateOnboardingCall
+  updateOnboardingCall,
+  exportMemberWiseAccolades
 };
