@@ -129,7 +129,8 @@ const {
   markTrainingCompleted,
   updateMemberApplicationDocs,
   updateOnboardingCall,
-  exportMemberWiseAccolades
+  exportMemberWiseAccolades,
+  getRequestedMemberRequisition
 } = require("./controllers");
 
 const path = require("path");
@@ -694,6 +695,7 @@ router.get('/getInterviewSheetQuestions',getInterviewSheetQuestions);
 router.get('/getInterviewSheetAnswers',getInterviewSheetAnswers);
 router.post('/addInterviewSheetAnswers', addInterviewSheetAnswers)
 router.get("/getAllVisitors", getAllVisitors);
+router.get("/getRequestedMemberRequisition", getRequestedMemberRequisition);
 router.post("/add-invoice", createInvoice);
 router.get("/getBankOrder", getBankOrder);
 router.post("/getSpecificBankOrder", getSpecificBankOrder);

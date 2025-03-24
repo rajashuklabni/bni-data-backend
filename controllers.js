@@ -6134,6 +6134,17 @@ const exportMemberWiseAccolades = async (req, res) => {
 };
 
 
+const getRequestedMemberRequisition = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM member_requisition_request");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching all requested requisition of all members:", error);
+    res.status(500).send("Error fetching all requested requisition of all members");
+  }
+};
+
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -6263,5 +6274,6 @@ module.exports = {
   markTrainingCompleted,
   updateMemberApplicationDocs,
   updateOnboardingCall,
-  exportMemberWiseAccolades
+  exportMemberWiseAccolades,
+  getRequestedMemberRequisition
 };
