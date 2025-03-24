@@ -130,7 +130,8 @@ const {
   updateMemberApplicationDocs,
   updateOnboardingCall,
   exportMemberWiseAccolades,
-  getRequestedMemberRequisition
+  getRequestedMemberRequisition,
+  addMemberRequisition
 } = require("./controllers");
 
 const path = require("path");
@@ -708,6 +709,7 @@ router.post("/addCommitmentSheet",insertCommitmentSheet);
 router.get("/getInclusionSheet",getInclusionSheet);
 router.post("/addInclusionSheet",addInclusionSheet);
 router.post("/addEoiform",addEoiForm);
+router.post("/member-requisition", addMemberRequisition);
 
 // Route to serve the uploaded files
 router.get('/uploads/expenses/:filename', (req, res) => {

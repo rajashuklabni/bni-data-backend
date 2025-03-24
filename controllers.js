@@ -6144,6 +6144,92 @@ const getRequestedMemberRequisition = async (req, res) => {
   }
 };
 
+const addMemberRequisition = async (req, res) => {
+  console.log('📝 New Member Requisition Request:', req.body);
+
+  try {
+      const {
+          member_id,
+          chapter_id,
+          accolade_id,
+          request_comment,
+          accolade_amount,
+          order_id = null  // Optional parameter
+      } = req.body;
+
+      // Validate required fields
+      if (!member_id || !chapter_id || !accolade_id) {
+          console.error('❌ Missing required fields');
+          return res.status(400).json({
+              success: false,
+              message: "Required fields missing: member_id, chapter_id, and accolade_id are mandatory"
+          });
+      }
+
+      console.log('🔍 Validated Request Data:', {
+          member_id,
+          chapter_id,
+          accolade_id,
+          request_comment,
+          accolade_amount,
+          order_id
+      });
+
+      // Set default values for status fields
+      const approve_status = 'pending';
+      const request_status = 'open';
+
+      const query = `
+          INSERT INTO member_requisition_request (
+              member_id,
+              chapter_id,
+              accolade_id,
+              requested_time_date,
+              request_comment,
+              accolade_amount,
+              order_id,
+              approve_status,
+              request_status
+          )
+          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8)
+          RETURNING *
+      `;
+
+      const values = [
+          member_id,
+          chapter_id,
+          accolade_id,
+          request_comment,
+          accolade_amount,
+          order_id,
+          approve_status,
+          request_status
+      ];
+
+      console.log('📊 Executing Query with values:', values);
+
+      const result = await con.query(query, values);
+      const newRequisition = result.rows[0];
+
+      console.log('✅ Requisition created successfully:', newRequisition);
+
+      res.status(201).json({
+          success: true,
+          message: "Member requisition request created successfully",
+          data: newRequisition
+      });
+
+  } catch (error) {
+      console.error('❌ Error creating member requisition:', error);
+      res.status(500).json({
+          success: false,
+          message: "Error creating member requisition request",
+          error: error.message
+      });
+  }
+};
+
+
 
 module.exports = {
   addInvoiceManually,
@@ -6275,5 +6361,6 @@ module.exports = {
   updateMemberApplicationDocs,
   updateOnboardingCall,
   exportMemberWiseAccolades,
-  getRequestedMemberRequisition
+  getRequestedMemberRequisition,
+  addMemberRequisition
 };
