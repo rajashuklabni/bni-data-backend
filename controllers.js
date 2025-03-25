@@ -6241,6 +6241,103 @@ const getRequestedChapterRequisition = async (req, res) => {
 };
 
 
+const addChapterRequisition = async (req, res) => {
+  console.log('\n🚀 Starting Chapter Requisition Creation');
+  console.log('=====================================');
+
+  try {
+      const {
+          member_ids,
+          chapter_id,
+          accolade_ids,
+          comment,
+          request_status = 'open',  // default value
+          ro_comment = null,
+          pickup_status = false,    // default value
+          pickup_date = null        // default value
+      } = req.body;
+
+      console.log('📝 Received Request Data:', {
+          member_ids,
+          chapter_id,
+          accolade_ids,
+          comment,
+          request_status,
+          ro_comment,
+          pickup_status,
+          pickup_date
+      });
+
+      // Validate required fields
+      if (!member_ids || !chapter_id || !accolade_ids) {
+          console.error('❌ Validation Error: Missing required fields');
+          return res.status(400).json({
+              success: false,
+              message: "member_ids, chapter_id, and accolade_ids are required"
+          });
+      }
+
+        // Validate arrays
+        if (!Array.isArray(member_ids) || !Array.isArray(accolade_ids)) {
+          console.error('❌ Validation Error: member_ids and accolade_ids must be arrays');
+          return res.status(400).json({
+              success: false,
+              message: "member_ids and accolade_ids must be arrays"
+          });
+      }
+
+      // Insert into database
+      const query = `
+          INSERT INTO chapter_requisition (
+              member_ids,
+              chapter_id,
+              accolade_ids,
+              requested_date,
+              comment,
+              request_status,
+              ro_comment,
+              pickup_status,
+              pickup_date
+          )
+          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8)
+          RETURNING *
+      `;
+
+      const values = [
+          member_ids,
+          chapter_id,
+          accolade_ids,
+          comment,
+          request_status,
+          ro_comment,
+            pickup_status,
+            pickup_date
+        ];
+
+        console.log('🔍 Executing Query with values:', values);
+
+        const result = await con.query(query, values);
+        const newRequisition = result.rows[0];
+
+        console.log('✅ Chapter Requisition created successfully:', newRequisition);
+
+        res.status(201).json({
+            success: true,
+            message: "Chapter requisition created successfully",
+            data: newRequisition
+        });
+
+    } catch (error) {
+        console.error('❌ Error in addChapterRequisition:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error creating chapter requisition",
+            error: error.message
+        });
+    }
+};
+
+
 
 module.exports = {
   addInvoiceManually,
@@ -6374,5 +6471,6 @@ module.exports = {
   exportMemberWiseAccolades,
   getRequestedMemberRequisition,
   addMemberRequisition,
-  getRequestedChapterRequisition
+  getRequestedChapterRequisition,
+  addChapterRequisition
 };
