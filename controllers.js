@@ -6230,6 +6230,17 @@ const addMemberRequisition = async (req, res) => {
 };
 
 
+const getRequestedChapterRequisition = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM chapter_requisition");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching all requested requisition of all chapters:", error);
+    res.status(500).send("Error fetching all requested requisition of all chapters");
+  }
+};
+
+
 
 module.exports = {
   addInvoiceManually,
@@ -6362,5 +6373,6 @@ module.exports = {
   updateOnboardingCall,
   exportMemberWiseAccolades,
   getRequestedMemberRequisition,
-  addMemberRequisition
+  addMemberRequisition,
+  getRequestedChapterRequisition
 };

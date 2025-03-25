@@ -131,7 +131,8 @@ const {
   updateOnboardingCall,
   exportMemberWiseAccolades,
   getRequestedMemberRequisition,
-  addMemberRequisition
+  addMemberRequisition,
+  getRequestedChapterRequisition
 } = require("./controllers");
 
 const path = require("path");
@@ -710,6 +711,7 @@ router.get("/getInclusionSheet",getInclusionSheet);
 router.post("/addInclusionSheet",addInclusionSheet);
 router.post("/addEoiform",addEoiForm);
 router.post("/member-requisition", addMemberRequisition);
+router.get("/getRequestedChapterRequisition", getRequestedChapterRequisition);
 
 // Route to serve the uploaded files
 router.get('/uploads/expenses/:filename', (req, res) => {
