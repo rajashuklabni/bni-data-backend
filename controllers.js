@@ -6337,6 +6337,123 @@ const addChapterRequisition = async (req, res) => {
     }
 };
 
+const updateChapterRequisition = async (req, res) => {
+  console.log('\n🔄 Starting Chapter Requisition Update');
+  console.log('=====================================');
+
+  try {
+      const { chapter_requisition_id, approve_status, ro_comment, pickup_status, pickup_date } = req.body;
+
+      console.log('📝 Request Data:', {
+          chapter_requisition_id,
+          approve_status,
+          ro_comment,
+          pickup_status,
+          pickup_date
+      });
+
+      if (!chapter_requisition_id) {
+          console.log('❌ Missing chapter_requisition_id in request body');
+          return res.status(400).json({
+              success: false,
+              message: "chapter_requisition_id is required in request body"
+          });
+      }
+
+      // First, get the existing requisition
+      const existingRequisition = await con.query(
+          'SELECT approve_status, ro_comment FROM chapter_requisition WHERE chapter_requisition_id = $1',
+          [chapter_requisition_id]
+      );
+
+      if (existingRequisition.rows.length === 0) {
+          console.log('❌ No requisition found with ID:', chapter_requisition_id);
+          return res.status(404).json({
+              success: false,
+              message: "Requisition not found"
+          });
+      }
+
+      // Merge existing and new approvals/comments
+      let finalApproveStatus = {};
+      let finalRoComment = {};
+
+      // Handle existing data
+      if (existingRequisition.rows[0].approve_status) {
+          try {
+              finalApproveStatus = JSON.parse(existingRequisition.rows[0].approve_status);
+              console.log('📌 Existing approve_status:', finalApproveStatus);
+          } catch (e) {
+              console.error('Error parsing existing approve_status:', e);
+          }
+      }
+
+      if (existingRequisition.rows[0].ro_comment) {
+          try {
+              finalRoComment = JSON.parse(existingRequisition.rows[0].ro_comment);
+              console.log('📌 Existing ro_comment:', finalRoComment);
+          } catch (e) {
+              console.error('Error parsing existing ro_comment:', e);
+          }
+      }
+
+      // Merge with new data
+      finalApproveStatus = { ...finalApproveStatus, ...approve_status };
+      finalRoComment = { ...finalRoComment, ...ro_comment };
+
+      console.log('🔄 Final merged data:', {
+          approve_status: finalApproveStatus,
+          ro_comment: finalRoComment
+      });
+
+      // Handle empty date value
+      const finalPickupDate = pickup_date && pickup_date.trim() !== '' ? pickup_date : null;
+
+      console.log('📅 Final pickup date:', finalPickupDate);
+
+      const query = `
+          UPDATE chapter_requisition 
+          SET 
+              approve_status = $1,
+              ro_comment = $2,
+              pickup_status = $3,
+              pickup_date = $4
+          WHERE chapter_requisition_id = $5
+          RETURNING *
+      `;
+
+      const values = [
+          JSON.stringify(finalApproveStatus),
+          JSON.stringify(finalRoComment),
+          pickup_status || false,
+          finalPickupDate,
+          chapter_requisition_id
+      ];
+
+      console.log('🔍 Executing update query with values:', values);
+
+      const result = await con.query(query, values);
+      const updatedRequisition = result.rows[0];
+
+      console.log('✅ Chapter Requisition updated successfully:', updatedRequisition);
+
+      res.json({
+          success: true,
+          message: "Chapter requisition updated successfully",
+          data: updatedRequisition
+      });
+
+  } catch (error) {
+      console.error('❌ Error in updateChapterRequisition:', error);
+      console.error('Error stack:', error.stack);
+      res.status(500).json({
+          success: false,
+          message: "Error updating chapter requisition",
+          error: error.message
+      });
+  }
+};
+
 
 
 module.exports = {
@@ -6472,5 +6589,6 @@ module.exports = {
   getRequestedMemberRequisition,
   addMemberRequisition,
   getRequestedChapterRequisition,
-  addChapterRequisition
+  addChapterRequisition,
+  updateChapterRequisition
 };
