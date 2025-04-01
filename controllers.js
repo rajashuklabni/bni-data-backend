@@ -4626,36 +4626,53 @@ const addInclusionSheet = async (req, res) => {
   }
 };
 
-
 const addMemberWriteOff = async (req, res) => {
-  let { member_id, chapter_id, rightoff_date, total_pending_amount } = req.body;
-
-  // Ensure member_id is always an array
-  if (!Array.isArray(member_id)) {
-    member_id = [member_id]; // Convert single member_id to array
-  }
-
   try {
+    let { members, chapter_id, rightoff_date, rightoff_comment } = req.body;
+
+    console.log(req.body); // Debugging
+
+    if (!Array.isArray(members) || members.length === 0) {
+      return res.status(400).json({ message: "Invalid members array" });
+    }
+
     const query = `
-      INSERT INTO rightoff_member (member_id, chapter_id, rightoff_date, total_pending_amount) 
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO rightoff_member (member_id, chapter_id, rightoff_date, total_pending_amount, no_of_late, writeoff_comment) 
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *;
     `;
 
     let insertedRecords = [];
-    
-    for (const id of member_id) {
-      const values = [parseInt(id), chapter_id, rightoff_date, total_pending_amount]; // Ensure member_id is an integer
+
+    for (const member of members) {
+      const { member_id, no_of_late_payment, total_pending_amount } = member;
+
+      if (!member_id) {
+        console.error("Missing member_id in:", member);
+        continue; // Skip if no member_id
+      }
+
+      const values = [
+        parseInt(member_id), // Ensure it's an integer
+        chapter_id,
+        rightoff_date,
+        total_pending_amount,
+        no_of_late_payment,
+        rightoff_comment
+      ];
+
       const result = await con.query(query, values);
       insertedRecords.push(result.rows[0]);
     }
 
     res.status(201).json({ message: "Member Write Off Successfully!", data: insertedRecords });
+
   } catch (error) {
     console.error("Error adding Write Off:", error);
     res.status(500).send("Error adding Write Off");
   }
 };
+
 
 const getAllMemberWriteOff = async (req, res) => {
   try {
@@ -6455,6 +6472,414 @@ const updateChapterRequisition = async (req, res) => {
 };
 
 
+const updateMemberRequisition = async (req, res) => {
+  console.log('\n🔄 Starting Member Requisition Update');
+  console.log('=====================================');
+
+  try {
+    const { 
+      member_request_id,
+      member_id,
+      chapter_id,
+      accolade_id,
+      approve_status,
+      response_comment,
+      request_status,
+      given_date 
+    } = req.body;
+
+    console.log('📝 Request Data:', {
+      member_request_id,
+      member_id,
+      chapter_id,
+      accolade_id,
+      approve_status,
+      response_comment,
+      request_status,
+      given_date
+    });
+
+    // Validate required fields
+    if (!member_request_id || !member_id || !chapter_id || !accolade_id) {
+      console.error('❌ Missing required fields');
+      return res.status(400).json({
+        success: false,
+        message: "Required fields missing: member_request_id, member_id, chapter_id, and accolade_id are mandatory"
+      });
+    }
+
+    const query = `
+      UPDATE member_requisition_request 
+      SET 
+        approve_status = $1,
+        approved_date = CURRENT_TIMESTAMP,
+        response_comment = $2,
+        given_date = $3,
+        request_status = $4
+      WHERE 
+        member_request_id = $5 
+        AND member_id = $6 
+        AND chapter_id = $7 
+        AND accolade_id = $8
+      RETURNING *
+    `;
+
+    const values = [
+      approve_status || 'pending',
+      response_comment,
+      given_date,
+      request_status || 'open',
+      member_request_id,
+      member_id,
+      chapter_id,
+      accolade_id
+    ];
+
+    console.log('🔍 Executing update query with values:', values);
+
+    const result = await con.query(query, values);
+
+    if (result.rows.length === 0) {
+      console.log('❌ No matching requisition found');
+      return res.status(404).json({
+        success: false,
+        message: "No matching requisition found"
+      });
+    }
+
+    const updatedRequisition = result.rows[0];
+    console.log('✅ Member Requisition updated successfully:', updatedRequisition);
+
+    res.json({
+      success: true,
+      message: "Member requisition updated successfully",
+      data: updatedRequisition
+    });
+
+  } catch (error) {
+    console.error('❌ Error in updateMemberRequisition:', error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating member requisition",
+      error: error.message
+    });
+  }
+};
+
+// Add this new controller
+const sendVisitorEmail = async (req, res) => {
+  try {
+      const { visitor_email, visitor_name, chapter_name } = req.body;
+      console.log('📧 Preparing welcome email:', {
+          to: visitor_email,
+          name: visitor_name,
+          chapter: chapter_name
+      });
+
+      // Get current date and time in the required format
+      const currentDate = new Date().toLocaleString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: 'numeric',
+          second: 'numeric',
+          hour12: true
+      });
+       // Define the attachments with exact paths
+       const attachments = [
+        {
+            filename: '4(a)- Contact Sphere Sheet.docx',
+            path: path.join(__dirname, 'email-attachments', '4(a)- Contact Sphere Sheet (2) (1).docx'),
+            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        },
+        {
+            filename: '4(b)- GAINS Profile Sheet.docx',
+            path: path.join(__dirname, 'email-attachments', '4(b)- GAINS Profile Sheet (2) (1).docx'),
+            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        },
+        {
+            filename: '4(c)- Biography Sheet for members.doc',
+            path: path.join(__dirname, 'email-attachments', '4(c)- Biography Sheet for members (2) (1) (1).doc'),
+            contentType: 'application/msword'
+        },
+        {
+            filename: '4(d)- SAMPLE Filled GAINS profile.pdf',
+            path: path.join(__dirname, 'email-attachments', '4(d)- SAMPLE Filled GAINS profile (2) (1).pdf'),
+            contentType: 'application/pdf'
+        }
+    ];
+
+    // Verify all attachments exist
+    for (const attachment of attachments) {
+        if (!fs.existsSync(attachment.path)) {
+            console.error('❌ Missing attachment:', attachment.filename);
+            throw new Error(`Required attachment ${attachment.filename} not found`);
+        }
+    }
+
+
+      const mailOptions = {
+          from: 'Vice President Desk-BNI Prolific <ankit.21chopra@gmail.com>',
+          to: `${visitor_name} <${visitor_email}>`,
+          cc: [
+              'SUNIL K. BNI DIRECTOR <sunilk@bni-india.in>',
+              'Shini Sunil <shini.sunil@adico.in>',
+              'Raja Shukla | Digital Marketing | Prolific Shukla <rajashukla@outlook.com>',
+              'Yatin wadhwa| Prolific| General Insurance <yatinwadhwa@ymail.com>',
+              'admin.bnidw@adico.in',
+              'BNI N E W Delhi Admin <admin@bninewdelhi.com>',
+              'sunil.k@adico.in'
+          ],
+          subject: `Welcome Aboard to the BNI ${chapter_name} Chapter ${visitor_name}`,
+          html: `
+              <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6;">
+                  <div style="border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 20px; color: #666;">
+                      <p><strong>From:</strong> Vice President Desk-BNI Prolific &lt;ankit.21chopra@gmail.com&gt;</p>
+                      <p><strong>Sent:</strong> ${currentDate}</p>
+                      <p><strong>To:</strong> ${visitor_name} &lt;${visitor_email}&gt;</p>
+                      <p><strong>Cc:</strong> SUNIL K. BNI DIRECTOR &lt;sunilk@bni-india.in&gt;; Shini Sunil &lt;shini.sunil@adico.in&gt;; Raja Shukla | Digital Marketing | Prolific Shukla &lt;rajashukla@outlook.com&gt;; Yatin wadhwa| Prolific| General Insurance &lt;yatinwadhwa@ymail.com&gt;; admin.bnidw@adico.in; BNI N E W Delhi Admin &lt;admin@bninewdelhi.com&gt;; sunil.k@adico.in</p>
+                      <p><strong>Subject:</strong> Welcome Aboard to the BNI ${chapter_name} Chapter ${visitor_name}</p>
+                  </div>
+
+                  <p>Dear ${visitor_name},</p>
+
+                  <p style="margin-top: 20px;">
+                      I, on behalf of the Membership Committee, congratulate you for deciding to be a part of the ${chapter_name} Chapter in the business category of REAL ESTATE - 2ND HOMES- Only Uttrakhand Please remember that a BNI member represents his / her given business category on this platform and not his / her entire business.
+                  </p>
+
+                  <p style="margin-top: 20px;">
+                      Your payment of membership has been received and we are going to inducted you in the chapter on 20th March 2025
+                  </p>
+
+                  <p style="margin-top: 20px;">
+                      In order to proceed with the Induction formalities, please comply with the following:
+                  </p>
+
+                  <ul style="margin-top: 20px; margin-left: 20px;">
+                      <li style="margin-bottom: 10px;">Share your Bio Sheet (sample attached-prose form), as this would be read out during the induction.</li>
+                      <li style="margin-bottom: 10px;">Send a high-resolution passport size photograph along with your personal and professional photos, email ID and mobile number so that our creative team can include these details in the 30 seconds meeting note sheet and induction video.</li>
+                      <li style="margin-bottom: 10px;">Your Gains Profile which is required for Goal-Oriented 1-2-1's</li>
+                  </ul>
+
+                  <p style="margin-top: 20px;">
+                      In this formal meeting, you may bring along a client or a vendor to add to your business credibility. I would request the observer details to be shared, at least 48 hrs prior to the meeting day.
+                  </p>
+
+                  <p style="margin-top: 20px;">
+                      Please note that Mr. RAJA SHUKLA (President) - 9599052298, Mr. Yatin Wadhwa (Secretary- 9818979676), Mr. Sachit Chawla (Mentor Coordinator-9811930922) would be calling you over the next few days to advise you on our mentoring program to help start your BNI journey.
+                  </p>
+
+                  <p style="margin-top: 20px;">
+                      I would be keen to help you with any clarifications that you may have.
+                  </p>
+              </div>
+          `,
+          attachments: attachments
+      };
+      console.log('📎 Attaching documents:', attachments.map(a => a.filename));
+
+      await transporter.sendMail(mailOptions);
+      console.log('✅ Welcome email sent successfully to:', visitor_email);
+
+      await transporter.sendMail(mailOptions);
+      console.log('✅ Welcome email sent successfully to:', visitor_email);
+
+      // Update visitors table to set welcome_mail to true
+      const updateQuery = `
+          UPDATE visitors 
+          SET welcome_mail = true 
+          WHERE visitor_email = $1 
+          RETURNING *
+      `;
+      
+      const result = await con.query(updateQuery, [visitor_email]);
+      console.log('✅ Updated welcome_mail status in visitors table:', result.rows[0]);
+
+      res.status(200).json({
+          success: true,
+          message: `Welcome email sent successfully to ${visitor_name}`
+      });
+
+  } catch (error) {
+      console.error('❌ Error sending welcome email:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Failed to send welcome email',
+          error: error.message
+      });
+  }
+};
+const sendVPEmail = async (req, res) => {
+try {
+    const { visitor_email, visitor_name, chapter_name } = req.body;
+    console.log('📧 Preparing VP email:', {
+        to: visitor_email,
+        name: visitor_name,
+        chapter: chapter_name
+    });
+
+    // Get current date in DD-MM-YYYY format
+    const currentDate = new Date().toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    }).replace(/\//g, '-');
+
+    const mailOptions = {
+      from: 'Vice President Desk-BNI Prolific <ankit.21chopra@gmail.com>',
+          to: `${visitor_name} <${visitor_email}>`,
+        cc: [
+            'Prolific DC Lalpreet Aulakh <lalpreet@studiodesignbox.com>',
+            'SUNIL K. BNI DIRECTOR <sunilk@bni-india.in>',
+            'Sunil K <sunil.k@adico.in>',
+            'BNI NEW Delhi | Support <support@bninewdelhi.com>',
+            'Raja Shukla | Digital Marketing | Prolific Shukla <rajashukla@outlook.com>',
+            'Yatin wadhwa| Prolific| General Insurance <yatinwadhwa@ymail.com>',
+            'admin.bnidw@adico.in'
+        ],
+        subject: 'Request for BNI Connect Activation',
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6;">
+                <div style="border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 20px; color: #666;">
+                    <p><strong>From:</strong> Vice President Desk-BNI Prolific &lt;ankit.21chopra@gmail.com&gt;</p>
+                    <p><strong>Sent:</strong> ${new Date().toLocaleString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: 'numeric',
+                        second: 'numeric',
+                        hour12: true
+                    })}</p>
+                    <p><strong>To:</strong> BNI N E W Delhi Admin &lt;admin@bninewdelhi.com&gt;</p>
+                    <p><strong>Cc:</strong> Prolific DC Lalpreet Aulakh &lt;lalpreet@studiodesignbox.com&gt;; SUNIL K. BNI DIRECTOR &lt;sunilk@bni-india.in&gt;; Sunil K &lt;sunil.k@adico.in&gt;; BNI NEW Delhi | Support &lt;support@bninewdelhi.com&gt;; Raja Shukla | Digital Marketing | Prolific Shukla &lt;rajashukla@outlook.com&gt;; Yatin wadhwa| Prolific| General Insurance &lt;yatinwadhwa@ymail.com&gt;; admin.bnidw@adico.in</p>
+                    <p><strong>Subject:</strong> Request for BNI Connect Activation</p>
+                </div>
+
+                <p>Dear Blessy,</p>
+
+                <p style="margin-top: 20px;">
+                    This is to inform you that we have already inducted <strong>${visitor_name}</strong> in the chapter today on ${currentDate}. All joining documents have been submitted in RO and visitor entry is validated and completed by ST, including tax address and tax reference number. The Google sheet has been filled with all details for verification.
+                </p>
+            </div>
+        `
+    };
+
+    console.log('📧 Sending VP email with options:', {
+        from: mailOptions.from,
+        to: mailOptions.to,
+        cc: mailOptions.cc,
+        subject: mailOptions.subject
+    });
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✉️ Email sent:', info.response);
+    console.log('✅ VP email sent successfully');
+
+     // Update visitors table to set vp_mail to true
+     const updateQuery = `
+     UPDATE visitors 
+     SET vp_mail = true 
+     WHERE visitor_email = $1 
+     RETURNING *
+ `;
+ 
+ const result = await con.query(updateQuery, [visitor_email]);
+ console.log('✅ Updated vp_mail status in visitors table:', result.rows[0]);
+
+    res.status(200).json({
+        success: true,
+        message: `VP email sent successfully for ${visitor_name}`,
+        emailInfo: info
+    });
+
+} catch (error) {
+    console.error('❌ Error sending VP email:', error);
+    res.status(500).json({
+        success: false,
+        message: 'Failed to send VP email',
+        error: error.message
+    });
+}
+};
+const updateVisitor = async (req, res) => {
+try {
+    console.log('\n🔄 Starting Visitor Update Process');
+    console.log('=====================================');
+    console.log('📝 Request Body:', req.body);
+    
+    const { 
+        visitor_id, 
+        chapter_apply_kit, 
+        visitor_entry_excel, 
+        google_updation_sheet, 
+        approve_induction_kit, 
+        induction_status 
+    } = req.body;
+
+    // Validate visitor_id
+    if (!visitor_id) {
+        console.log('❌ Error: visitor_id is missing');
+        return res.status(400).json({ error: 'visitor_id is required' });
+    }
+
+    console.log('🔍 Processing update for visitor_id:', visitor_id);
+    console.log('📊 Update values:', {
+        chapter_apply_kit,
+        visitor_entry_excel,
+        google_updation_sheet,
+        approve_induction_kit,
+        induction_status
+    });
+
+    const query = `
+        UPDATE visitors
+        SET 
+            chapter_apply_kit = COALESCE($1, chapter_apply_kit),
+            visitor_entry_excel = COALESCE($2, visitor_entry_excel),
+            google_updation_sheet = COALESCE($3, google_updation_sheet),
+            approve_induction_kit = COALESCE($4, approve_induction_kit),
+            induction_status = COALESCE($5, induction_status)
+        WHERE visitor_id = $6
+        RETURNING *;
+    `;
+
+    const values = [
+        chapter_apply_kit,
+        visitor_entry_excel,
+        google_updation_sheet,
+        approve_induction_kit,
+        induction_status,
+        visitor_id
+    ];
+
+    console.log('🔍 Executing query with values:', values);
+
+    const { rows } = await con.query(query, values);
+
+    if (rows.length === 0) {
+        console.log('❌ Error: No visitor found with ID:', visitor_id);
+        return res.status(404).json({ error: 'Visitor not found' });
+    }
+
+    console.log('✅ Visitor updated successfully:', rows[0]);
+    res.json({ 
+        message: 'Visitor updated successfully', 
+        updatedVisitor: rows[0] 
+    });
+
+} catch (error) {
+    console.error('❌ Error updating visitor:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+        error: 'Internal server error',
+        details: error.message 
+    });
+}
+};
 
 module.exports = {
   addInvoiceManually,
@@ -6590,5 +7015,9 @@ module.exports = {
   addMemberRequisition,
   getRequestedChapterRequisition,
   addChapterRequisition,
-  updateChapterRequisition
+  updateChapterRequisition,
+  updateMemberRequisition,
+  updateVisitor,
+  sendVPEmail,
+  sendVisitorEmail
 };

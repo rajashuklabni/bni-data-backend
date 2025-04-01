@@ -71,7 +71,7 @@ const sessionIdGenerator = async (req, res) => {
                   responseData.payment_session_id,
                   data.customer_details.one_time_registration_fee || 0, // New field
                   data.customer_details.membership_fee || 0, // New field
-                  data.tax || 0, // New field
+                  data.tax || 0, // New fiel
                   data.customer_details.memberName || "Unknown", // New field
                   data.customer_details.customer_email || "unknown@example.com", // New field
                   data.customer_details.customer_phone || "0000000000", // New field
@@ -85,7 +85,7 @@ const sessionIdGenerator = async (req, res) => {
                   data.kitty_bill_id || null,
                   data.visitor_name.visitorName|| null,
                   data.visitor_name.email|| null,
-                  data.visitor_name.mobileNumber|| null,
+                  data.visitor_name.mobileNumber|| 7418529635,
                   data.visitor_name.address|| null,
                   data.visitor_name.company|| null,
                   data.visitor_name.gstin|| null,
@@ -290,6 +290,7 @@ const getOrderStatus = async (req, res) => {
       console.error("Order ID does not exist in Orders table");
       return res.status(400).json({ error: "Order ID does not exist in Orders table" });
     }
+
 
     // Get the order details to access customer_details
     const orderDetails = await db.query(
@@ -509,7 +510,7 @@ const getOrderStatus = async (req, res) => {
           visitor_company_address: responseData1?.visitor_name?.company_address || null,
           visitor_name: responseData1.visitor_name.visitorName|| null,
           visitor_email: responseData1.visitor_name.email|| null,
-          visitor_phone:responseData1.visitor_name.mobileNumber|| null,
+          visitor_phone:responseData1.visitor_name.mobileNumber|| 7418529935,
           visitor_company_name: responseData1.visitor_name.company|| null,
           visitor_address: responseData1.visitor_name.address|| null,
           visitor_gst: responseData1.visitor_name.gstin|| null,
@@ -638,7 +639,7 @@ const getOrderStatus = async (req, res) => {
           invited_by_name: responseData1.customer_details?.memberName || "Unknown",
           visitor_name: responseData1.visitor_name.memberName|| null,
           visitor_email: responseData1.visitor_name.email|| null,
-          visitor_phone:responseData1.visitor_name.mobileNumber|| null,
+          visitor_phone:responseData1.visitor_name.mobileNumber|| 7418529635,
           visitor_company_name: responseData1.visitor_name.company|| null,
           visitor_company_address: responseData1?.visitor_name?.company_address || null,
           visitor_address: responseData1.visitor_name.address|| null,

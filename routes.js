@@ -134,7 +134,12 @@ const {
   addMemberRequisition,
   getRequestedChapterRequisition,
   addChapterRequisition,
-  updateChapterRequisition
+  updateChapterRequisition,
+  updateMemberRequisition,
+  updateVisitor,
+  sendVPEmail,
+  sendVisitorEmail
+
 } = require("./controllers");
 
 const path = require("path");
@@ -1027,6 +1032,11 @@ router.get('/uploads/onboardingCalls/:filename', (req, res) => {
 });
 
 router.put("/updateChapterRequisition", updateChapterRequisition);
+router.put("/updateMemberRequisition", updateMemberRequisition);
+
+router.post("/send-visitor-email", sendVisitorEmail);
+router.post("/send-vp-email", sendVPEmail);
+router.put('/update-visitor', updateVisitor)
 
 
 module.exports = router;
