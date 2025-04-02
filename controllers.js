@@ -2652,7 +2652,7 @@ const addKittyPayment = async (req, res) => {
     const updateMemberQuery = `
           UPDATE member
           SET meeting_payable_amount = $1
-          WHERE chapter_id = $2
+          WHERE chapter_id = $2 AND writeoff_status = FALSE;
       `;
 
     await con.query(updateMemberQuery, [total_bill_amount, chapter_id]);
@@ -4636,10 +4636,16 @@ const addMemberWriteOff = async (req, res) => {
       return res.status(400).json({ message: "Invalid members array" });
     }
 
-    const query = `
+    const insertQuery = `
       INSERT INTO rightoff_member (member_id, chapter_id, rightoff_date, total_pending_amount, no_of_late, writeoff_comment) 
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *;
+    `;
+
+    const updateQuery = `
+      UPDATE member 
+      SET writeoff_status = TRUE 
+      WHERE member_id = $1;
     `;
 
     let insertedRecords = [];
@@ -4661,8 +4667,11 @@ const addMemberWriteOff = async (req, res) => {
         rightoff_comment
       ];
 
-      const result = await con.query(query, values);
+      const result = await con.query(insertQuery, values);
       insertedRecords.push(result.rows[0]);
+
+      // Update writeoff_status in member table
+      await con.query(updateQuery, [parseInt(member_id)]);
     }
 
     res.status(201).json({ message: "Member Write Off Successfully!", data: insertedRecords });
@@ -4672,6 +4681,7 @@ const addMemberWriteOff = async (req, res) => {
     res.status(500).send("Error adding Write Off");
   }
 };
+
 
 
 const getAllMemberWriteOff = async (req, res) => {
