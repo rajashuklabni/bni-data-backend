@@ -811,7 +811,7 @@ const getLoginLogs = async (req, res) => {
 const getMembers = async (req, res) => {
   try {
     const result = await con.query(
-      "SELECT * FROM member WHERE delete_status = 0"
+      "SELECT * FROM member WHERE delete_status = 0 AND writeoff_status = false"
     );
     res.json(result.rows);
   } catch (error) {
@@ -2654,6 +2654,8 @@ const addKittyPayment = async (req, res) => {
           SET meeting_payable_amount = $1
           WHERE chapter_id = $2 AND writeoff_status = FALSE;
       `;
+
+      
 
     await con.query(updateMemberQuery, [total_bill_amount, chapter_id]);
     console.log(updateMemberQuery);
