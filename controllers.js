@@ -6371,15 +6371,24 @@ const updateChapterRequisition = async (req, res) => {
   console.log('=====================================');
 
   try {
-      const { chapter_requisition_id, approve_status, ro_comment, pickup_status, pickup_date } = req.body;
+      const { chapter_requisition_id, approve_status, ro_comment, pickup_status, pickup_date, given_status, slab_wise_comment } = req.body;
 
       console.log('📝 Request Data:', {
           chapter_requisition_id,
           approve_status,
           ro_comment,
           pickup_status,
-          pickup_date
+          pickup_date,
+          given_status,
+          slab_wise_comment  // Added this
       });
+        // Add this check at the start of the controller
+        const isOnlySlabWiseCommentUpdate = slab_wise_comment && 
+        !approve_status && 
+        !ro_comment && 
+        pickup_status === undefined && 
+        !pickup_date && 
+        !given_status;
 
       if (!chapter_requisition_id) {
           console.log('❌ Missing chapter_requisition_id in request body');
@@ -6391,7 +6400,7 @@ const updateChapterRequisition = async (req, res) => {
 
       // First, get the existing requisition
       const existingRequisition = await con.query(
-          'SELECT approve_status, ro_comment FROM chapter_requisition WHERE chapter_requisition_id = $1',
+          'SELECT approve_status, ro_comment, given_status, pickup_status, pickup_date FROM chapter_requisition WHERE chapter_requisition_id = $1',
           [chapter_requisition_id]
       );
 
@@ -6403,9 +6412,10 @@ const updateChapterRequisition = async (req, res) => {
           });
       }
 
-      // Merge existing and new approvals/comments
+      // Merge existing and new data
       let finalApproveStatus = {};
       let finalRoComment = {};
+      let finalGivenStatus = {};
 
       // Handle existing data
       if (existingRequisition.rows[0].approve_status) {
@@ -6426,13 +6436,56 @@ const updateChapterRequisition = async (req, res) => {
           }
       }
 
+      if (existingRequisition.rows[0].given_status) {
+          try {
+              finalGivenStatus = JSON.parse(existingRequisition.rows[0].given_status);
+              console.log('📌 Existing given_status:', finalGivenStatus);
+          } catch (e) {
+              console.error('Error parsing existing given_status:', e);
+          }
+      }
+
       // Merge with new data
-      finalApproveStatus = { ...finalApproveStatus, ...approve_status };
-      finalRoComment = { ...finalRoComment, ...ro_comment };
+      finalApproveStatus = approve_status ? { ...finalApproveStatus, ...approve_status } : finalApproveStatus;
+      finalRoComment = ro_comment ? { ...finalRoComment, ...ro_comment } : finalRoComment;
+      finalGivenStatus = given_status ? { ...finalGivenStatus, ...given_status } : finalGivenStatus;
+
+      // Check for approved accolades and update member table
+      if (approve_status) {
+          for (const [key, status] of Object.entries(approve_status)) {
+              if (status === 'approved') {
+                  const [memberId, accoladeId] = key.split('_').map(Number);
+                  console.log(`🎯 Processing approved accolade - Member: ${memberId}, Accolade: ${accoladeId}`);
+
+                  // Get current member data
+                  const memberResult = await con.query(
+                      'SELECT accolades_id FROM member WHERE member_id = $1',
+                      [memberId]
+                  );
+
+                  if (memberResult.rows.length > 0) {
+                      let currentAccolades = memberResult.rows[0].accolades_id || [];
+                      
+                      // Add accolade if not already present
+                      if (!currentAccolades.includes(accoladeId)) {
+                          currentAccolades.push(accoladeId);
+                          
+                          // Update member's accolades
+                          await con.query(
+                              'UPDATE member SET accolades_id = $1 WHERE member_id = $2',
+                              [currentAccolades, memberId]
+                          );
+                          console.log(`✅ Updated accolades for member ${memberId}:`, currentAccolades);
+                      }
+                  }
+              }
+          }
+      }
 
       console.log('🔄 Final merged data:', {
           approve_status: finalApproveStatus,
-          ro_comment: finalRoComment
+          ro_comment: finalRoComment,
+          given_status: finalGivenStatus
       });
 
       // Handle empty date value
@@ -6446,17 +6499,22 @@ const updateChapterRequisition = async (req, res) => {
               approve_status = $1,
               ro_comment = $2,
               pickup_status = $3,
-              pickup_date = $4
-          WHERE chapter_requisition_id = $5
+              pickup_date = $4,
+              given_status = $5,
+              slab_wise_comment = $6 
+          WHERE chapter_requisition_id = $7
           RETURNING *
       `;
 
       const values = [
           JSON.stringify(finalApproveStatus),
           JSON.stringify(finalRoComment),
-          pickup_status || false,
-          finalPickupDate,
-          chapter_requisition_id
+          isOnlySlabWiseCommentUpdate ? existingRequisition.rows[0].pickup_status : (pickup_status || existingRequisition.rows[0].pickup_status),
+          pickup_date ? pickup_date : existingRequisition.rows[0].pickup_date,  
+          JSON.stringify(finalGivenStatus),
+          slab_wise_comment,
+          chapter_requisition_id, 
+          
       ];
 
       console.log('🔍 Executing update query with values:', values);
@@ -6482,6 +6540,7 @@ const updateChapterRequisition = async (req, res) => {
       });
   }
 };
+
 
 
 const updateMemberRequisition = async (req, res) => {
