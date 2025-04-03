@@ -25,17 +25,17 @@ const fetch = (...args) =>
 
 // Replace with your Render database credentials
 const con = new Client({
-  host: "dpg-cs0d2hi3esus739088bg-a.oregon-postgres.render.com",
+  host: "54.39.51.161",
   user: "bni_dashboard_backend_database_user",
-  port: 5432,
-  password: "8UGkmCixOpO5Gb89BSBI8aPPapoAW6fD",
+  port: 7546,
+  password: "WW14XjfGlkDuGD5",
   database: "bni_dashboard_backend_database",
   ssl: {
     rejectUnauthorized: false, // Required for secure connections to Render
   },
 });
 
-con.connect().then(() => console.log("Connected to render PostgreSQL"));
+con.connect().then(() => console.log("Connected to BNI PostgreSQL"));
 
 
 const transporter = nodemailer.createTransport({
@@ -6692,7 +6692,7 @@ const sendVisitorEmail = async (req, res) => {
 
 
       const mailOptions = {
-          from: 'Vice President Desk-BNI Prolific <ankit.21chopra@gmail.com>',
+          from: 'Vice President Desk-BNI Prolific <info@bninewdelhi.in>',
           to: `${visitor_name} <${visitor_email}>`,
           cc: [
               'SUNIL K. BNI DIRECTOR <sunilk@bni-india.in>',
@@ -6799,7 +6799,7 @@ try {
     }).replace(/\//g, '-');
 
     const mailOptions = {
-      from: 'Vice President Desk-BNI Prolific <ankit.21chopra@gmail.com>',
+      from: 'Vice President Desk-BNI Prolific <info@bninewdelhi.in>',
           to: `${visitor_name} <${visitor_email}>`,
         cc: [
             'Prolific DC Lalpreet Aulakh <lalpreet@studiodesignbox.com>',
