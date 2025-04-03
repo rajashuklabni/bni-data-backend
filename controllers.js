@@ -6698,6 +6698,7 @@ const sendVisitorEmail = async (req, res) => {
               'SUNIL K. BNI DIRECTOR <sunilk@bni-india.in>',
               'Shini Sunil <shini.sunil@adico.in>',
               'Raja Shukla | Digital Marketing | Prolific Shukla <rajashukla@outlook.com>',
+              'Prince Sachdeva | Software Developer | Prolific Shukla <scriptforprince@gmail.com>',
               'Yatin wadhwa| Prolific| General Insurance <yatinwadhwa@ymail.com>',
               'admin.bnidw@adico.in',
               'BNI N E W Delhi Admin <admin@bninewdelhi.com>',
@@ -6807,6 +6808,7 @@ try {
             'Sunil K <sunil.k@adico.in>',
             'BNI NEW Delhi | Support <support@bninewdelhi.com>',
             'Raja Shukla | Digital Marketing | Prolific Shukla <rajashukla@outlook.com>',
+            'Prince Sachdeva | Software Developer | Prolific Shukla <scriptforprince@gmail.com>',
             'Yatin wadhwa| Prolific| General Insurance <yatinwadhwa@ymail.com>',
             'admin.bnidw@adico.in'
         ],
