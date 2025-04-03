@@ -6878,80 +6878,100 @@ try {
     });
 }
 };
+
 const updateVisitor = async (req, res) => {
-try {
-    console.log('\n🔄 Starting Visitor Update Process');
-    console.log('=====================================');
-    console.log('📝 Request Body:', req.body);
-    
-    const { 
-        visitor_id, 
-        chapter_apply_kit, 
-        visitor_entry_excel, 
-        google_updation_sheet, 
-        approve_induction_kit, 
-        induction_status 
-    } = req.body;
+  try {
+      console.log('\n🔄 Starting Visitor Update Process');
+      console.log('=====================================');
+      console.log('📝 Request Body:', req.body);
+      
+      const { 
+          visitor_id, 
+          chapter_apply_kit, 
+          visitor_entry_excel, 
+          google_updation_sheet, 
+          approve_induction_kit, 
+          induction_status,
+          verification 
+      } = req.body;
 
-    // Validate visitor_id
-    if (!visitor_id) {
-        console.log('❌ Error: visitor_id is missing');
-        return res.status(400).json({ error: 'visitor_id is required' });
-    }
+      // Validate visitor_id
+      if (!visitor_id) {
+          console.log('❌ Error: visitor_id is missing');
+          return res.status(400).json({ error: 'visitor_id is required' });
+      }
 
-    console.log('🔍 Processing update for visitor_id:', visitor_id);
-    console.log('📊 Update values:', {
-        chapter_apply_kit,
-        visitor_entry_excel,
-        google_updation_sheet,
-        approve_induction_kit,
-        induction_status
-    });
+      // First, get the existing visitor data
+      const existingVisitorQuery = 'SELECT verification FROM visitors WHERE visitor_id = $1';
+      const existingVisitor = await con.query(existingVisitorQuery, [visitor_id]);
+      
+      let updatedVerification = {};
+      
+      // If there's existing verification data, parse it
+      if (existingVisitor.rows[0]?.verification) {
+          try {
+              updatedVerification = JSON.parse(existingVisitor.rows[0].verification);
+              console.log('📊 Existing verification data:', updatedVerification);
+          } catch (error) {
+              console.error('❌ Error parsing existing verification:', error);
+          }
+      }
 
-    const query = `
-        UPDATE visitors
-        SET 
-            chapter_apply_kit = COALESCE($1, chapter_apply_kit),
-            visitor_entry_excel = COALESCE($2, visitor_entry_excel),
-            google_updation_sheet = COALESCE($3, google_updation_sheet),
-            approve_induction_kit = COALESCE($4, approve_induction_kit),
-            induction_status = COALESCE($5, induction_status)
-        WHERE visitor_id = $6
-        RETURNING *;
-    `;
+      // Merge new verification data with existing data
+      if (verification) {
+          updatedVerification = {
+              ...updatedVerification,
+              ...verification
+          };
+          console.log('🔄 Merged verification data:', updatedVerification);
+      }
 
-    const values = [
-        chapter_apply_kit,
-        visitor_entry_excel,
-        google_updation_sheet,
-        approve_induction_kit,
-        induction_status,
-        visitor_id
-    ];
+      const query = `
+          UPDATE visitors
+          SET 
+              chapter_apply_kit = COALESCE($1, chapter_apply_kit),
+              visitor_entry_excel = COALESCE($2, visitor_entry_excel),
+              google_updation_sheet = COALESCE($3, google_updation_sheet),
+              approve_induction_kit = COALESCE($4, approve_induction_kit),
+              induction_status = COALESCE($5, induction_status),
+              verification = $6
+          WHERE visitor_id = $7
+          RETURNING *;
+      `;
 
-    console.log('🔍 Executing query with values:', values);
+      const values = [
+          chapter_apply_kit,
+          visitor_entry_excel,
+          google_updation_sheet,
+          approve_induction_kit,
+          induction_status,
+          JSON.stringify(updatedVerification),  // Use merged verification data
+          visitor_id
+      ];
 
-    const { rows } = await con.query(query, values);
+      console.log('🔍 Executing query with values:', values);
 
-    if (rows.length === 0) {
-        console.log('❌ Error: No visitor found with ID:', visitor_id);
-        return res.status(404).json({ error: 'Visitor not found' });
-    }
+      const { rows } = await con.query(query, values);
 
-    console.log('✅ Visitor updated successfully:', rows[0]);
-    res.json({ 
-        message: 'Visitor updated successfully', 
-        updatedVisitor: rows[0] 
-    });
+      if (rows.length === 0) {
+          console.log('❌ Error: No visitor found with ID:', visitor_id);
+          return res.status(404).json({ error: 'Visitor not found' });
+      }
 
-} catch (error) {
-    console.error('❌ Error updating visitor:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({ 
-        error: 'Internal server error',
-        details: error.message 
-    });
-}
+      console.log('✅ Visitor updated successfully:', rows[0]);
+      res.json({ 
+          message: 'Visitor updated successfully', 
+          updatedVisitor: rows[0] 
+      });
+
+  } catch (error) {
+      console.error('❌ Error updating visitor:', error);
+      console.error('Error stack:', error.stack);
+      res.status(500).json({ 
+          error: 'Internal server error',
+          details: error.message 
+      });
+  }
 };
 
 module.exports = {
