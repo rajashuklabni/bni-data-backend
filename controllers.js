@@ -6708,7 +6708,7 @@ const sendVisitorEmail = async (req, res) => {
           html: `
               <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6;">
                   <div style="border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 20px; color: #666;">
-                      <p><strong>From:</strong> Vice President Desk-BNI Prolific &lt;ankit.21chopra@gmail.com&gt;</p>
+                      <p><strong>From:</strong> Vice President Desk-BNI Prolific &lt;info@bninewdelhi,in&gt;</p>
                       <p><strong>Sent:</strong> ${currentDate}</p>
                       <p><strong>To:</strong> ${visitor_name} &lt;${visitor_email}&gt;</p>
                       <p><strong>Cc:</strong> SUNIL K. BNI DIRECTOR &lt;sunilk@bni-india.in&gt;; Shini Sunil &lt;shini.sunil@adico.in&gt;; Raja Shukla | Digital Marketing | Prolific Shukla &lt;rajashukla@outlook.com&gt;; Yatin wadhwa| Prolific| General Insurance &lt;yatinwadhwa@ymail.com&gt;; admin.bnidw@adico.in; BNI N E W Delhi Admin &lt;admin@bninewdelhi.com&gt;; sunil.k@adico.in</p>
@@ -6816,7 +6816,7 @@ try {
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6;">
                 <div style="border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 20px; color: #666;">
-                    <p><strong>From:</strong> Vice President Desk-BNI Prolific &lt;ankit.21chopra@gmail.com&gt;</p>
+                    <p><strong>From:</strong> Vice President Desk-BNI Prolific &lt;info@bninewdelhi,in&gt;</p>
                     <p><strong>Sent:</strong> ${new Date().toLocaleString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
