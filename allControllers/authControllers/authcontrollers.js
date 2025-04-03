@@ -11,14 +11,14 @@ const transporter = nodemailer.createTransport({
     port: 587,
     secure: false,
     auth: {
-      user: "ceo@bninewdelhi.in",
-      pass: "OBAFRu4mXOwGO8i",
+      user: "info@bninewdelhi.in",
+      pass: "PzfE8JH93pV1RUx",
     },
   });
 
 const sendOtpEmail = (email, otp) => {
     const mailOptions = {
-        from: "ceo@bninewdelhi.in",
+        from: "info@bninewdelhi.in",
         to: email,
         subject: `Your OTP Code`,
         text: `Your OTP code is: ${otp}`,

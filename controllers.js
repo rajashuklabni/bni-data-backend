@@ -43,8 +43,8 @@ const transporter = nodemailer.createTransport({
   port: 587,
   secure: false,
   auth: {
-    user: "ceo@bninewdelhi.in",
-    pass: "OBAFRu4mXOwGO8i",
+    user: "info@bninewdelhi.in",
+    pass: "PzfE8JH93pV1RUx",
   },
 });
 
@@ -64,7 +64,7 @@ const sendEmail = (req, res) => {
   const { email } = req.body;
 
   const mailOptions = {
-    from: "ceo@bninewdelhi.in",
+    from: "info@bninewdelhi.in",
     to: email,
     subject: "Test Email",
     text: "This is a test email from our application.",
@@ -235,7 +235,7 @@ const getRegion = async (req, res) => {
         // Transform the logo data
         let logoUrl = null;
         if (region.region_logo && region.region_logo !== '{}' && region.region_logo !== 'null') {
-            logoUrl = `http://localhost:5000/api/uploads/regionLogos/${region.region_logo}`;
+            logoUrl = `https://backend.bninewdelhi.com/api/uploads/regionLogos/${region.region_logo}`;
             console.log('🖼️ Constructed logo URL:', logoUrl);
         }
 
@@ -447,7 +447,7 @@ const addRegion = async (req, res) => {
       message: "Region added successfully!", 
       data: {
         ...result.rows[0],
-        region_logo_url: region_logo ? `http://localhost:5000/uploads/regionLogos/${region_logo}` : null
+        region_logo_url: region_logo ? `https://backend.bninewdelhi.com/uploads/regionLogos/${region_logo}` : null
       }
     });
   } catch (error) {
@@ -3628,8 +3628,8 @@ const sendQrCodeByEmail = async (req, res) => {
         port: 587,
         secure: false,
         auth: {
-          user: "ceo@bninewdelhi.in",
-          pass: "OBAFRu4mXOwGO8i",
+          user: "info@bninewdelhi.in",
+          pass: "PzfE8JH93pV1RUx",
         },
       });
 
@@ -3648,7 +3648,7 @@ const sendQrCodeByEmail = async (req, res) => {
 
       // Email options
       const mailOptions = {
-        from: "ceo@bninewdelhi.in",
+        from: "info@bninewdelhi.in",
         to: customerEmail,
         subject: `Training Details & QR Code for ${training_name}`,
         html: emailContent,
