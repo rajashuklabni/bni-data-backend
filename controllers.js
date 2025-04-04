@@ -500,6 +500,9 @@ const addChapter = async (req, res) => {
       chapter_available_fund,
       billing_frequency,
       hotel_id,
+      president_email,
+      vice_president_email,
+      treasurer_email
   } = req.body;
 
   // Convert hotel_id to number if it's an array
@@ -537,13 +540,13 @@ const addChapter = async (req, res) => {
               street_address_line, postal_code, chapter_facebook, chapter_instagram,
               chapter_linkedin, chapter_youtube, chapter_website, date_of_publishing,
               chapter_launched_by, chapter_location_note, chapter_late_fees, available_fund, kitty_billing_frequency,
-              hotel_id
+              hotel_id, vice_president_mail, president_mail, treasurer_mail
           ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9,
               $10, $11, $12, $13, $14, $15, $16,
               $17, $18, $19, $20, $21, $22, $23,
               $24, $25, $26, $27, $28, $29, $30,
-              $31, $32, $33, $34, $35, $36
+              $31, $32, $33, $34, $35, $36, $37, $38, $39
           ) RETURNING *`,
           [
               region_id,
@@ -581,7 +584,11 @@ const addChapter = async (req, res) => {
               chapter_late_fees,
               chapter_available_fund,
               billing_frequency,
-              processedHotelId  // Use the processed hotel_id instead of the original
+              processedHotelId,
+              vice_president_email,
+              president_email,
+              treasurer_email
+
           ]
       );
 
@@ -1179,6 +1186,9 @@ const updateChapter = async (req, res) => {
       chapter_available_fund,
       billing_frequency,
       hotel_id,
+      president_email,
+      vice_president_email,
+      treasurer_email
   } = req.body;
 
   let processedHotelId = Array.isArray(hotel_id) ? parseInt(hotel_id[0]) : parseInt(hotel_id);
@@ -1237,8 +1247,11 @@ const updateChapter = async (req, res) => {
               chapter_late_fees = $33,
               available_fund = $34,
               kitty_billing_frequency = $35,
-              hotel_id = $36
-          WHERE chapter_id = $37
+              hotel_id = $36,
+              vice_president_mail = $37,
+              president_mail = $38,
+              treasurer_mail = $39
+          WHERE chapter_id = $40
           RETURNING *
       `;
 
@@ -1279,6 +1292,9 @@ const updateChapter = async (req, res) => {
           chapter_available_fund,
           billing_frequency,
           processedHotelId,
+          vice_president_email,
+          president_email,
+          treasurer_email,
           chapter_id
       ];
 
