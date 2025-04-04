@@ -103,7 +103,11 @@ const loginController = async (req, res) => {
 
             case "chapter":
                 user = await db.query(
-                    "SELECT * FROM chapter WHERE email_id = $1",
+                    `SELECT * FROM chapter 
+                     WHERE email_id = $1 
+                     OR vice_president_mail = $1 
+                     OR president_mail = $1 
+                     OR treasurer_mail = $1`,
                     [email]
                 );
                 if (!user.rows.length) {
@@ -209,7 +213,14 @@ const verifyOtpController = async (req, res) => {
                 userExists = await db.query("SELECT * FROM users WHERE email = $1", [email]);
                 break;
             case 'chapter':
-                userExists = await db.query("SELECT * FROM chapter WHERE email_id = $1", [email]);
+                userExists = await db.query(
+                    `SELECT * FROM chapter 
+                     WHERE email_id = $1 
+                     OR vice_president_mail = $1 
+                     OR president_mail = $1 
+                     OR treasurer_mail = $1`,
+                    [email]
+                );
                 break;
             case 'member':
                 userExists = await db.query("SELECT * FROM member WHERE member_email_address = $1", [email]);
