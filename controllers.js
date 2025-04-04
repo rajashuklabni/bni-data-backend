@@ -6296,13 +6296,84 @@ const addChapterRequisition = async (req, res) => {
           chapter_id,
           accolade_ids,
           comment,
-          request_status = 'open',  // default value
+          request_status = 'open',
           ro_comment = null,
-          pickup_status = false,    // default value
-          pickup_date = null        // default value
+          pickup_status = false,
+          pickup_date = null,
+          visitor_id,  // New field
+          approve_status = null,
+          slab_wise_comment = null,
+          given_status = null
       } = req.body;
 
-      console.log('📝 Received Request Data:', {
+      console.log('📝 Checking for visitor_id flow:', { visitor_id });
+
+      // If visitor_id exists, handle single entry flow
+      if (visitor_id) {
+          console.log('🎯 Detected visitor_id flow with data:', {
+              visitor_id,
+              chapter_id,
+              accolade_ids: Array.isArray(accolade_ids) ? accolade_ids[0] : accolade_ids,
+              comment,
+              ro_comment,
+              pickup_status,
+              pickup_date,
+              approve_status,
+              slab_wise_comment,
+              given_status
+          });
+
+          const visitorQuery = `
+              INSERT INTO chapter_requisition (
+                  member_ids,
+                  chapter_id,
+                  accolade_ids,
+                  requested_date,
+                  comment,
+                  request_status,
+                  ro_comment,
+                  pickup_status,
+                  pickup_date,
+                  approve_status,
+                  slab_wise_comment,
+                  given_status,
+                  visitor_id
+              )
+              VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+              RETURNING *
+          `;
+
+          const visitorValues = [
+              [0], // member_ids will be null
+              chapter_id,
+              [Array.isArray(accolade_ids) ? accolade_ids[0] : accolade_ids], // Single accolade_id in array
+              comment,
+              request_status,
+              ro_comment,
+              pickup_status,
+              pickup_date,
+              approve_status,
+              slab_wise_comment,
+              given_status,
+              visitor_id  // Moved to last position
+          ];
+
+          console.log('🔍 Executing visitor flow query with values:', visitorValues);
+
+          const result = await con.query(visitorQuery, visitorValues);
+          const newRequisition = result.rows[0];
+
+          console.log('✅ Chapter Requisition created successfully (visitor flow):', newRequisition);
+
+          return res.status(201).json({
+              success: true,
+              message: "Chapter requisition created successfully (visitor flow)",
+              data: newRequisition
+          });
+      }
+
+      // Original flow for member_ids (existing code)
+      console.log('👥 Regular member flow detected with data:', {
           member_ids,
           chapter_id,
           accolade_ids,
@@ -6322,8 +6393,8 @@ const addChapterRequisition = async (req, res) => {
           });
       }
 
-        // Validate arrays
-        if (!Array.isArray(member_ids) || !Array.isArray(accolade_ids)) {
+      // Validate arrays
+      if (!Array.isArray(member_ids) || !Array.isArray(accolade_ids)) {
           console.error('❌ Validation Error: member_ids and accolade_ids must be arrays');
           return res.status(400).json({
               success: false,
@@ -6331,7 +6402,7 @@ const addChapterRequisition = async (req, res) => {
           });
       }
 
-      // Insert into database
+      // Original query with visitor_id added at the end
       const query = `
           INSERT INTO chapter_requisition (
               member_ids,
@@ -6342,9 +6413,10 @@ const addChapterRequisition = async (req, res) => {
               request_status,
               ro_comment,
               pickup_status,
-              pickup_date
+              pickup_date,
+              visitor_id
           )
-          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8)
+          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8, $9)
           RETURNING *
       `;
 
@@ -6355,32 +6427,33 @@ const addChapterRequisition = async (req, res) => {
           comment,
           request_status,
           ro_comment,
-            pickup_status,
-            pickup_date
-        ];
+          pickup_status,
+          pickup_date,
+          null  // visitor_id will be null in regular flow
+      ];
 
-        console.log('🔍 Executing Query with values:', values);
+      console.log('🔍 Executing regular flow query with values:', values);
 
-        const result = await con.query(query, values);
-        const newRequisition = result.rows[0];
+      const result = await con.query(query, values);
+      const newRequisition = result.rows[0];
 
-        console.log('✅ Chapter Requisition created successfully:', newRequisition);
+      console.log('✅ Chapter Requisition created successfully (regular flow):', newRequisition);
 
-        res.status(201).json({
-            success: true,
-            message: "Chapter requisition created successfully",
-            data: newRequisition
-        });
+      res.status(201).json({
+          success: true,
+          message: "Chapter requisition created successfully",
+          data: newRequisition
+      });
 
-    } catch (error) {
-        console.error('❌ Error in addChapterRequisition:', error);
-        res.status(500).json({
-            success: false,
-            message: "Error creating chapter requisition",
-            error: error.message
-        });
-    }
-};
+  } catch (error) {
+      console.error('❌ Error in addChapterRequisition:', error);
+      res.status(500).json({
+          success: false,
+          message: "Error creating chapter requisition",
+          error: error.message
+      });
+  }
+};;
 
 const updateChapterRequisition = async (req, res) => {
   console.log('\n🔄 Starting Chapter Requisition Update');
@@ -6389,22 +6462,22 @@ const updateChapterRequisition = async (req, res) => {
   try {
       const { chapter_requisition_id, approve_status, ro_comment, pickup_status, pickup_date, given_status, slab_wise_comment } = req.body;
 
-      console.log('📝 Request Data:', {
-          chapter_requisition_id,
-          approve_status,
-          ro_comment,
-          pickup_status,
-          pickup_date,
-          given_status,
-          slab_wise_comment  // Added this
-      });
-        // Add this check at the start of the controller
-        const isOnlySlabWiseCommentUpdate = slab_wise_comment && 
-        !approve_status && 
-        !ro_comment && 
-        pickup_status === undefined && 
-        !pickup_date && 
-        !given_status;
+      // First, check if this is a visitor requisition
+      const visitorCheck = await con.query(
+          'SELECT visitor_id FROM chapter_requisition WHERE chapter_requisition_id = $1',
+          [chapter_requisition_id]
+      );
+      
+      const isVisitorRequest = visitorCheck.rows[0]?.visitor_id !== null;
+      console.log('👤 Is Visitor Request:', isVisitorRequest);
+
+      // Keep existing slab wise comment check
+      const isOnlySlabWiseCommentUpdate = slab_wise_comment && 
+          !approve_status && 
+          !ro_comment && 
+          pickup_status === undefined && 
+          !pickup_date && 
+          !given_status;
 
       if (!chapter_requisition_id) {
           console.log('❌ Missing chapter_requisition_id in request body');
@@ -6414,9 +6487,9 @@ const updateChapterRequisition = async (req, res) => {
           });
       }
 
-      // First, get the existing requisition
+      // Get existing requisition data
       const existingRequisition = await con.query(
-          'SELECT approve_status, ro_comment, given_status, pickup_status, pickup_date FROM chapter_requisition WHERE chapter_requisition_id = $1',
+          'SELECT * FROM chapter_requisition WHERE chapter_requisition_id = $1',
           [chapter_requisition_id]
       );
 
@@ -6428,52 +6501,72 @@ const updateChapterRequisition = async (req, res) => {
           });
       }
 
-      // Merge existing and new data
       let finalApproveStatus = {};
       let finalRoComment = {};
       let finalGivenStatus = {};
 
-      // Handle existing data
-      if (existingRequisition.rows[0].approve_status) {
-          try {
-              finalApproveStatus = JSON.parse(existingRequisition.rows[0].approve_status);
-              console.log('📌 Existing approve_status:', finalApproveStatus);
-          } catch (e) {
-              console.error('Error parsing existing approve_status:', e);
+      // Check if this is only a pickup status update
+      const isOnlyPickupUpdate = pickup_status !== undefined && 
+          !approve_status && 
+          !ro_comment && 
+          !given_status && 
+          !slab_wise_comment;
+
+      if (isOnlyPickupUpdate) {
+          // For pickup-only updates, preserve existing values
+          finalApproveStatus = isVisitorRequest ? 
+              existingRequisition.rows[0].approve_status :
+              existingRequisition.rows[0].approve_status || '{}';
+          
+          finalRoComment = isVisitorRequest ? 
+              existingRequisition.rows[0].ro_comment :
+              existingRequisition.rows[0].ro_comment || '{}';
+          
+          finalGivenStatus = isVisitorRequest ? 
+              existingRequisition.rows[0].given_status :
+              existingRequisition.rows[0].given_status || '{}';
+      } else if (isVisitorRequest) {
+          // For visitor requests, use direct values
+          finalApproveStatus = approve_status || existingRequisition.rows[0].approve_status;
+          finalRoComment = ro_comment || existingRequisition.rows[0].ro_comment;
+          finalGivenStatus = given_status || existingRequisition.rows[0].given_status || '{}';
+      } else {
+          // Existing logic for member requests
+          if (existingRequisition.rows[0].approve_status) {
+              try {
+                  finalApproveStatus = JSON.parse(existingRequisition.rows[0].approve_status);
+              } catch (e) {
+                  console.error('Error parsing existing approve_status:', e);
+              }
           }
+
+          if (existingRequisition.rows[0].ro_comment) {
+              try {
+                  finalRoComment = JSON.parse(existingRequisition.rows[0].ro_comment);
+              } catch (e) {
+                  console.error('Error parsing existing ro_comment:', e);
+              }
+          }
+
+          if (existingRequisition.rows[0].given_status) {
+              try {
+                  finalGivenStatus = JSON.parse(existingRequisition.rows[0].given_status);
+              } catch (e) {
+                  console.error('Error parsing existing given_status:', e);
+              }
+          }
+
+          // Merge with new data for member requests
+          finalApproveStatus = approve_status ? { ...finalApproveStatus, ...approve_status } : finalApproveStatus;
+          finalRoComment = ro_comment ? { ...finalRoComment, ...ro_comment } : finalRoComment;
+          finalGivenStatus = given_status ? { ...finalGivenStatus, ...given_status } : finalGivenStatus;
       }
 
-      if (existingRequisition.rows[0].ro_comment) {
-          try {
-              finalRoComment = JSON.parse(existingRequisition.rows[0].ro_comment);
-              console.log('📌 Existing ro_comment:', finalRoComment);
-          } catch (e) {
-              console.error('Error parsing existing ro_comment:', e);
-          }
-      }
-
-      if (existingRequisition.rows[0].given_status) {
-          try {
-              finalGivenStatus = JSON.parse(existingRequisition.rows[0].given_status);
-              console.log('📌 Existing given_status:', finalGivenStatus);
-          } catch (e) {
-              console.error('Error parsing existing given_status:', e);
-          }
-      }
-
-      // Merge with new data
-      finalApproveStatus = approve_status ? { ...finalApproveStatus, ...approve_status } : finalApproveStatus;
-      finalRoComment = ro_comment ? { ...finalRoComment, ...ro_comment } : finalRoComment;
-      finalGivenStatus = given_status ? { ...finalGivenStatus, ...given_status } : finalGivenStatus;
-
-      // Check for approved accolades and update member table
-      if (approve_status) {
+      // Keep existing member table update logic
+      if (!isVisitorRequest && approve_status) {
           for (const [key, status] of Object.entries(approve_status)) {
               if (status === 'approved') {
                   const [memberId, accoladeId] = key.split('_').map(Number);
-                  console.log(`🎯 Processing approved accolade - Member: ${memberId}, Accolade: ${accoladeId}`);
-
-                  // Get current member data
                   const memberResult = await con.query(
                       'SELECT accolades_id FROM member WHERE member_id = $1',
                       [memberId]
@@ -6481,33 +6574,19 @@ const updateChapterRequisition = async (req, res) => {
 
                   if (memberResult.rows.length > 0) {
                       let currentAccolades = memberResult.rows[0].accolades_id || [];
-                      
-                      // Add accolade if not already present
                       if (!currentAccolades.includes(accoladeId)) {
                           currentAccolades.push(accoladeId);
-                          
-                          // Update member's accolades
                           await con.query(
                               'UPDATE member SET accolades_id = $1 WHERE member_id = $2',
                               [currentAccolades, memberId]
                           );
-                          console.log(`✅ Updated accolades for member ${memberId}:`, currentAccolades);
                       }
                   }
               }
           }
       }
 
-      console.log('🔄 Final merged data:', {
-          approve_status: finalApproveStatus,
-          ro_comment: finalRoComment,
-          given_status: finalGivenStatus
-      });
-
-      // Handle empty date value
-      const finalPickupDate = pickup_date && pickup_date.trim() !== '' ? pickup_date : null;
-
-      console.log('📅 Final pickup date:', finalPickupDate);
+      const finalPickupDate = pickup_date && pickup_date.trim() !== '' ? pickup_date : existingRequisition.rows[0].pickup_date;
 
       const query = `
           UPDATE chapter_requisition 
@@ -6523,17 +6602,18 @@ const updateChapterRequisition = async (req, res) => {
       `;
 
       const values = [
-          JSON.stringify(finalApproveStatus),
-          JSON.stringify(finalRoComment),
-          isOnlySlabWiseCommentUpdate ? existingRequisition.rows[0].pickup_status : (pickup_status || existingRequisition.rows[0].pickup_status),
-          pickup_date ? pickup_date : existingRequisition.rows[0].pickup_date,  
-          JSON.stringify(finalGivenStatus),
-          slab_wise_comment,
-          chapter_requisition_id, 
-          
+          isVisitorRequest ? finalApproveStatus : 
+              (typeof finalApproveStatus === 'string' ? finalApproveStatus : JSON.stringify(finalApproveStatus)),
+          isVisitorRequest ? finalRoComment : 
+              (typeof finalRoComment === 'string' ? finalRoComment : JSON.stringify(finalRoComment)),
+          isOnlySlabWiseCommentUpdate ? existingRequisition.rows[0].pickup_status : 
+              (pickup_status !== undefined ? pickup_status : existingRequisition.rows[0].pickup_status),
+          finalPickupDate,
+          isVisitorRequest ? finalGivenStatus : 
+              (typeof finalGivenStatus === 'string' ? finalGivenStatus : JSON.stringify(finalGivenStatus)),
+          slab_wise_comment || existingRequisition.rows[0].slab_wise_comment,
+          chapter_requisition_id
       ];
-
-      console.log('🔍 Executing update query with values:', values);
 
       const result = await con.query(query, values);
       const updatedRequisition = result.rows[0];
@@ -6556,6 +6636,7 @@ const updateChapterRequisition = async (req, res) => {
       });
   }
 };
+
 
 
 
