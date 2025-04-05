@@ -5540,11 +5540,10 @@ const importMembersCSV = async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const rows = [];
-
     const phoneNumbers = new Set();
     const emailAddresses = new Set();
     const gstNumbers = new Set();
+    const members = [];
 
     // Helper to sanitize date
     const sanitizeDate = (dateStr) => {
@@ -5554,11 +5553,10 @@ const importMembersCSV = async (req, res) => {
     fs.createReadStream(filePath)
       .pipe(csv())
       .on('data', (data) => {
-        // Convert accolades_id from string to array format
         if (data.accolades_id) {
           try {
             data.accolades_id = JSON.parse(data.accolades_id.replace(/'/g, '"'));
-          } catch (error) {
+          } catch (err) {
             console.error("Error parsing accolades_id:", data.accolades_id);
             data.accolades_id = [];
           }
@@ -5570,57 +5568,17 @@ const importMembersCSV = async (req, res) => {
         emailAddresses.add(data.member_email_address);
         gstNumbers.add(data.member_gst_number);
 
-        rows.push([
-          data.member_first_name,
-          data.member_last_name,
-          sanitizeDate(data.member_date_of_birth),
-          data.member_phone_number,
-          data.member_alternate_mobile_number,
-          data.member_email_address,
-          data.street_address_line_1,
-          data.address_pincode,
-          data.address_city,
-          data.address_state,
-          data.region_id,
-          data.chapter_id,
-          `{${data.accolades_id.join(',')}}`, // PostgreSQL array format
-          sanitizeDate(data.member_induction_date),
-          data.member_current_membership,
-          sanitizeDate(data.member_renewal_date),
-          data.member_gst_number,
-          data.member_company_name,
-          data.member_company_address,
-          data.member_company_state,
-          data.member_company_city,
-          data.member_photo,
-          data.member_website,
-          data.member_company_logo,
-          data.member_facebook,
-          data.member_instagram,
-          data.member_linkedin,
-          data.member_youtube,
-          data.country,
-          data.street_address_line_2,
-          data.gender,
-          data.notification_consent,
-          sanitizeDate(data.date_of_publishing),
-          data.member_sponsored_by,
-          data.member_status,
-          data.delete_status,
-          data.member_company_pincode,
-          data.meeting_opening_balance,
-          data.meeting_payable_amount,
-          data.category_name,
-        ]);
+        members.push(data);
       })
       .on('end', async () => {
-        fs.unlinkSync(filePath); // Remove file after processing
+        fs.unlinkSync(filePath);
 
-        if (rows.length === 0) {
+        if (members.length === 0) {
           return res.status(400).json({ message: 'No data found in file' });
         }
 
         try {
+          // Check for duplicates
           const existingQuery = `
             SELECT member_phone_number, member_email_address, member_gst_number 
             FROM member 
@@ -5628,7 +5586,6 @@ const importMembersCSV = async (req, res) => {
               OR member_email_address = ANY($2) 
               OR member_gst_number = ANY($3)
           `;
-
           const { rows: existingMembers } = await con.query(existingQuery, [
             Array.from(phoneNumbers),
             Array.from(emailAddresses),
@@ -5638,30 +5595,92 @@ const importMembersCSV = async (req, res) => {
           if (existingMembers.length > 0) {
             return res.status(400).json({
               message: "Duplicate data found for phone, email, or GST. Please review your file.",
-              duplicates: existingMembers.map(
-                (m) =>
-                  `Phone: ${m.member_phone_number}, Email: ${m.member_email_address}, GST: ${m.member_gst_number}`
+              duplicates: existingMembers.map((m) =>
+                `Phone: ${m.member_phone_number}, Email: ${m.member_email_address}, GST: ${m.member_gst_number}`
               ),
             });
           }
 
-          const query = format(`
-            INSERT INTO member (
-              member_first_name, member_last_name, member_date_of_birth, member_phone_number,
-              member_alternate_mobile_number, member_email_address, street_address_line_1, address_pincode,
-              address_city, address_state, region_id, chapter_id, accolades_id, member_induction_date,
-              member_current_membership, member_renewal_date, member_gst_number, member_company_name,
-              member_company_address, member_company_state, member_company_city, member_photo, member_website,
-              member_company_logo, member_facebook, member_instagram, member_linkedin, member_youtube,
-              country, street_address_line_2, gender, notification_consent, date_of_publishing,
-              member_sponsored_by, member_status, delete_status, member_company_pincode,
-              meeting_opening_balance, meeting_payable_amount, category_name
-            ) VALUES %L`, rows);
+          // Insert each member one-by-one
+          for (const data of members) {
+            const insertMemberQuery = `
+              INSERT INTO member (
+                member_first_name, member_last_name, member_date_of_birth, member_phone_number,
+                member_alternate_mobile_number, member_email_address, street_address_line_1, address_pincode,
+                address_city, address_state, region_id, chapter_id, accolades_id, member_induction_date,
+                member_current_membership, member_renewal_date, member_gst_number, member_company_name,
+                member_company_address, member_company_state, member_company_city, member_photo, member_website,
+                member_company_logo, member_facebook, member_instagram, member_linkedin, member_youtube,
+                country, street_address_line_2, gender, notification_consent, date_of_publishing,
+                member_sponsored_by, member_status, delete_status, member_company_pincode,
+                meeting_opening_balance, meeting_payable_amount, category_name
+              ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                $11, $12, $13, $14, $15, $16, $17, $18,
+                $19, $20, $21, $22, $23, $24, $25, $26,
+                $27, $28, $29, $30, $31, $32, $33, $34,
+                $35, $36, $37, $38, $39, $40
+              ) RETURNING member_id
+            `;
 
-          await con.query(query);
-          res.status(200).json({ message: 'Members imported successfully!' });
-        } catch (dbError) {
-          console.error('Database error:', dbError);
+            const memberValues = [
+              data.member_first_name,
+              data.member_last_name,
+              sanitizeDate(data.member_date_of_birth),
+              data.member_phone_number,
+              data.member_alternate_mobile_number,
+              data.member_email_address,
+              data.street_address_line_1,
+              data.address_pincode,
+              data.address_city,
+              data.address_state,
+              data.region_id,
+              data.chapter_id,
+              `{${data.accolades_id.join(',')}}`,
+              sanitizeDate(data.member_induction_date),
+              data.member_current_membership,
+              sanitizeDate(data.member_renewal_date),
+              data.member_gst_number,
+              data.member_company_name,
+              data.member_company_address,
+              data.member_company_state,
+              data.member_company_city,
+              data.member_photo,
+              data.member_website,
+              data.member_company_logo,
+              data.member_facebook,
+              data.member_instagram,
+              data.member_linkedin,
+              data.member_youtube,
+              data.country,
+              data.street_address_line_2,
+              data.gender,
+              data.notification_consent,
+              sanitizeDate(data.date_of_publishing),
+              data.member_sponsored_by,
+              data.member_status,
+              data.delete_status,
+              data.member_company_pincode,
+              data.meeting_opening_balance,
+              data.meeting_payable_amount,
+              data.category_name,
+            ];
+
+            const result = await con.query(insertMemberQuery, memberValues);
+            const member_id = result.rows[0].member_id;
+
+            // Insert into bankorder
+            const meeting_opening_balance = parseFloat(data.meeting_opening_balance) || 0;
+
+            await con.query(
+              `INSERT INTO bankorder (member_id, chapter_id, amount_to_pay) VALUES ($1, $2, $3)`,
+              [member_id, parseInt(data.chapter_id), meeting_opening_balance]
+            );
+          }
+
+          res.status(200).json({ message: 'Members and bank orders imported successfully!' });
+        } catch (err) {
+          console.error('Database error:', err);
           res.status(500).json({ message: 'Database insertion failed. Please try again.' });
         }
       });

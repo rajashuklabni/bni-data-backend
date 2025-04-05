@@ -529,65 +529,65 @@
             });
         </script>
 
-        <script>
-            document.getElementById("importForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const formData = new FormData(e.target);
+<script>
+    document.getElementById("importForm").addEventListener("submit", async (e) => {
+e.preventDefault();
+const formData = new FormData(e.target);
 
-  try {
-    const response = await fetch("/api/import-members", {
-      method: "POST",
-      body: formData,
-    });
+try {
+const response = await fetch("/api/import-members", {
+method: "POST",
+body: formData,
+});
 
-    const data = await response.json();
+const data = await response.json();
 
-    if (response.ok) {
-        Swal.fire({
-  icon: "success",
-  title: "Success!",
-  text: data.message,
-  timer: 2000, // Optional: auto-close after 2 seconds
-  showConfirmButton: false
+if (response.ok) {
+Swal.fire({
+icon: "success",
+title: "Success!",
+text: data.message,
+timer: 2000, // Optional: auto-close after 2 seconds
+showConfirmButton: false
 }).then(() => {
-  location.reload(); // Refresh the page after the alert
+location.reload(); // Refresh the page after the alert
 });
 
-    } else {
-      // Handle duplicates
-      if (data.duplicates && data.duplicates.length > 0) {
-        const duplicateList = data.duplicates
-          .map((dup) => `<li>${dup}</li>`)
-          .join("");
+} else {
+// Handle duplicates
+if (data.duplicates && data.duplicates.length > 0) {
+const duplicateList = data.duplicates
+  .map((dup) => `<li>${dup}</li>`)
+  .join("");
 
-        Swal.fire({
-          icon: "error",
-          title: "Duplicate Data Found!",
-          html: `
-            <p>${data.message}</p>
-            <ul style="text-align:left; max-height: 300px; overflow-y: auto;">${duplicateList}</ul>
-          `,
-          width: 600,
-        });
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Error!",
-          text: data.message,
-        });
-      }
-    }
-  } catch (error) {
-    console.error("Error:", error);
-    Swal.fire({
-      icon: "error",
-      title: "Oops...",
-      text: "Something went wrong!",
-    });
-  }
+Swal.fire({
+  icon: "error",
+  title: "Duplicate Data Found!",
+  html: `
+    <p>${data.message}</p>
+    <ul style="text-align:left; max-height: 300px; overflow-y: auto;">${duplicateList}</ul>
+  `,
+  width: 600,
+});
+} else {
+Swal.fire({
+  icon: "error",
+  title: "Error!",
+  text: data.message,
+});
+}
+}
+} catch (error) {
+console.error("Error:", error);
+Swal.fire({
+icon: "error",
+title: "Oops...",
+text: "Something went wrong!",
+});
+}
 });
 
-        </script>
+</script>
 
     </body>
     
