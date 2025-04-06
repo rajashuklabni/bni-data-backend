@@ -2369,8 +2369,9 @@ const updateTraining = async (req, res) => {
        training_price = $4,
        training_date = $5,
        training_note = $6,
-       training_published_by = $7
-      WHERE training_id = $8
+       training_published_by = $7,
+       training_time = $8
+      WHERE training_id = $9
       RETURNING *;`;
 
     // Prepare the values for the SQL query
@@ -2382,6 +2383,7 @@ const updateTraining = async (req, res) => {
       linkData.training_date,
       linkData.training_note,
       linkData.training_published_by,
+      linkData.training_time,
       training_id, // Ensure the id is used for the WHERE clause
     ];
 
@@ -2433,6 +2435,7 @@ const addTraining = async (req, res) => {
     training_date,
     training_note,
     training_published_by,
+    training_time,
   } = req.body;
 
   console.log("Received training data:", req.body);
@@ -2485,9 +2488,10 @@ const addTraining = async (req, res) => {
         training_price, 
         training_date, 
         training_note, 
-        training_published_by
+        training_published_by,
+        training_time
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8
+        $1, $2, $3, $4, $5, $6, $7, $8, $9
       ) RETURNING *`,
       [
         training_name,
@@ -2498,6 +2502,7 @@ const addTraining = async (req, res) => {
         training_date,
         training_note,
         training_published_by,
+        training_time
       ]
     );
 
@@ -7133,6 +7138,99 @@ const updateVisitor = async (req, res) => {
   }
 };
 
+
+const sendTrainingMails = async (req, res) => {
+  try {
+      const { member_ids, training_id } = req.body;
+      console.log('📧 Starting Training Mail Process:', {
+          member_ids,
+          training_id
+      });
+
+      // Updated query to use correct column name: member_email_address
+      const memberQuery = `
+          SELECT member_email_address, member_first_name, member_last_name 
+          FROM member 
+          WHERE member_id = ANY($1::int[])
+      `;
+      const memberResult = await con.query(memberQuery, [member_ids]);
+      console.log('👥 Found members:', memberResult.rows);
+
+      // Get training details
+      const trainingQuery = `
+          SELECT training_name, training_date, training_venue 
+          FROM training
+          WHERE training_id = $1
+      `;
+      const trainingResult = await con.query(trainingQuery, [training_id]);
+      console.log('📚 Training details:', trainingResult.rows[0]);
+
+      // Using existing transporter (already configured with BNI email)
+      // Send emails to each member
+      const emailPromises = memberResult.rows.map(async (member) => {
+          console.log(`📤 Preparing email for ${member.member_first_name} ${member.member_last_name}`);
+
+          const mailOptions = {
+              from: "ceo@bninewdelhi.in",
+              to: `${member.member_first_name} ${member.member_last_name} <${member.member_email_address}>`,
+              subject: `Training Update: ${trainingResult.rows[0].training_name}`,
+              html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                      <h2 style="color: #d01f2f;">BNI Training Update</h2>
+                      <p>Dear ${member.member_first_name},</p>
+                      <p>Hi! This is a test email for the training notification system.</p>
+                      <p>Training Details:</p>
+                      <ul>
+                          <li>Training: ${trainingResult.rows[0].training_name}</li>
+                          <li>Date: ${new Date(trainingResult.rows[0].training_date).toLocaleDateString()}</li>
+                          <li>Venue: ${trainingResult.rows[0].training_venue}</li>
+                      </ul>
+                      <p>Best regards,<br>BNI Team</p>
+                  </div>
+              `
+          };
+
+          try {
+              const info = await transporter.sendMail(mailOptions);
+              console.log(`✅ Email sent successfully to ${member.member_email_address}:`, info.messageId);
+              return {
+                  success: true,
+                  member_email: member.member_email_address,
+                  messageId: info.messageId
+              };
+          } catch (error) {
+              console.error(`❌ Error sending email to ${member.member_email_address}:`, error);
+              return {
+                  success: false,
+                  member_email: member.member_email_address,
+                  error: error.message
+              };
+          }
+      });
+
+      const emailResults = await Promise.all(emailPromises);
+      console.log('📊 Email sending results:', emailResults);
+
+      // Count successful and failed emails
+      const successful = emailResults.filter(result => result.success).length;
+      const failed = emailResults.filter(result => !result.success).length;
+
+      res.status(200).json({
+          success: true,
+          message: `Emails sent: ${successful} successful, ${failed} failed`,
+          details: emailResults
+      });
+
+  } catch (error) {
+      console.error('❌ Error in sendTrainingMails:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Failed to send training emails',
+          error: error.message
+      });
+  }
+};
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -7271,5 +7369,6 @@ module.exports = {
   updateMemberRequisition,
   updateVisitor,
   sendVPEmail,
-  sendVisitorEmail
+  sendVisitorEmail,
+  sendTrainingMails
 };

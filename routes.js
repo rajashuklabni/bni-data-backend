@@ -138,7 +138,8 @@ const {
   updateMemberRequisition,
   updateVisitor,
   sendVPEmail,
-  sendVisitorEmail
+  sendVisitorEmail,
+  sendTrainingMails
 
 } = require("./controllers");
 
@@ -1036,7 +1037,9 @@ router.put("/updateMemberRequisition", updateMemberRequisition);
 
 router.post("/send-visitor-email", sendVisitorEmail);
 router.post("/send-vp-email", sendVPEmail);
-router.put('/update-visitor', updateVisitor)
+router.put('/update-visitor', updateVisitor);
+router.post("/sendTrainingMails", sendTrainingMails);
+
 
 
 module.exports = router;
