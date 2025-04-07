@@ -7171,7 +7171,7 @@ const sendTrainingMails = async (req, res) => {
           console.log(`📤 Preparing email for ${member.member_first_name} ${member.member_last_name}`);
 
           const mailOptions = {
-              from: "ceo@bninewdelhi.in",
+              from: "info@bninewdelhi.in",
               to: `${member.member_first_name} ${member.member_last_name} <${member.member_email_address}>`,
               subject: `Training Update: ${trainingResult.rows[0].training_name}`,
               html: `
