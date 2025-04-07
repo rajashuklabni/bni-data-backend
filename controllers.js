@@ -7156,16 +7156,30 @@ const sendTrainingMails = async (req, res) => {
       const memberResult = await con.query(memberQuery, [member_ids]);
       console.log('👥 Found members:', memberResult.rows);
 
-      // Get training details
+      // Get training details with additional fields
       const trainingQuery = `
-          SELECT training_name, training_date, training_venue 
+          SELECT training_name, training_date, training_venue, training_price, training_time, training_note 
           FROM training
           WHERE training_id = $1
       `;
       const trainingResult = await con.query(trainingQuery, [training_id]);
       console.log('📚 Training details:', trainingResult.rows[0]);
 
-      // Using existing transporter (already configured with BNI email)
+      // Get hotel details for the venue
+      const hotelQuery = `
+          SELECT hotel_name, hotel_address
+          FROM hotel 
+          WHERE hotel_id = $1
+      `;
+      const hotelResult = await con.query(hotelQuery, [trainingResult.rows[0].training_venue]);
+      
+      // Process hotel address to get only first two comma-separated parts
+      let venueAddress = '';
+      if (hotelResult.rows[0]) {
+          const addressParts = hotelResult.rows[0].hotel_address.split(',');
+          venueAddress = addressParts.slice(0, 2).join(',');
+      }
+
       // Send emails to each member
       const emailPromises = memberResult.rows.map(async (member) => {
           console.log(`📤 Preparing email for ${member.member_first_name} ${member.member_last_name}`);
@@ -7178,14 +7192,41 @@ const sendTrainingMails = async (req, res) => {
                   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                       <h2 style="color: #d01f2f;">BNI Training Update</h2>
                       <p>Dear ${member.member_first_name},</p>
-                      <p>Hi! This is a test email for the training notification system.</p>
+                      <p>Hi! This is a  email regarding the new training.</p>
                       <p>Training Details:</p>
                       <ul>
                           <li>Training: ${trainingResult.rows[0].training_name}</li>
                           <li>Date: ${new Date(trainingResult.rows[0].training_date).toLocaleDateString()}</li>
-                          <li>Venue: ${trainingResult.rows[0].training_venue}</li>
+                          <li>Time: ${trainingResult.rows[0].training_time}</li>
+                          <li>Venue: ${hotelResult.rows[0]?.hotel_name || 'TBD'}</li>
+                          <li>Address: ${venueAddress || 'TBD'}</li>
+                          <li>Training Ticket Price: ₹${trainingResult.rows[0].training_price || 'Free'}</li>
+                          ${trainingResult.rows[0].training_note ? `<li> TrainingNote: ${trainingResult.rows[0].training_note}</li>` : ''}
                       </ul>
-                      <p>Best regards,<br>BNI Team</p>
+                      <p><strong>Best regards,<br>BNI NEW Delhi</strong></p>
+
+                      <!-- Payment Button -->
+            <div style="text-align: center; margin-top: 30px; margin-bottom: 20px;">
+                <a href="https://bninewdelhi.com/training-payments/3/bdbe4592-738e-42b1-ad02-beea957a3f9d/1" 
+                   style="
+                       background: linear-gradient(45deg, #d01f2f, #ff4b5a);
+                       color: white;
+                       padding: 15px 30px;
+                       text-decoration: none;
+                       border-radius: 25px;
+                       font-weight: bold;
+                       font-size: 16px;
+                       display: inline-block;
+                       box-shadow: 0 4px 15px rgba(208, 31, 47, 0.3);
+                       transition: all 0.3s ease;
+                       border: 2px solid transparent;
+                   "
+                   onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(208, 31, 47, 0.4)';"
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(208, 31, 47, 0.3)';"
+                >
+                    Register Now
+                </a>
+            </div>
                   </div>
               `
           };
