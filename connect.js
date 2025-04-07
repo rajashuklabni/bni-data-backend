@@ -38,7 +38,7 @@ const allowedOrigins = [
   "https://dashboard.bninewdelhi.com/",
   "https://54.39.51.161:3000",
   "http://54.39.51.161:3000",
-  "http://localhost:5000/",
+  "backend.bninewdelhi.com/",
   "http://localhost:5000",
   "https://backend.bninewdelhi.com/",
   "https://backend.bninewdelhi.com"

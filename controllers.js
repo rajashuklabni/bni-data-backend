@@ -4651,7 +4651,7 @@ const addInclusionSheet = async (req, res) => {
 
 const addMemberWriteOff = async (req, res) => {
   try {
-    let { members, chapter_id, rightoff_date, rightoff_comment } = req.body;
+    let { members, chapter_id, rightoff_date, rightoff_comment, } = req.body;
 
     console.log(req.body); // Debugging
 
@@ -4660,8 +4660,18 @@ const addMemberWriteOff = async (req, res) => {
     }
 
     const insertQuery = `
-      INSERT INTO rightoff_member (member_id, chapter_id, rightoff_date, total_pending_amount, no_of_late, writeoff_comment) 
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO rightoff_member (
+        member_id, 
+        chapter_id, 
+        rightoff_date, 
+        total_pending_amount, 
+        no_of_late, 
+        writeoff_comment,
+        member_name,
+        member_email,
+        member_phone
+      ) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *;
     `;
 
@@ -4674,7 +4684,14 @@ const addMemberWriteOff = async (req, res) => {
     let insertedRecords = [];
 
     for (const member of members) {
-      const { member_id, no_of_late_payment, total_pending_amount } = member;
+      const { 
+        member_id, 
+        no_of_late_payment, 
+        total_pending_amount,
+        member_name,
+        member_email,
+        member_phone 
+      } = member;
 
       if (!member_id) {
         console.error("Missing member_id in:", member);
@@ -4687,7 +4704,10 @@ const addMemberWriteOff = async (req, res) => {
         rightoff_date,
         total_pending_amount,
         no_of_late_payment,
-        rightoff_comment
+        rightoff_comment,
+        member_name || null,      // Add new fields with null fallback
+        member_email || null,
+        member_phone || null
       ];
 
       const result = await con.query(insertQuery, values);
