@@ -7337,6 +7337,433 @@ const sendTrainingMails = async (req, res) => {
   }
 };
 
+
+const updateVisitorAndEoi = async (req, res) => {
+  try {
+    const { visitor_id } = req.params;
+    const {
+      // Fields that can be updated in visitors table
+      region_id,
+      chapter_id,
+      visitor_name,
+      visitor_email,
+      visitor_phone,
+      visitor_company_name,
+      visitor_address,
+      visitor_gst,
+      visitor_business,
+      visitor_category,
+      
+      // Fields that can be updated only in EOI form
+      best_time_to_reach,
+      hear_about_us,
+      previous_member,
+      exp_rating,
+      chapter_visit_date
+    } = req.body;
+
+    // Start transaction
+    await con.query('BEGIN');
+
+    try {
+      // Update visitor table
+      const visitorQuery = `
+        UPDATE Visitors 
+        SET 
+          region_id = $1,
+          chapter_id = $2,
+          visitor_email = $3,
+          visitor_phone = $4,
+          visitor_company_name = $5,
+          visitor_address = $6,
+          visitor_gst = $7,
+          visitor_business = $8,
+          visitor_category = $9
+        WHERE visitor_id = $10
+        RETURNING *
+      `;
+
+      const visitorValues = [
+        region_id,
+        chapter_id,
+        visitor_email,
+        visitor_phone,
+        visitor_company_name,
+        visitor_address,
+        visitor_gst,
+        visitor_business,
+        visitor_category,
+        visitor_id
+      ];
+
+      const visitorResult = await con.query(visitorQuery, visitorValues);
+
+      // Update only specific fields in EOI form table
+      const eoiQuery = `
+        UPDATE eoi_form 
+        SET 
+          region_id = $1,
+          chapter_id = $2,
+          best_time_to_reach = $3,
+          hear_about_us = $4,
+          previous_member = $5,
+          exp_rating = $6,
+          chapter_visit_date = $7
+        WHERE visitor_id = $8
+        RETURNING *
+      `;
+
+      const eoiValues = [
+        region_id,
+        chapter_id,
+        best_time_to_reach,
+        hear_about_us,
+        previous_member,
+        exp_rating,
+        chapter_visit_date,
+        visitor_id
+      ];
+
+      const eoiResult = await con.query(eoiQuery, eoiValues);
+
+      // Commit transaction
+      await con.query('COMMIT');
+
+      res.status(200).json({
+        success: true,
+        message: "Visitor and EOI form updated successfully",
+        visitor: visitorResult.rows[0],
+        eoi: eoiResult.rows[0]
+      });
+
+    } catch (error) {
+      // Rollback in case of error
+      await con.query('ROLLBACK');
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('Error updating visitor and EOI form:', error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating visitor and EOI form",
+      error: error.message
+    });
+  }
+};
+
+const updateInterviewSheetAnswers = async (req, res) => {
+  try {
+    const { visitor_id } = req.params;
+    const { 
+      commitmentChapter,  // new chapter_id
+      dynamicAnswers,     // object containing question_id: new_answer pairs
+      date               // new interview date if needed
+    } = req.body;
+
+    console.log("Update request body:", req.body);
+    console.log("Updating answers for visitor_id:", visitor_id);
+
+    // Start a transaction
+    await con.query('BEGIN');
+
+    try {
+      const updatePromises = [];
+
+      // Loop through each answer to update
+      for (const [questionId, newAnswer] of Object.entries(dynamicAnswers)) {
+        if (isNaN(parseInt(questionId))) {
+          console.log(`Skipping invalid question ID: ${questionId}`);
+          continue;
+        }
+
+        const updateQuery = `
+          UPDATE interview_sheet_answers 
+          SET 
+            answer = $1,
+            chapter_id = $2,
+            interview_date = $3
+          WHERE 
+            visitor_id = $4 
+            AND question_id = $5
+          RETURNING *;
+        `;
+
+        const parsedChapterId = parseInt(commitmentChapter);
+        if (isNaN(parsedChapterId)) {
+          throw new Error('Invalid chapter ID provided');
+        }
+
+        const values = [
+          newAnswer,
+          parsedChapterId,
+          date,
+          visitor_id,
+          parseInt(questionId)
+        ];
+
+        updatePromises.push(con.query(updateQuery, values));
+      }
+
+      // Execute all updates
+      const results = await Promise.all(updatePromises);
+      
+      // Commit transaction
+      await con.query('COMMIT');
+
+      console.log("Interview sheet answers updated successfully");
+      
+      res.status(200).json({
+        message: "Interview sheet answers updated successfully!",
+        data: results.map(result => result.rows[0])
+      });
+
+    } catch (error) {
+      // Rollback in case of error
+      await con.query('ROLLBACK');
+      throw error;
+    }
+
+  } catch (error) {
+    console.error("Error updating interview sheet answers:", error);
+    res.status(500).json({
+      error: "Error updating interview sheet answers",
+      details: error.message
+    });
+  }
+};
+
+const updateCommitmentSheet = async (req, res) => {
+  try {
+    const { visitor_id } = req.params;
+    const {
+      visitorName, chapter, chequeNum, chequeDate, bank, address,
+      agree1, agree2, agree3, agree4, agree5, agree6, agree7, agree8, agree9,
+      agree10, agree11, agree12, agree13, category, companyName, date,
+      email, gstin, inductionDate, mobile, name, neftNum, sign, sponsor, vpsign
+    } = req.body;
+
+    console.log("Updating commitment sheet for visitor_id:", visitor_id);
+    console.log("Update data:", req.body);
+
+    // First check if visitor exists and has member_application_form
+    const visitorQuery = 'SELECT member_application_form FROM Visitors WHERE visitor_id = $1';
+    const visitorResult = await con.query(visitorQuery, [visitor_id]);
+
+    if (visitorResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Visitor not found'
+      });
+    }
+
+    if (visitorResult.rows[0].member_application_form) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot update commitment sheet as member application form has already been filled'
+      });
+    }
+
+    // Update commitment sheet
+    const updateQuery = `
+      UPDATE commitmentsheet 
+      SET 
+        visitorName = $1,
+        chapter = $2,
+        chequeNum = $3,
+        chequeDate = $4,
+        bank = $5,
+        address = $6,
+        agree1 = $7,
+        agree2 = $8,
+        agree3 = $9,
+        agree4 = $10,
+        agree5 = $11,
+        agree6 = $12,
+        agree7 = $13,
+        agree8 = $14,
+        agree9 = $15,
+        agree10 = $16,
+        agree11 = $17,
+        agree12 = $18,
+        agree13 = $19,
+        category = $20,
+        companyName = $21,
+        date = $22,
+        email = $23,
+        gstin = $24,
+        inductionDate = $25,
+        mobile = $26,
+        name = $27,
+        neftNum = $28,
+        sign = $29,
+        sponsor = $30,
+        vpsign = $31
+      WHERE visitor_id = $32
+      RETURNING *;
+    `;
+
+    const values = [
+      visitorName, chapter, chequeNum, chequeDate, bank, address,
+      agree1, agree2, agree3, agree4, agree5, agree6, agree7, agree8, agree9,
+      agree10, agree11, agree12, agree13, category, companyName, date,
+      email, gstin, inductionDate, mobile, name, neftNum, sign, sponsor,
+      vpsign, visitor_id
+    ];
+
+    // Start transaction
+    await con.query('BEGIN');
+
+    try {
+      const result = await con.query(updateQuery, values);
+      
+      if (result.rows.length === 0) {
+        throw new Error('No commitment sheet found for this visitor');
+      }
+
+      // Commit transaction
+      await con.query('COMMIT');
+
+      console.log("Commitment sheet updated successfully");
+      res.status(200).json({
+        success: true,
+        message: 'Commitment sheet updated successfully',
+        data: result.rows[0]
+      });
+
+    } catch (error) {
+      // Rollback in case of error
+      await con.query('ROLLBACK');
+      throw error;
+    }
+
+  } catch (error) {
+    console.error("Error updating commitment sheet:", error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating commitment sheet',
+      error: error.message
+    });
+  }
+};
+
+const updateInclusionSheet = async (req, res) => {
+  try {
+    const { visitor_id } = req.params;
+    const {
+      membername,
+      visitorname,
+      chapter,
+      category,
+      chaptername,
+      classificationexcludes,
+      confirmation1,
+      confirmation2,
+      confirmation3,
+      confirmation4,
+      date,
+      signature,
+      vpsign,
+      areaofexpertise
+    } = req.body;
+
+    console.log("Updating inclusion sheet for visitor_id:", visitor_id);
+    console.log("Update data:", req.body);
+
+    // First check if visitor exists and has member_application_form
+    const visitorQuery = 'SELECT member_application_form FROM Visitors WHERE visitor_id = $1';
+    const visitorResult = await con.query(visitorQuery, [visitor_id]);
+
+    if (visitorResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Visitor not found'
+      });
+    }
+
+    if (visitorResult.rows[0].member_application_form) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot update inclusion sheet as member application form has already been filled'
+      });
+    }
+
+    // Update inclusion sheet
+    const updateQuery = `
+      UPDATE inclusionsheet 
+      SET 
+        membername = $1,
+        visitorname = $2,
+        chapter = $3,
+        category = $4,
+        chaptername = $5,
+        classificationexcludes = $6,
+        confirmation1 = $7,
+        confirmation2 = $8,
+        confirmation3 = $9,
+        confirmation4 = $10,
+        date = $11,
+        signature = $12,
+        vpsign = $13,
+        areaofexpertise = $14
+      WHERE visitor_id = $15
+      RETURNING *;
+    `;
+
+    const values = [
+      membername,
+      visitorname,
+      chapter,
+      category,
+      chaptername,
+      classificationexcludes,
+      confirmation1,
+      confirmation2,
+      confirmation3,
+      confirmation4,
+      date,
+      signature,
+      vpsign,
+      areaofexpertise,
+      visitor_id
+    ];
+
+    // Start transaction
+    await con.query('BEGIN');
+
+    try {
+      const result = await con.query(updateQuery, values);
+      
+      if (result.rows.length === 0) {
+        throw new Error('No inclusion sheet found for this visitor');
+      }
+
+      // Commit transaction
+      await con.query('COMMIT');
+
+      console.log("Inclusion sheet updated successfully");
+      res.status(200).json({
+        success: true,
+        message: 'Inclusion sheet updated successfully',
+        data: result.rows[0]
+      });
+
+    } catch (error) {
+      // Rollback in case of error
+      await con.query('ROLLBACK');
+      throw error;
+    }
+
+  } catch (error) {
+    console.error("Error updating inclusion sheet:", error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating inclusion sheet',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -7476,5 +7903,9 @@ module.exports = {
   updateVisitor,
   sendVPEmail,
   sendVisitorEmail,
-  sendTrainingMails
+  sendTrainingMails,
+  updateVisitorAndEoi,
+  updateInterviewSheetAnswers,
+  updateCommitmentSheet,
+  updateInclusionSheet
 };

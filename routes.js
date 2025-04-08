@@ -139,8 +139,11 @@ const {
   updateVisitor,
   sendVPEmail,
   sendVisitorEmail,
-  sendTrainingMails
-
+  sendTrainingMails,
+  updateVisitorAndEoi,
+  updateInterviewSheetAnswers,
+  updateCommitmentSheet,
+  updateInclusionSheet
 } = require("./controllers");
 
 const path = require("path");
@@ -1039,6 +1042,12 @@ router.post("/send-visitor-email", sendVisitorEmail);
 router.post("/send-vp-email", sendVPEmail);
 router.put('/update-visitor', updateVisitor);
 router.post("/sendTrainingMails", sendTrainingMails);
+
+router.put("/updateVisitorAndEoi/:visitor_id", updateVisitorAndEoi);
+router.put("/updateInterviewSheetAnswers/:visitor_id", updateInterviewSheetAnswers);
+// New route for updating commitment sheet
+router.put("/updateCommitmentSheet/:visitor_id", updateCommitmentSheet);
+router.put("/updateInclusionSheet/:visitor_id", updateInclusionSheet);
 
 
 
