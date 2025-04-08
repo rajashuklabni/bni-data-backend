@@ -2680,6 +2680,51 @@ const addKittyPayment = async (req, res) => {
 
     await con.query(updateMemberQuery, [total_bill_amount, chapter_id]);
     console.log(updateMemberQuery);
+
+        // Fetch updated members to email them
+        const fetchMembersQuery = `
+        SELECT member_id, member_first_name, member_email_address, meeting_payable_amount 
+        FROM member 
+        WHERE chapter_id = $1 AND writeoff_status = FALSE AND member_email_address IS NOT NULL
+      `;
+      const membersResult = await con.query(fetchMembersQuery, [chapter_id]);
+      const membersToEmail = membersResult.rows;
+      // Fetch chapters to get chapter_name from chapter_id
+const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
+const chapterData = await chapterResponse.json();
+const chapter = chapterData.find(c => c.chapter_id === Number(chapter_id));
+const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; // fallback if not found
+
+  
+      for (const member of membersToEmail) {
+        const mailOptions = {
+          from: '"BNI New Delhi" <info@bninewdelhi.in>',
+          to: member.member_email_address,
+          subject: "New Bill Raised - Payment Reminder",
+          html: `
+            <p>Dear ${member.member_first_name},</p>
+            <p>A new bill has been raised under your chapter <b>${chapterName}</b>.</p>
+            <p><strong>Bill Type:</strong> ${bill_type}</p>
+            <p><strong>Description:</strong> ${description}</p>
+            <p><strong>Total Amount:</strong> ₹${total_bill_amount}</p>
+            <p><strong>Due Date:</strong> ${due_date}</p>
+            <p>We request you to pay the bill amount before due date, as penalty fee of <b>₹${penalty_amount}</b> will be applied.</b>.</p>
+            <br/>
+            <p>Thank you,<br/><b>BNI NEW Delhi</b></p>
+            <a href="https://bninewdelhi.com/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1"><button>Pay Now</button></a>
+
+            
+          `,
+        };
+  
+        try {
+          await transporter.sendMail(mailOptions);
+          console.log(`Email sent to ${member.member_email_address}`);
+        } catch (mailErr) {
+          console.error(`Error sending email to ${member.member_email_address}:`, mailErr);
+        }
+      }
+  
     
 
     const response = await fetch('https://backend.bninewdelhi.com/api/getbankOrder');
