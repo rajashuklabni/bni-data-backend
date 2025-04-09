@@ -1,7 +1,7 @@
 // allRoutes/elvoiceRoutes.js
 const express = require("express");
 const router = express.Router();
-const { getToken, generateIRN, cancelIRN, getGstDetails, getMultipleGstDetails  } = require("../allControllers/paymentControllers/elvoiceController");
+const { getToken, generateIRN, cancelIRN, getGstDetails, getMultipleGstDetails, updateMemberDetailsFromGst  } = require("../allControllers/paymentControllers/elvoiceController");
 
 // POST endpoint to generate an e-invoice
 router.post("/get-token", getToken);
@@ -32,5 +32,26 @@ router.post("/get-multiple-gst-details", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+router.post("/sync-gst-members", async (req, res) => {
+  try {
+    const { gstNumbers } = req.body;
+
+    if (!gstNumbers || !Array.isArray(gstNumbers) || gstNumbers.length === 0) {
+      return res.status(400).json({ success: false, message: "GST numbers are required in an array format." });
+    }
+
+    const gstDetailsList = await getMultipleGstDetails(gstNumbers);
+
+    await updateMemberDetailsFromGst(gstDetailsList);
+
+    res.status(200).json({ success: true, message: "Members updated successfully", updated: gstDetailsList });
+  } catch (error) {
+    console.error("Error syncing GST details:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+
 
 module.exports = router;

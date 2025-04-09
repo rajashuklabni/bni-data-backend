@@ -696,4 +696,36 @@ async function getMultipleGstDetails(gstNumbers) {
 }
 
 
-module.exports = { getToken, generateIRN, cancelIRN, getGstDetails, fetchGstDetails, getMultipleGstDetails};
+async function updateMemberDetailsFromGst(gstDetailsList) {
+  const updatePromises = gstDetailsList.map(async (details) => {
+    if (details.error) {
+      console.log(`Skipping GSTIN ${details.gstin} due to error: ${details.error}`);
+      return;
+    }
+
+    const updateQuery = `
+      UPDATE member
+      SET
+        member_company_name = $1,
+        member_company_address = $2
+      WHERE member_gst_number = $3
+    `;
+
+    try {
+      await db.query(updateQuery, [
+        details.tradeName,
+        details.address,
+        details.gstin
+      ]);
+      console.log(`Updated member for GSTIN: ${details.gstin}`);
+    } catch (err) {
+      console.error(`Error updating member for GSTIN ${details.gstin}:`, err.message);
+    }
+  });
+
+  await Promise.all(updatePromises);
+}
+
+
+
+module.exports = { getToken, generateIRN, cancelIRN, getGstDetails, fetchGstDetails, getMultipleGstDetails, updateMemberDetailsFromGst};
