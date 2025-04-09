@@ -621,4 +621,79 @@ async function getGstDetails(req, res) {
   }
 }
 
-module.exports = { getToken, generateIRN, cancelIRN, getGstDetails};
+
+async function fetchGstDetails(gstNo, authToken, sek) {
+  try {
+    const gstResponse = await apiClient.get(`/eivital/v1.04/Master/gstin/${gstNo}`, {
+      headers: {
+        client_id: process.env.CLIENT_ID,
+        client_secret: process.env.CLIENT_SECRET,
+        gstin: process.env.GSTIN,
+        user_name: "sunilk",
+        AuthToken: authToken
+      }
+    });
+
+    if (!gstResponse.data || !gstResponse.data.Data) {
+      return { gstin: gstNo, error: "Invalid response from GST API." };
+    }
+
+    const decryptResponse = await apiClient.post('/crypto/decrypt', {
+      type: "SEK",
+      data: gstResponse.data.Data,
+      key: sek
+    }, {
+      headers: {
+        client_id: process.env.CLIENT_ID,
+        client_secret: process.env.CLIENT_SECRET,
+        gstin: process.env.GSTIN,
+        user_name: "sunilk",
+        AuthToken: authToken
+      }
+    });
+
+    let gstDetails = decryptResponse.data.Data;
+    if (typeof gstDetails === 'string') {
+      gstDetails = JSON.parse(gstDetails);
+    }
+
+    if (!gstDetails || typeof gstDetails !== 'object') {
+      return { gstin: gstNo, error: "Invalid GST details format." };
+    }
+
+    return {
+      gstin: gstDetails.gstin || "N/A",
+      tradeName: gstDetails.tradeName || "N/A",
+      legalName: gstDetails.legalName || "N/A",
+      address: `${gstDetails.addrBno || "N/A"}, ${gstDetails.addrFlno || "N/A"}, ${gstDetails.addrSt || "N/A"}, ${gstDetails.addrLoc || "N/A"}, ${gstDetails.stateCode || "N/A"} - ${gstDetails.addrPncd || "N/A"}`,
+      taxpayerType: gstDetails.txpType || "N/A",
+      status: gstDetails.status || "N/A",
+      registrationDate: gstDetails.dtReg || "N/A"
+    };
+
+  } catch (err) {
+    return { gstin: gstNo, error: err.message };
+  }
+}
+
+
+async function getMultipleGstDetails(gstNumbers) {
+  const query = 'SELECT * FROM authTokens ORDER BY created_at DESC LIMIT 1';
+  const result = await db.query(query);
+
+  if (result.rows.length === 0) {
+    throw new Error("No tokens found in the database.");
+  }
+
+  const { authtoken, sek } = result.rows[0];
+
+  const promises = gstNumbers.map(gstNo =>
+    fetchGstDetails(gstNo, authtoken, sek)
+  );
+
+  const allResults = await Promise.all(promises);
+  return allResults;
+}
+
+
+module.exports = { getToken, generateIRN, cancelIRN, getGstDetails, fetchGstDetails, getMultipleGstDetails};
