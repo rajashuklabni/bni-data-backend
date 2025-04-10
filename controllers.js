@@ -1702,6 +1702,7 @@ const addAccolade = async (req, res) => {
     stock_available,
     item_type,
     accolade_type,
+    eligibilty_and_condition
   } = req.body;
 
   console.log(req.body);
@@ -1737,9 +1738,9 @@ const addAccolade = async (req, res) => {
     // Insert new accolade
     const result = await con.query(
       `INSERT INTO accolades (
-          accolade_name, accolade_published_by, accolade_publish_date, accolade_availability, accolade_price, accolade_status, stock_available, item_type, accolade_type
+          accolade_name, accolade_published_by, accolade_publish_date, accolade_availability, accolade_price, accolade_status, stock_available, item_type, accolade_type, eligibility_and_condition
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
         ) RETURNING *`,
       [
         accolade_name,
@@ -1751,6 +1752,7 @@ const addAccolade = async (req, res) => {
         stock_available,
         selectedItemType, // Store single value
         selectedAccoladeType, // Store single value
+        eligibilty_and_condition
       ]
     );
 
