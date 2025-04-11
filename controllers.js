@@ -15,6 +15,7 @@ const dotEnv = require("dotenv");
 const multer = require('multer');
 const csv = require('csv-parser');
 const format = require('pg-format'); // Import pg-format for PostgreSQL queries
+dotEnv.config();
 
 
 // Instead of this:
@@ -26,11 +27,11 @@ const fetch = (...args) =>
 
 // Replace with your Render database credentials
 const con = new Client({
-  host: process.env.HOST,
-  user: process.env.USER,
-  port: process.env.PORT,
-  password: process.env.PASSWORD,
-  database: process.env.DATABASE,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  port: process.env.DB_PORT,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
   ssl: {
     rejectUnauthorized: false, // Required for secure connections to Render
   },

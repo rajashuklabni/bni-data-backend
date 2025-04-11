@@ -13,6 +13,7 @@ const jwt = require("jsonwebtoken");
 dotEnv.config();
 const app = express();
 const ccavService = require("./ccavenueService.js");
+dotEnv.config();
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const upload = multer({ dest: "uploads/" });
@@ -64,11 +65,11 @@ app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true }));
 // Replace with your Render database credentials
 const con = new Client({
-  host: process.env.HOST,
-  user: process.env.USER,
-  port: process.env.PORT,
-  password: process.env.PASSWORD,
-  database: process.env.DATABASE,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  port: process.env.DB_PORT,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
   ssl: {
     rejectUnauthorized: false, // Required for secure connections to Render
   },

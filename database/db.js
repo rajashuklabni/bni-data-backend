@@ -4,11 +4,11 @@ const dotEnv = require("dotenv");
 
 // Replace with your Render database credentials
 const db = new Client({
-  host: process.env.HOST,
-  user: process.env.USER,
-  port: process.env.PORT,
-  password: process.env.PASSWORD,
-  database: process.env.DATABASE,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  port: process.env.DB_PORT,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
   ssl: {
     rejectUnauthorized: false,
   },

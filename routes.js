@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const upload = require("./middleware/expenseImagesMiddleware");
 const dotEnv = require("dotenv");
+dotEnv.config();
 const { Client } = require("pg");
 const {
   addInvoiceManually,
@@ -227,11 +228,11 @@ function getContentType(filePath) {
 
 
 const con = new Client({
-    host: process.env.HOST,
-    user: process.env.USER,
-    port: process.env.PORT,
-    password: process.env.PASSWORD,
-    database: process.env.DATABASE,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  port: process.env.DB_PORT,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
   ssl: {
     rejectUnauthorized: false, // Required for secure connections to Render
   },
