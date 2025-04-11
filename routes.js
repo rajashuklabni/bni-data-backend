@@ -1050,6 +1050,7 @@ router.put("/updateInterviewSheetAnswers/:visitor_id", updateInterviewSheetAnswe
 // New route for updating commitment sheet
 router.put("/updateCommitmentSheet/:visitor_id", updateCommitmentSheet);
 router.put("/updateInclusionSheet/:visitor_id", updateInclusionSheet);
+router.post("/addVisitorPayment", addVisitorPayment);
 
 
 

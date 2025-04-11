@@ -7768,6 +7768,223 @@ const updateInclusionSheet = async (req, res) => {
   }
 };
 
+
+const addVisitorPayment = async (req, res) => {
+  const invoiceData = req.body;
+  console.log("📥 Received Visitor Payment Data:", invoiceData);
+
+  try {
+    // Generate unique IDs
+    const order_id = `VIS${Date.now()}`;
+    const cf_payment_id = `TRX${Date.now()}`;
+    console.log("🔑 Generated IDs:", { order_id, cf_payment_id });
+
+    // Define default values
+    const defaultValues = {
+      order_currency: "INR",
+      payment_gateway_id: null,
+      order_status: "ACTIVE",
+      payment_session_id: null,
+      payment_currency: "INR",
+      payment_status: "SUCCESS",
+      payment_time: new Date(),
+      payment_completion_time: new Date(),
+      payment_note: "Visitor Payment",
+      error_details: {}
+    };
+
+    // Prepare order data with visitor information
+    const orderData = [
+      order_id,
+      invoiceData.taxable_amount || 0,
+      defaultValues.order_currency,
+      invoiceData.payment_gateway_id || defaultValues.payment_gateway_id,
+      invoiceData.member_id,
+      invoiceData.chapter_id,
+      invoiceData.region_id,
+      invoiceData.universal_link_id,
+      null, // ulid
+      defaultValues.order_status,
+      defaultValues.payment_session_id,
+      0, // one_time_registration_fee
+      0, // membership_fee
+      invoiceData.gst_amount || 0,
+      invoiceData.member_name,
+      invoiceData.visitor_email,
+      invoiceData.visitor_mobile,
+      invoiceData.visitor_gstin,
+      invoiceData.visitor_company,
+      invoiceData.visitor_mobile,
+      null, // renewal_year
+      defaultValues.payment_note,
+      null, // training_id
+      null, // event_id
+      null, // kitty_bill_id
+      null, // visitor_id
+      invoiceData.visitor_name,
+      invoiceData.visitor_email,
+      invoiceData.visitor_mobile,
+      invoiceData.visitor_address,
+      invoiceData.visitor_company,
+      invoiceData.visitor_gstin,
+      invoiceData.visitor_business_category,
+      invoiceData.visitor_company_address
+    ];
+
+    console.log("📝 Prepared Order Data:", orderData);
+
+    // Insert into Orders table with visitor fields
+    const orderResult = await con.query(
+      `INSERT INTO Orders (
+        order_id, order_amount, order_currency, payment_gateway_id, 
+        customer_id, chapter_id, region_id, universal_link_id, ulid, 
+        order_status, payment_session_id, one_time_registration_fee, 
+        membership_fee, tax, member_name, customer_email, customer_phone, 
+        gstin, company, mobile_number, renewal_year, payment_note, 
+        training_id, event_id, kitty_bill_id, visitor_id,
+        visitor_name, visitor_email, visitor_mobilenumber, visitor_address,
+        visitor_company, visitor_gstin, visitor_business, visitor_company_address
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 
+                $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25,
+                $26, $27, $28, $29, $30, $31, $32, $33, $34) 
+      RETURNING *`,
+      orderData
+    );
+
+    console.log("✅ Order Created:", orderResult.rows[0]);
+
+    // Update the payment note in the mode_of_payment object
+    const paymentMethod = invoiceData.mode_of_payment;
+    if (paymentMethod.cash) {
+      paymentMethod.cash.payment_note = "Visitor Payment";
+    } else if (paymentMethod.upi) {
+      paymentMethod.upi.payment_note = "Visitor Payment";
+    } else if (paymentMethod.bank_transfer) {
+      paymentMethod.bank_transfer.payment_note = "Visitor Payment";
+    } else if (paymentMethod.cheque) {
+      paymentMethod.cheque.payment_note = "Visitor Payment";
+    }
+
+    // Prepare transaction data
+    const transactionData = [
+      cf_payment_id,
+      order_id,
+      invoiceData.payment_gateway_id || defaultValues.payment_gateway_id,
+      invoiceData.total_amount || 0,
+      defaultValues.payment_currency,
+      defaultValues.payment_status,
+      "Visitor Payment Successful",
+      defaultValues.payment_time,
+      defaultValues.payment_completion_time,
+      null, // bank_reference
+      "VISITOR_PAYMENT", // auth_id
+      JSON.stringify(paymentMethod), // Updated payment method with correct note
+      JSON.stringify(defaultValues.error_details),
+      null, // gateway_order_id
+      null, // gateway_payment_id
+      'visitor_payment' // payment_group
+    ];
+
+    console.log("📝 Prepared Transaction Data:", transactionData);
+
+    // Insert into Transactions table
+    const transactionResult = await con.query(
+      `INSERT INTO Transactions (
+        cf_payment_id, order_id, payment_gateway_id, payment_amount, 
+        payment_currency, payment_status, payment_message, payment_time, 
+        payment_completion_time, bank_reference, auth_id, payment_method, 
+        error_details, gateway_order_id, gateway_payment_id, payment_group
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) 
+      RETURNING *`,
+      transactionData
+    );
+
+    console.log("✅ Transaction Created:", transactionResult.rows[0]);
+
+    // Prepare visitor data
+    const visitorData = [
+      invoiceData.region_id,
+      invoiceData.chapter_id,
+      invoiceData.member_id || null, // invited_by can be null
+      invoiceData.member_name || null, // invited_by_name can be null
+      invoiceData.visitor_name,
+      invoiceData.visitor_email,
+      invoiceData.visitor_mobile, // visitor_phone
+      invoiceData.visitor_company, // visitor_company_name
+      invoiceData.visitor_address,
+      invoiceData.visitor_gstin, // visitor_gst
+      invoiceData.visitor_business_category, // visitor_business
+      invoiceData.visitor_business_category, // visitor_category
+      new Date(), // visited_date
+      invoiceData.total_amount,
+      invoiceData.taxable_amount, // sub_total
+      invoiceData.gst_amount, // tax
+      false, // delete_status
+      'active', // active_status
+      order_id, // order_id
+      true, // visitor_form
+      false, // eoi_form
+      false, // new_member_form
+      invoiceData.visitor_company_address,
+      false, // interview_sheet
+      false, // commitment_sheet
+      false, // inclusion_exclusion_sheet
+      false, // member_application_form
+      null, // onboarding_call
+      false, // vp_mail
+      false, // welcome_mail
+      null, // chapter_apply_kit
+      false, // visitor_entry_excel
+      false, // google_updation_sheet
+      false, // approve_induction_kit
+      false, // induction_status
+      null // verification
+    ];
+
+    // Insert into Visitors table
+    const visitorResult = await con.query(
+      `INSERT INTO visitors (
+        region_id, chapter_id, invited_by, invited_by_name, 
+        visitor_name, visitor_email, visitor_phone, visitor_company_name,
+        visitor_address, visitor_gst, visitor_business, visitor_category,
+        visited_date, total_amount, sub_total, tax, delete_status,
+        active_status, order_id, visitor_form, eoi_form, new_member_form,
+        visitor_company_address, interview_sheet, commitment_sheet,
+        inclusion_exclusion_sheet, member_application_form, onboarding_call,
+        vp_mail, welcome_mail, chapter_apply_kit, visitor_entry_excel,
+        google_updation_sheet, approve_induction_kit, induction_status, verification
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28,
+        $29, $30, $31, $32, $33, $34, $35, $36
+      ) RETURNING *`,
+      visitorData
+    );
+
+    console.log("✅ Visitor Created:", visitorResult.rows[0]);
+
+    res.status(201).json({
+      success: true,
+      message: "Visitor payment processed and visitor created successfully",
+      data: {
+        order_id,
+        cf_payment_id,
+        order: orderResult.rows[0],
+        transaction: transactionResult.rows[0],
+        visitor: visitorResult.rows[0]
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error processing visitor payment:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error processing visitor payment",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
