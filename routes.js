@@ -145,7 +145,8 @@ const {
   updateVisitorAndEoi,
   updateInterviewSheetAnswers,
   updateCommitmentSheet,
-  updateInclusionSheet
+  updateInclusionSheet,
+  addVisitorPayment
 } = require("./controllers");
 
 const path = require("path");

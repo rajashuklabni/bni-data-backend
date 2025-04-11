@@ -8128,5 +8128,6 @@ module.exports = {
   updateVisitorAndEoi,
   updateInterviewSheetAnswers,
   updateCommitmentSheet,
-  updateInclusionSheet
+  updateInclusionSheet,
+  addVisitorPayment
 };
