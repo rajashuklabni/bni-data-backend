@@ -64,11 +64,11 @@ app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true }));
 // Replace with your Render database credentials
 const con = new Client({
-  host: "dpg-cs0d2hi3esus739088bg-a.oregon-postgres.render.com",
-  user: "bni_dashboard_backend_database_user",
-  port: 5432,
-  password: "8UGkmCixOpO5Gb89BSBI8aPPapoAW6fD",
-  database: "bni_dashboard_backend_database",
+  host: process.env.HOST,
+  user: process.env.USER,
+  port: process.env.PORT,
+  password: process.env.PASSWORD,
+  database: process.env.DATABASE,
   ssl: {
     rejectUnauthorized: false, // Required for secure connections to Render
   },
@@ -76,7 +76,7 @@ const con = new Client({
 
 con
   .connect()
-  .then(() => console.log("Connected to new local PostgreSQL"))
+  .then(() => console.log("Connected to new BNI server PostgreSQL"))
   .catch((err) => console.error("Connection error", err.stack));
 
 app.get("/upload", (req, res) => {

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("./middleware/expenseImagesMiddleware");
+const dotEnv = require("dotenv");
 const { Client } = require("pg");
 const {
   addInvoiceManually,
@@ -226,17 +227,17 @@ function getContentType(filePath) {
 
 
 const con = new Client({
-  host: "dpg-cs0d2hi3esus739088bg-a.oregon-postgres.render.com",
-  user: "bni_dashboard_backend_database_user",
-  port: 5432,
-  password: "8UGkmCixOpO5Gb89BSBI8aPPapoAW6fD",
-  database: "bni_dashboard_backend_database",
+    host: process.env.HOST,
+    user: process.env.USER,
+    port: process.env.PORT,
+    password: process.env.PASSWORD,
+    database: process.env.DATABASE,
   ssl: {
     rejectUnauthorized: false, // Required for secure connections to Render
   },
 });
 
-con.connect().then(() => console.log("Connected to render PostgreSQL"));
+con.connect().then(() => console.log("Connected to new BNI server PostgreSQL"));
 
 // Configure multer storage for logo uploads
 const logoStorage = multer.diskStorage({

@@ -11,6 +11,7 @@ const { QueryTypes } = require("sequelize"); // If using Sequelize
 const { v4: uuidv4 } = require("uuid"); // For generating unique IDs
 const { Parser } = require('json2csv');
 const ExcelJS = require('exceljs');
+const dotEnv = require("dotenv");
 const multer = require('multer');
 const csv = require('csv-parser');
 const format = require('pg-format'); // Import pg-format for PostgreSQL queries
@@ -25,17 +26,17 @@ const fetch = (...args) =>
 
 // Replace with your Render database credentials
 const con = new Client({
-  host: "dpg-cs0d2hi3esus739088bg-a.oregon-postgres.render.com",
-  user: "bni_dashboard_backend_database_user",
-  port: 5432,
-  password: "8UGkmCixOpO5Gb89BSBI8aPPapoAW6fD",
-  database: "bni_dashboard_backend_database",
+  host: process.env.HOST,
+  user: process.env.USER,
+  port: process.env.PORT,
+  password: process.env.PASSWORD,
+  database: process.env.DATABASE,
   ssl: {
     rejectUnauthorized: false, // Required for secure connections to Render
   },
 });
 
-con.connect().then(() => console.log("Connected to render PostgreSQL"));
+con.connect().then(() => console.log("Connected to new BNI server PostgreSQL"));
 
 
 const transporter = nodemailer.createTransport({
