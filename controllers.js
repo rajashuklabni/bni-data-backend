@@ -2715,7 +2715,7 @@ const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; /
             <p>We request you to pay the bill amount before due date, as penalty fee of <b>₹${penalty_amount}</b> will be applied.</b>.</p>
             <br/>
             <p>Thank you,<br/><b>BNI NEW Delhi</b></p>
-            <a href="https://bninewdelhi.com/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1"><button>Pay Now</button></a>
+            <a href="https://bninewdelhi.com/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1" style="text-decoration: none; color: white; background-color: red; padding: 10px 20px; border-radius: 5px;"><button>Pay Now</button></a>
 
             
           `,
@@ -2921,73 +2921,75 @@ const addExpenseType = async (req, res) => {
 };
 
 const addExpense = async (req, res) => {
-    try {
-        console.log('\n🚀 Starting Add Expense Process');
-        console.log('📝 Request Body:', req.body);
-        console.log('📎 File Details:', req.file);
+  try {
+      console.log('\n🚀 Starting Add Expense Process');
+      console.log('📝 Request Body:', req.body);
+      console.log('📎 File Details:', req.file);
 
-        if (!req.file) {
-            console.error('❌ No file uploaded');
-            return res.status(400).json({ message: "Bill file is required" });
-        }
+      if (!req.file) {
+          console.error('❌ No file uploaded');
+          return res.status(400).json({ message: "Bill file is required" });
+      }
 
-        // Store the original filename
-        const originalFilename = req.file.filename;
-        
-        // Insert expense record first
-        const result = await con.query(
-            `INSERT INTO expenses (
-                expense_type, submitted_by, description, amount, 
-                payment_status, bill_date, upload_bill, 
-                transaction_no, bill_no, chapter_id
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-            RETURNING *`,
-            [
-                req.body.expense_type,
-                req.body.submitted_by,
-                req.body.description,
-                req.body.amount,
-                req.body.payment_status,
-                req.body.bill_date,
-                originalFilename,  // Store original filename temporarily
-                req.body.transaction_no,
-                req.body.bill_no,
-                req.body.chapter_id
-            ]
-        );
+      // Store the original filename
+      const originalFilename = req.file.filename;
+      
+      // Insert expense record first
+      const result = await con.query(
+          `INSERT INTO expenses (
+              expense_type, submitted_by, description, amount, 
+              payment_status, bill_date, upload_bill, 
+              transaction_no, bill_no, chapter_id, is_gst
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+          RETURNING *`,
+          [
+              req.body.expense_type,
+              req.body.submitted_by,
+              req.body.description,
+              req.body.amount,
+              req.body.payment_status,
+              req.body.bill_date,
+              originalFilename,  // Store original filename temporarily
+              req.body.transaction_no,
+              req.body.bill_no,
+              req.body.chapter_id,
+              req.body.withGST==='true' || req.body.withGST===true
+          ]
+      );
 
-        // Get the expense_id from the inserted record
-        const expense_id = result.rows[0].expense_id;
+      // Get the expense_id from the inserted record
+      const expense_id = result.rows[0].expense_id;
 
-        // Rename the file to include expense_id
-        const fileExt = path.extname(originalFilename);
-        const newFilename = `expense_${expense_id}${fileExt}`;
-        const oldPath = path.join(__dirname, 'uploads', 'expenses', originalFilename);
-        const newPath = path.join(__dirname, 'uploads', 'expenses', newFilename);
+      // Rename the file to include expense_id
+      const fileExt = path.extname(originalFilename);
+      const newFilename = `expense_${expense_id}${fileExt}`;
+      const oldPath = path.join(__dirname, 'uploads', 'expenses', originalFilename);
+      const newPath = path.join(__dirname, 'uploads', 'expenses', newFilename);
 
-        // Rename the file
-        fs.renameSync(oldPath, newPath);
+      // Rename the file
+      fs.renameSync(oldPath, newPath);
 
-        // Update the filename in database
-        await con.query(
-            'UPDATE expenses SET upload_bill = $1 WHERE expense_id = $2',
-            [newFilename, expense_id]
-        );
+      // Update the filename in database
+      await con.query(
+          'UPDATE expenses SET upload_bill = $1 WHERE expense_id = $2',
+          [newFilename, expense_id]
+      );
 
-        console.log('✅ Expense added successfully:', {
-            id: expense_id,
-            filename: newFilename
-        });
+      console.log('✅ Expense added successfully:', {
+          id: expense_id,
+          filename: newFilename,
+          is_gst: result.rows[0].is_gst
+      });
 
-        res.status(201).json({
-            message: "Expense added successfully!",
-            data: {...result.rows[0], upload_bill: newFilename}
-        });
+      res.status(201).json({
+          message: "Expense added successfully!",
+          data: {...result.rows[0], upload_bill: newFilename}
+      });
 
-    } catch (error) {
-        console.error('❌ Error adding expense:', error);
-        res.status(500).json({ message: "Error adding expense" });
-    }
+  } catch (error) {
+      console.error('❌ Error adding expense:', error);
+      res.status(500).json({ message: "Error adding expense" });
+  }
 };
 
 const getExpenseById = async (req, res) => {
@@ -3023,6 +3025,7 @@ const updateExpense = async (req, res) => {
     bill_date,
     transaction_no,
     bill_no,
+    withGST
   } = req.body;
 
   const { expense_id } = req.params; // Get expense_id from URL params
@@ -3086,6 +3089,11 @@ const updateExpense = async (req, res) => {
     if (bill_no) {
       query.push(`bill_no = $${index++}`);
       values.push(bill_no);
+    }
+     // Add GST update condition
+     if (withGST !== undefined) {
+      query.push(`is_gst = $${index++}`);
+      values.push(withGST === 'true' || withGST === true);
     }
 
     // Add expense_id to the values array for the WHERE clause
@@ -7278,7 +7286,7 @@ const sendTrainingMails = async (req, res) => {
             <div style="text-align: center; margin-top: 30px; margin-bottom: 20px;">
                 <a href="https://bninewdelhi.com/training-payments/3/bdbe4592-738e-42b1-ad02-beea957a3f9d/1" 
                    style="
-                       background: linear-gradient(45deg, #d01f2f, #ff4b5a);
+                       background-color: red;
                        color: white;
                        padding: 15px 30px;
                        text-decoration: none;
