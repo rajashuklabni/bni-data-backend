@@ -6601,6 +6601,7 @@ const addChapterRequisition = async (req, res) => {
   }
 };;
 
+
 const updateChapterRequisition = async (req, res) => {
   console.log('\n🔄 Starting Chapter Requisition Update');
   console.log('=====================================');
@@ -6651,6 +6652,17 @@ const updateChapterRequisition = async (req, res) => {
       let finalRoComment = {};
       let finalGivenStatus = {};
 
+      // Helper function to safely parse JSON
+      const safeJSONParse = (str) => {
+          if (!str) return {};
+          try {
+              return typeof str === 'object' ? str : JSON.parse(str);
+          } catch (e) {
+              console.error('Error parsing JSON:', e);
+              return {};
+          }
+      };
+
       // Check if this is only a pickup status update
       const isOnlyPickupUpdate = pickup_status !== undefined && 
           !approve_status && 
@@ -6660,57 +6672,36 @@ const updateChapterRequisition = async (req, res) => {
 
       if (isOnlyPickupUpdate) {
           // For pickup-only updates, preserve existing values
-          finalApproveStatus = isVisitorRequest ? 
-              existingRequisition.rows[0].approve_status :
-              existingRequisition.rows[0].approve_status || '{}';
-          
-          finalRoComment = isVisitorRequest ? 
-              existingRequisition.rows[0].ro_comment :
-              existingRequisition.rows[0].ro_comment || '{}';
-          
-          finalGivenStatus = isVisitorRequest ? 
-              existingRequisition.rows[0].given_status :
-              existingRequisition.rows[0].given_status || '{}';
+          finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
+          finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
+          finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
       } else if (isVisitorRequest) {
           // For visitor requests, use direct values
           finalApproveStatus = approve_status || existingRequisition.rows[0].approve_status;
           finalRoComment = ro_comment || existingRequisition.rows[0].ro_comment;
           finalGivenStatus = given_status || existingRequisition.rows[0].given_status || '{}';
       } else {
-          // Existing logic for member requests
-          if (existingRequisition.rows[0].approve_status) {
-              try {
-                  finalApproveStatus = JSON.parse(existingRequisition.rows[0].approve_status);
-              } catch (e) {
-                  console.error('Error parsing existing approve_status:', e);
-              }
-          }
-
-          if (existingRequisition.rows[0].ro_comment) {
-              try {
-                  finalRoComment = JSON.parse(existingRequisition.rows[0].ro_comment);
-              } catch (e) {
-                  console.error('Error parsing existing ro_comment:', e);
-              }
-          }
-
-          if (existingRequisition.rows[0].given_status) {
-              try {
-                  finalGivenStatus = JSON.parse(existingRequisition.rows[0].given_status);
-              } catch (e) {
-                  console.error('Error parsing existing given_status:', e);
-              }
-          }
+          // Handle existing data for member requests
+          finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
+          finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
+          finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
 
           // Merge with new data for member requests
-          finalApproveStatus = approve_status ? { ...finalApproveStatus, ...approve_status } : finalApproveStatus;
-          finalRoComment = ro_comment ? { ...finalRoComment, ...ro_comment } : finalRoComment;
-          finalGivenStatus = given_status ? { ...finalGivenStatus, ...given_status } : finalGivenStatus;
+          if (approve_status) {
+              finalApproveStatus = { ...finalApproveStatus, ...safeJSONParse(approve_status) };
+          }
+          if (ro_comment) {
+              finalRoComment = { ...finalRoComment, ...safeJSONParse(ro_comment) };
+          }
+          if (given_status) {
+              finalGivenStatus = { ...finalGivenStatus, ...safeJSONParse(given_status) };
+          }
       }
 
       // Keep existing member table update logic
       if (!isVisitorRequest && approve_status) {
-          for (const [key, status] of Object.entries(approve_status)) {
+          const approveStatusObj = safeJSONParse(approve_status);
+          for (const [key, status] of Object.entries(approveStatusObj)) {
               if (status === 'approved') {
                   const [memberId, accoladeId] = key.split('_').map(Number);
                   const memberResult = await con.query(
@@ -6747,16 +6738,33 @@ const updateChapterRequisition = async (req, res) => {
           RETURNING *
       `;
 
+      // Updated prepareValue function to handle already stringified JSON
+      const prepareValue = (value) => {
+          if (!value) return '{}';
+          
+          // If it's already a string but looks like a JSON object
+          if (typeof value === 'string') {
+              try {
+                  // Try to parse it first to remove any double stringification
+                  const parsed = JSON.parse(value);
+                  return JSON.stringify(parsed);
+              } catch (e) {
+                  // If it's not valid JSON, return as is
+                  return value;
+              }
+          }
+          
+          // If it's an object, stringify it once
+          return JSON.stringify(value);
+      };
+
       const values = [
-          isVisitorRequest ? finalApproveStatus : 
-              (typeof finalApproveStatus === 'string' ? finalApproveStatus : JSON.stringify(finalApproveStatus)),
-          isVisitorRequest ? finalRoComment : 
-              (typeof finalRoComment === 'string' ? finalRoComment : JSON.stringify(finalRoComment)),
+          prepareValue(finalApproveStatus),
+          prepareValue(finalRoComment),
           isOnlySlabWiseCommentUpdate ? existingRequisition.rows[0].pickup_status : 
               (pickup_status !== undefined ? pickup_status : existingRequisition.rows[0].pickup_status),
           finalPickupDate,
-          isVisitorRequest ? finalGivenStatus : 
-              (typeof finalGivenStatus === 'string' ? finalGivenStatus : JSON.stringify(finalGivenStatus)),
+          prepareValue(finalGivenStatus),
           slab_wise_comment || existingRequisition.rows[0].slab_wise_comment,
           chapter_requisition_id
       ];
