@@ -6699,29 +6699,29 @@ const updateChapterRequisition = async (req, res) => {
       }
 
       // Keep existing member table update logic
-      if (!isVisitorRequest && approve_status) {
-          const approveStatusObj = safeJSONParse(approve_status);
-          for (const [key, status] of Object.entries(approveStatusObj)) {
-              if (status === 'approved') {
-                  const [memberId, accoladeId] = key.split('_').map(Number);
-                  const memberResult = await con.query(
-                      'SELECT accolades_id FROM member WHERE member_id = $1',
-                      [memberId]
-                  );
+      // if (!isVisitorRequest && approve_status) {
+      //     const approveStatusObj = safeJSONParse(approve_status);
+      //     for (const [key, status] of Object.entries(approveStatusObj)) {
+      //         if (status === 'approved') {
+      //             const [memberId, accoladeId] = key.split('_').map(Number);
+      //             const memberResult = await con.query(
+      //                 'SELECT accolades_id FROM member WHERE member_id = $1',
+      //                 [memberId]
+      //             );
 
-                  if (memberResult.rows.length > 0) {
-                      let currentAccolades = memberResult.rows[0].accolades_id || [];
-                      if (!currentAccolades.includes(accoladeId)) {
-                          currentAccolades.push(accoladeId);
-                          await con.query(
-                              'UPDATE member SET accolades_id = $1 WHERE member_id = $2',
-                              [currentAccolades, memberId]
-                          );
-                      }
-                  }
-              }
-          }
-      }
+      //             if (memberResult.rows.length > 0) {
+      //                 let currentAccolades = memberResult.rows[0].accolades_id || [];
+      //                 if (!currentAccolades.includes(accoladeId)) {
+      //                     currentAccolades.push(accoladeId);
+      //                     await con.query(
+      //                         'UPDATE member SET accolades_id = $1 WHERE member_id = $2',
+      //                         [currentAccolades, memberId]
+      //                     );
+      //                 }
+      //             }
+      //         }
+      //     }
+      // }
 
       const finalPickupDate = pickup_date && pickup_date.trim() !== '' ? pickup_date : existingRequisition.rows[0].pickup_date;
 
@@ -8001,6 +8001,203 @@ const addVisitorPayment = async (req, res) => {
   }
 };
 
+const addKittyPaymentManually = async (req, res) => {
+  try {
+    console.log('📝 Starting manual kitty payment process');
+    
+    const {
+      member_id,
+      chapter_id,
+      region_id,
+      kitty_bill_id,
+      order_amount,
+      tax_amount,
+      member_first_name,
+      member_last_name,
+      member_mobilenumber,
+      member_company_name,
+      member_gstin,
+      payment_type,
+      remaining_balance_with_gst,
+      created_at = new Date().toISOString()
+    } = req.body;
+
+    // Generate order ID in the required format
+    const randomString = Math.random().toString(36).substring(2, 15);
+    const order_id = `order_${Date.now()}${randomString}`;
+    const payment_session_id = `session_${Date.now()}${Math.random().toString(36).substring(2, 15)}payment`;
+    
+    console.log('🔑 Generated IDs:', { order_id, payment_session_id });
+
+    // Prepare order data
+    const orderQuery = `
+      INSERT INTO Orders (
+        order_id, order_amount, order_currency, payment_gateway_id,
+        customer_id, chapter_id, region_id, universal_link_id,
+        ulid, order_status, payment_session_id,
+        one_time_registration_fee, membership_fee, tax,
+        member_name, customer_email, customer_phone,
+        gstin, company, mobile_number, renewal_year,
+        payment_note, training_id, event_id, kitty_bill_id,
+        visitor_id, visitor_name, visitor_email, visitor_mobilenumber,
+        visitor_address, visitor_company, visitor_gstin,
+        visitor_business, visitor_company_address, accolade_id,
+        created_at
+      ) VALUES (
+        $1, $2, 'INR', 1,
+        $3, $4, $5, 4,
+        $6, 'ACTIVE', $7,
+        '0', '0', $8,
+        $9, $10, $11,
+        $12, $13, $14, '1Year',
+        'meeting-payments', null, null, $15,
+        null, null, null, null,
+        null, null, null,
+        null, null, null,
+        $16
+      ) RETURNING *
+    `;
+
+    const orderValues = [
+      order_id,
+      order_amount || 0,
+      member_id,
+      chapter_id,
+      region_id,
+      null, // ulid
+      payment_session_id,
+      tax_amount || 0,
+      `${member_first_name} ${member_last_name}`,
+      '', // email address (empty as not needed)
+      member_mobilenumber || '',
+      member_gstin || '',
+      member_company_name,
+      member_mobilenumber || '',
+      kitty_bill_id,
+      created_at
+    ];
+
+    console.log('📦 Inserting order with values:', orderValues);
+    const orderResult = await con.query(orderQuery, orderValues);
+    console.log('✅ Order created successfully');
+
+    // Payment method object
+    const paymentMethod = {
+      cash: {
+        payment_note: payment_type === "partial" ? "Partial Meeting Payment" : 
+                     payment_type === "advance" ? "Advance Meeting Payment" : 
+                     "Meeting Payment"
+      }
+    };
+
+    // Insert transaction record
+    const transactionQuery = `
+      INSERT INTO Transactions (
+        cf_payment_id, order_id, payment_gateway_id,
+        payment_amount, payment_currency, payment_status,
+        payment_message, payment_time, payment_completion_time,
+        auth_id, payment_method, error_details, payment_group
+      ) VALUES (
+        $1, $2, 1,
+        $3, 'INR', 'SUCCESS',
+        'Kitty Payment Successful', NOW(), NOW(),
+        'KITTY_PAYMENT', $4, '{}', 'kitty_payment'
+      ) RETURNING *
+    `;
+
+    const cf_payment_id = `TRX_${Date.now()}${Math.random().toString(36).substring(2, 8)}`;
+    const transactionValues = [
+      cf_payment_id,
+      order_id,
+      order_amount || 0,
+      JSON.stringify(paymentMethod)
+    ];
+
+    console.log('💳 Inserting transaction with values:', transactionValues);
+    const transactionResult = await con.query(transactionQuery, transactionValues);
+    console.log('✅ Transaction created successfully');
+
+    // Handle bankorder updates based on payment type
+    let updateBankorderQuery;
+    let bankorderValues;
+
+    if (payment_type === "advance") {
+      // First get current amount_to_pay
+      const currentBankorderQuery = `
+        SELECT amount_to_pay 
+        FROM bankorder 
+        WHERE chapter_id = $1 AND member_id = $2
+      `;
+      const currentBankorder = await con.query(currentBankorderQuery, [chapter_id, member_id]);
+      const currentAmountToPay = currentBankorder.rows[0]?.amount_to_pay || 0;
+
+      if (currentAmountToPay === 0) {
+        // If amount_to_pay is 0, just store order_amount in advance_pay
+        updateBankorderQuery = `
+          UPDATE bankorder 
+          SET advance_pay = $3
+          WHERE chapter_id = $1 AND member_id = $2
+          RETURNING *
+        `;
+        bankorderValues = [chapter_id, member_id, order_amount];
+      } else {
+        // If amount_to_pay exists:
+        // 1. Calculate remaining after paying amount_to_pay
+        const remainingAmount = order_amount - currentAmountToPay;
+        
+        // 2. Set amount_to_pay to 0 and store remaining in advance_pay
+        updateBankorderQuery = `
+          UPDATE bankorder 
+          SET amount_to_pay = 0,
+              advance_pay = $3
+          WHERE chapter_id = $1 AND member_id = $2
+          RETURNING *
+        `;
+        bankorderValues = [chapter_id, member_id, remainingAmount];
+      }
+    } else {
+      // Existing logic for partial/full payments
+      updateBankorderQuery = `
+        UPDATE bankorder 
+        SET amount_to_pay = $3
+        WHERE chapter_id = $1 AND member_id = $2
+        RETURNING *
+      `;
+      const newAmountToPay = payment_type === "partial" ? remaining_balance_with_gst : 0;
+      bankorderValues = [chapter_id, member_id, newAmountToPay];
+    }
+
+    console.log('🏦 Updating bankorder for member:', { 
+      member_id, 
+      chapter_id, 
+      payment_type,
+      bankorderValues
+    });
+
+    const bankorderResult = await con.query(updateBankorderQuery, bankorderValues);
+    console.log('✅ Bankorder updated successfully:', bankorderResult.rows[0]);
+
+    res.status(201).json({
+      success: true,
+      message: 'Kitty payment processed successfully',
+      data: {
+        order: orderResult.rows[0],
+        transaction: transactionResult.rows[0],
+        bankorder: bankorderResult.rows[0]
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error processing kitty payment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process kitty payment',
+      error: error.message
+    });
+  }
+};
+
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -8145,5 +8342,6 @@ module.exports = {
   updateInterviewSheetAnswers,
   updateCommitmentSheet,
   updateInclusionSheet,
-  addVisitorPayment
+  addVisitorPayment,
+  addKittyPaymentManually 
 };

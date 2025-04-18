@@ -146,7 +146,8 @@ const {
   updateInterviewSheetAnswers,
   updateCommitmentSheet,
   updateInclusionSheet,
-  addVisitorPayment
+  addVisitorPayment,
+  addKittyPaymentManually
 } = require("./controllers");
 
 const path = require("path");
@@ -1052,6 +1053,7 @@ router.put("/updateInterviewSheetAnswers/:visitor_id", updateInterviewSheetAnswe
 router.put("/updateCommitmentSheet/:visitor_id", updateCommitmentSheet);
 router.put("/updateInclusionSheet/:visitor_id", updateInclusionSheet);
 router.post("/addVisitorPayment", addVisitorPayment);
+router.post("/addKittyPaymentManually", addKittyPaymentManually);
 
 
 
