@@ -820,7 +820,7 @@ const getLoginLogs = async (req, res) => {
 const getMembers = async (req, res) => {
   try {
     const result = await con.query(
-      "SELECT * FROM member WHERE delete_status = 0 AND writeoff_status = false"
+      "SELECT * FROM member WHERE delete_status = 0"
     );
     res.json(result.rows);
   } catch (error) {
@@ -4733,10 +4733,12 @@ const addMemberWriteOff = async (req, res) => {
     `;
 
     const updateQuery = `
-      UPDATE member 
-      SET writeoff_status = TRUE 
-      WHERE member_id = $1;
-    `;
+  UPDATE member 
+  SET writeoff_status = TRUE,
+      member_status = 'inactive'
+  WHERE member_id = $1;
+`;
+
 
     let insertedRecords = [];
 
