@@ -6725,6 +6725,46 @@ const updateChapterRequisition = async (req, res) => {
       //     }
       // }
 
+      // Add given status update logic for members
+      if (!isVisitorRequest && given_status) {
+        console.log('📝 Processing member accolade updates for given status:', given_status);
+        
+        const givenStatusObj = safeJSONParse(given_status);
+        
+        // Iterate through newly given accolades
+        for (const [key, value] of Object.entries(givenStatusObj)) {
+            // Only process if it has a date (meaning it was just marked as given)
+            if (value && value.date) {
+                const [memberId, accoladeId] = key.split('_').map(Number);
+                console.log(`🎯 Processing accolade ${accoladeId} for member ${memberId}`);
+
+                // Get current member's accolades
+                const memberResult = await con.query(
+                    'SELECT accolades_id FROM member WHERE member_id = $1',
+                    [memberId]
+                );
+
+                if (memberResult.rows.length > 0) {
+                    let currentAccolades = memberResult.rows[0].accolades_id || [];
+                    
+                    // Add the accolade if it's not already in the array
+                    if (!currentAccolades.includes(accoladeId)) {
+                        currentAccolades.push(accoladeId);
+                        console.log(`✨ Adding accolade ${accoladeId} to member ${memberId}'s accolades:`, currentAccolades);
+                        
+                        // Update member's accolades array
+                        await con.query(
+                            'UPDATE member SET accolades_id = $1 WHERE member_id = $2',
+                            [currentAccolades, memberId]
+                        );
+                    } else {
+                        console.log(`ℹ️ Accolade ${accoladeId} already exists for member ${memberId}`);
+                    }
+                }
+            }
+        }
+    }
+
       const finalPickupDate = pickup_date && pickup_date.trim() !== '' ? pickup_date : existingRequisition.rows[0].pickup_date;
 
       const query = `
@@ -6792,6 +6832,7 @@ const updateChapterRequisition = async (req, res) => {
       });
   }
 };
+
 
 
 
