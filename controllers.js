@@ -6371,6 +6371,7 @@ const addMemberRequisition = async (req, res) => {
       // Set default values for status fields
       const approve_status = 'pending';
       const request_status = 'open';
+      const given_status = false;
 
       const query = `
           INSERT INTO member_requisition_request (
@@ -6382,9 +6383,10 @@ const addMemberRequisition = async (req, res) => {
               accolade_amount,
               order_id,
               approve_status,
-              request_status
+              request_status,
+              given_status
           )
-          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8)
+          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8, $9)
           RETURNING *
       `;
 
@@ -6396,7 +6398,8 @@ const addMemberRequisition = async (req, res) => {
           accolade_amount,
           order_id,
           approve_status,
-          request_status
+          request_status,
+          given_status
       ];
 
       console.log('📊 Executing Query with values:', values);
@@ -6826,97 +6829,145 @@ const updateChapterRequisition = async (req, res) => {
 
 
 
+
+
 const updateMemberRequisition = async (req, res) => {
   console.log('\n🔄 Starting Member Requisition Update');
   console.log('=====================================');
+  console.log('📥 Received request body:', req.body);
 
   try {
-    const { 
-      member_request_id,
-      member_id,
-      chapter_id,
-      accolade_id,
-      approve_status,
-      response_comment,
-      request_status,
-      given_date 
-    } = req.body;
+      const { 
+          member_request_id,
+          member_id,
+          chapter_id,
+          accolade_id,
+          approve_status,
+          response_comment,
+          given_status,
+          given_date,
+          request_status
+      } = req.body;
 
-    console.log('📝 Request Data:', {
-      member_request_id,
-      member_id,
-      chapter_id,
-      accolade_id,
-      approve_status,
-      response_comment,
-      request_status,
-      given_date
-    });
-
-    // Validate required fields
-    if (!member_request_id || !member_id || !chapter_id || !accolade_id) {
-      console.error('❌ Missing required fields');
-      return res.status(400).json({
-        success: false,
-        message: "Required fields missing: member_request_id, member_id, chapter_id, and accolade_id are mandatory"
+      console.log('📝 Request Data:', {
+          member_request_id,
+          member_id,
+          chapter_id,
+          accolade_id,
+          approve_status,
+          response_comment,
+          given_status,
+          given_date,
+          request_status
       });
-    }
 
-    const query = `
-      UPDATE member_requisition_request 
-      SET 
-        approve_status = $1,
-        approved_date = CURRENT_TIMESTAMP,
-        response_comment = $2,
-        given_date = $3,
-        request_status = $4
-      WHERE 
-        member_request_id = $5 
-        AND member_id = $6 
-        AND chapter_id = $7 
-        AND accolade_id = $8
-      RETURNING *
-    `;
+      let query;
+      let values;
 
-    const values = [
-      approve_status || 'pending',
-      response_comment,
-      given_date,
-      request_status || 'open',
-      member_request_id,
-      member_id,
-      chapter_id,
-      accolade_id
-    ];
+      // Case 1: If member_request_id is provided (approval flow)
+      if (member_request_id) {
+          // Validate required fields for approval flow
+          if (!member_id || !chapter_id || !accolade_id) {
+              console.error('❌ Missing required fields for approval flow');
+              return res.status(400).json({
+                  success: false,
+                  message: "Required fields missing: member_id, chapter_id, and accolade_id are mandatory"
+              });
+          }
 
-    console.log('🔍 Executing update query with values:', values);
+          query = `
+              UPDATE member_requisition_request 
+              SET 
+                  approve_status = CAST($1 AS VARCHAR),
+                  response_comment = $2,
+                  approved_date = CASE 
+                      WHEN CAST($1 AS VARCHAR) = 'approved' THEN CURRENT_TIMESTAMP 
+                      ELSE approved_date 
+                  END
+              WHERE 
+                  member_request_id = $3 
+                  AND member_id = $4 
+                  AND chapter_id = $5 
+                  AND accolade_id = $6
+                  AND given_status = false
+                  AND request_status = 'open'
+                  AND given_date IS NULL
+              RETURNING *
+          `;
 
-    const result = await con.query(query, values);
+          values = [
+              approve_status || 'pending',
+              response_comment || '',
+              member_request_id,
+              member_id,
+              chapter_id,
+              accolade_id
+          ];
+      }
+      // Case 2: Update given status flow
+      else {
+          // Validate required fields for given status update
+          if (!member_id || !chapter_id || !accolade_id || given_status === undefined || !given_date || !request_status) {
+              console.error('❌ Missing required fields for given status update');
+              return res.status(400).json({
+                  success: false,
+                  message: "Required fields missing for given status update"
+              });
+          }
 
-    if (result.rows.length === 0) {
-      console.log('❌ No matching requisition found');
-      return res.status(404).json({
-        success: false,
-        message: "No matching requisition found"
+          query = `
+              UPDATE member_requisition_request 
+              SET 
+                  given_status = $1,
+                  given_date = $2,
+                  request_status = $3
+              WHERE 
+                  member_id = $4 
+                  AND chapter_id = $5 
+                  AND accolade_id = $6
+                  AND given_status = false
+                  AND request_status = 'open'
+                  AND given_date IS NULL
+              RETURNING *
+          `;
+
+          values = [
+              given_status,
+              given_date,
+              request_status,
+              member_id,
+              chapter_id,
+              accolade_id
+          ];
+      }
+
+      console.log('🔍 Executing update query with values:', values);
+
+      const result = await con.query(query, values);
+
+      if (result.rows.length === 0) {
+          console.log('❌ No matching requisition found or conditions not met');
+          return res.status(404).json({
+              success: false,
+              message: "No matching requisition found or conditions not met"
+          });
+      }
+
+      console.log('✅ Member Requisition updated successfully:', result.rows[0]);
+
+      res.json({
+          success: true,
+          message: "Member requisition updated successfully",
+          data: result.rows[0]
       });
-    }
-
-    const updatedRequisition = result.rows[0];
-    console.log('✅ Member Requisition updated successfully:', updatedRequisition);
-
-    res.json({
-      success: true,
-      message: "Member requisition updated successfully",
-      data: updatedRequisition
-    });
 
   } catch (error) {
-    console.error('❌ Error in updateMemberRequisition:', error);
-    res.status(500).json({
-      success: false,
-      message: "Error updating member requisition",
-      error: error.message
-    });
+      console.error('❌ Error in updateMemberRequisition:', error);
+      res.status(500).json({
+          success: false,
+          message: "Error updating member requisition",
+          error: error.message
+      });
   }
 };
 
