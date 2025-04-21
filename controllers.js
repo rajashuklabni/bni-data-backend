@@ -6488,9 +6488,10 @@ const addChapterRequisition = async (req, res) => {
                   approve_status,
                   slab_wise_comment,
                   given_status,
-                  visitor_id
+                  visitor_id,
+                  requested_by
               )
-              VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+              VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
               RETURNING *
           `;
 
@@ -6506,7 +6507,8 @@ const addChapterRequisition = async (req, res) => {
               approve_status,
               slab_wise_comment,
               given_status,
-              visitor_id  // Moved to last position
+              visitor_id,  // Moved to last position
+              req.body.requested_by
           ];
 
           console.log('🔍 Executing visitor flow query with values:', visitorValues);
@@ -6565,9 +6567,10 @@ const addChapterRequisition = async (req, res) => {
               ro_comment,
               pickup_status,
               pickup_date,
-              visitor_id
+              visitor_id,
+              requested_by
           )
-          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8, $9)
+          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8, $9, $10)
           RETURNING *
       `;
 
@@ -6580,7 +6583,8 @@ const addChapterRequisition = async (req, res) => {
           ro_comment,
           pickup_status,
           pickup_date,
-          null  // visitor_id will be null in regular flow
+          null,  // visitor_id will be null in regular flow
+          req.body.requested_by
       ];
 
       console.log('🔍 Executing regular flow query with values:', values);
@@ -6605,6 +6609,7 @@ const addChapterRequisition = async (req, res) => {
       });
   }
 };;
+
 
 
 const updateChapterRequisition = async (req, res) => {
