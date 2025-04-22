@@ -147,7 +147,12 @@ const {
   updateCommitmentSheet,
   updateInclusionSheet,
   addVisitorPayment,
-  addKittyPaymentManually
+  addKittyPaymentManually,
+  exportAccoladesToExcel,
+  importMemberAccolades,
+  getAllMemberAccolades,
+  sendInterviewSheetEmail,
+  sendFormSubmissionEmail
 } = require("./controllers");
 
 const path = require("path");
@@ -1054,6 +1059,11 @@ router.put("/updateCommitmentSheet/:visitor_id", updateCommitmentSheet);
 router.put("/updateInclusionSheet/:visitor_id", updateInclusionSheet);
 router.post("/addVisitorPayment", addVisitorPayment);
 router.post("/addKittyPaymentManually", addKittyPaymentManually);
+router.get('/export-accolades', exportAccoladesToExcel);
+router.post('/import-member-accolades', upload.single('file'), importMemberAccolades);
+router.get("/getAllMemberAccolades", getAllMemberAccolades);
+router.post("/sendInterviewSheetEmail", sendInterviewSheetEmail)
+router.post("/sendFormSubmissionEmail", sendFormSubmissionEmail);
 
 
 

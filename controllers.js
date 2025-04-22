@@ -18,6 +18,7 @@ const format = require('pg-format'); // Import pg-format for PostgreSQL queries
 dotEnv.config();
 
 
+
 // Instead of this:
 // const fetch = require('node-fetch');
 
@@ -8299,6 +8300,661 @@ const addKittyPaymentManually = async (req, res) => {
   }
 };
 
+const exportAccoladesToExcel = async (req, res) => {
+  try {
+    const result = await con.query('SELECT * FROM accolades');
+    const accolades = result.rows;
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Accolades');
+
+    // Define columns
+    worksheet.columns = [
+      { header: 'Accolade ID', key: 'accolade_id', width: 15 },
+      { header: 'Accolade Name', key: 'accolade_name', width: 30 },
+      { header: 'Status', key: 'accolade_status', width: 15 },
+      { header: 'Created At', key: 'accolade_publish_date', width: 25 },
+      // Add more fields if you have them
+    ];
+
+    // Add rows
+    accolades.forEach(accolade => {
+      worksheet.addRow(accolade);
+    });
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=accolades.xlsx');
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Error exporting accolades:', err);
+    res.status(500).send('Error exporting accolades to Excel');
+  }
+};
+
+
+const importMemberAccolades = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(sheet);
+
+    for (const row of data) {
+      const {
+        member_id,
+        accolade_id,
+        given_date,
+        issue_date,
+        count,
+        comment
+      } = row;
+
+      await con.query(
+        `INSERT INTO member_accolades (member_id, accolade_id, given_date, issue_date, count, comment)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [member_id, accolade_id, given_date, issue_date, count, comment || null]
+      );
+    }
+
+    con.release();
+    res.status(200).json({ message: 'Member accolades imported successfully' });
+  } catch (error) {
+    console.error('Error importing member accolades:', error);
+    res.status(500).json({ message: 'Failed to import member accolades' });
+  }
+};
+
+const getAllMemberAccolades = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM member_accolades");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching member accolades:", error);
+    res.status(500).send("Error fetching member accolades");
+  }
+};
+
+const sendFormSubmissionEmail = async (req, res) => {
+  try {
+      const { 
+          email,
+          name,
+          formType,
+          chapter_name,
+          formData  // All form data
+      } = req.body;
+
+      console.log('📧 Preparing form submission email:', {
+          to: email,
+          name: name,
+          formType: formType,
+          chapter: chapter_name
+      });
+
+      const currentDate = new Date().toLocaleString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: 'numeric',
+          second: 'numeric',
+          hour12: true
+      });
+
+      // Helper function to create member application table
+      const createMemberApplicationTable = (data) => {
+          return `
+              <table style="width: 100%; border-collapse: collapse; margin-top: 20px; margin-bottom: 20px;">
+                  <tr style="background-color: #f0f0f0;">
+                      <th colspan="2" style="padding: 12px; border: 1px solid #dee2e6; text-align: left;">Entry Details</th>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Application Type</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.applicationType === 'member' ? 'Member Application' : 'Renewal Application'}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Region</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">West</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Chapter</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${chapter_name || 'N/A'}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Visit Date</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.visitDate || 'N/A'}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Invited By</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.memberName || 'N/A'}</td>
+                  </tr>
+
+                  <tr style="background-color: #f0f0f0;">
+                      <th colspan="2" style="padding: 12px; border: 1px solid #dee2e6; text-align: left;">Personal Information</th>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Full Name</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.firstName} ${data.lastName}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Email</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.email}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Primary Phone</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.mobile}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Secondary Phone</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.secondaryPhone || 'N/A'}</td>
+                  </tr>
+
+                  <tr style="background-color: #f0f0f0;">
+                      <th colspan="2" style="padding: 12px; border: 1px solid #dee2e6; text-align: left;">Business Information</th>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Company Name</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.companyName}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Professional Classification</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.professionalClassification}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Industry</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.industry}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Business Website</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.businessWebsite || 'N/A'}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>GSTIN</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.gstin || 'N/A'}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Company Address</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.companyAddress || 'N/A'}</td>
+                  </tr>
+
+                  <tr style="background-color: #f0f0f0;">
+                      <th colspan="2" style="padding: 12px; border: 1px solid #dee2e6; text-align: left;">Experience & Credentials</th>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Professional Experience</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.q1_experience}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Time in Professional Classification</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.q2_length_time}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Education & Certifications</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.q3_education}</td>
+                  </tr>
+
+                  <tr style="background-color: #f0f0f0;">
+                      <th colspan="2" style="padding: 12px; border: 1px solid #dee2e6; text-align: left;">References</th>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Reference 1</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">
+                          Name: ${data.ref1_first_name} ${data.ref1_last_name}<br>
+                          Business: ${data.ref1_business_name || 'N/A'}<br>
+                          Phone: ${data.ref1_phone}<br>
+                          Email: ${data.ref1_email || 'N/A'}<br>
+                          Relationship: ${data.ref1_relationship || 'N/A'}
+                      </td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Reference 2</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">
+                          Name: ${data.ref2_first_name} ${data.ref2_last_name}<br>
+                          Business: ${data.ref2_business_name || 'N/A'}<br>
+                          Phone: ${data.ref2_phone}<br>
+                          Email: ${data.ref2_email || 'N/A'}<br>
+                          Relationship: ${data.ref2_relationship || 'N/A'}
+                      </td>
+                  </tr>
+              </table>
+          `;
+      };
+
+      // Format EOI form data in a table
+      const createEOITable = (data) => {
+          return `
+              <table style="width: 100%; border-collapse: collapse; margin-top: 20px; margin-bottom: 20px;">
+                  <tr style="background-color: #f8f9fa;">
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Region</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">West</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Chapter</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.chapter || 'N/A'}</td>
+                  </tr>
+                  <tr style="background-color: #f8f9fa;">
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Full Name</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.firstName} ${data.lastName}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Email</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.email}</td>
+                  </tr>
+                  <tr style="background-color: #f8f9fa;">
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Mobile</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.mobile}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Company Name</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.companyName}</td>
+                  </tr>
+                  <tr style="background-color: #f8f9fa;">
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Professional Classification</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.professionalClassification}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Industry</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.industry}</td>
+                  </tr>
+                  <tr style="background-color: #f8f9fa;">
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>GSTIN</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.gstin || 'N/A'}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Company Address</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.companyAddress}</td>
+                  </tr>
+                  <tr style="background-color: #f8f9fa;">
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Visit Date</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.visitDate}</td>
+                  </tr>
+                  <tr>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>How did you hear about us?</strong></td>
+                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.howHeard}</td>
+                  </tr>
+              </table>
+          `;
+      };
+
+      let emailSubject, emailContent;
+      if (formType === 'member_application') {
+          emailSubject = `Member Application Form Submission - BNI ${chapter_name}`;
+          emailContent = `
+              <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+                  <div style="background-color: #dc2626; padding: 20px; text-align: center; margin-bottom: 20px;">
+                      <h1 style="color: white; margin: 0;">BNI Member Application</h1>
+                  </div>
+                  
+                  <p style="font-size: 16px;">Dear ${name},</p>
+                  
+                  <p style="font-size: 16px;">Thank you for submitting your Member Application form for BNI ${chapter_name} Chapter. 
+                  We have successfully received your submission on ${currentDate}.</p>
+                  
+                  <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                      <h2 style="color: #dc2626; margin-top: 0;">Application Details</h2>
+                      ${createMemberApplicationTable(formData)}
+                  </div>
+
+                  <p style="font-size: 16px;">Our team will review your application and contact you shortly with the next steps. 
+                  Meanwhile, if you have any questions, please feel free to reach out to us.</p>
+                  
+                  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+                      <p style="margin: 0;">Best Regards,<br>
+                      <strong>BNI ${chapter_name} Chapter</strong></p>
+                  </div>
+              </div>
+          `;
+      } else {
+          emailSubject = `Expression of Interest Form Submission - BNI ${chapter_name}`;
+          emailContent = `
+              <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+                  <div style="background-color: #dc2626; padding: 20px; text-align: center; margin-bottom: 20px;">
+                      <h1 style="color: white; margin: 0;">BNI Expression of Interest</h1>
+                  </div>
+                  
+                  <p style="font-size: 16px;">Dear ${name},</p>
+                  
+                  <p style="font-size: 16px;">Thank you for submitting your Expression of Interest form for BNI ${chapter_name} Chapter. 
+                  We have successfully received your submission on ${currentDate}.</p>
+                  
+                  <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                      <h2 style="color: #dc2626; margin-top: 0;">Form Details</h2>
+                      ${createEOITable(formData)}
+                  </div>
+
+                  <p style="font-size: 16px;">Our team will review your application and contact you shortly with the next steps. 
+                  Meanwhile, if you have any questions, please feel free to reach out to us.</p>
+                  
+                  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+                      <p style="margin: 0;">Best Regards,<br>
+                      <strong>BNI ${chapter_name} Chapter</strong></p>
+                  </div>
+              </div>
+          `;
+      }
+
+      // Generate PDF content using the same table creation functions
+      const pdfContent = `
+          <html>
+              <head>
+                  <style>
+                      body { font-family: Arial, sans-serif; }
+                      .header { 
+                          background-color: #dc2626; 
+                          color: white; 
+                          padding: 20px;
+                          text-align: center;
+                      }
+                      .header h1 {
+                          color: #dc2626;
+                          background-color: white;
+                          padding: 10px;
+                          margin: 0;
+                          border-radius: 4px;
+                      }
+                      table { width: 100%; border-collapse: collapse; }
+                      td, th { padding: 12px; border: 1px solid #dee2e6; }
+                      tr:nth-child(even) { background-color: #f8f9fa; }
+                  </style>
+              </head>
+              <body>
+                  <div class="header">
+                      <h1>${formType === 'member_application' ? 'BNI Member Application' : 'BNI Expression of Interest'}</h1>
+                      <p>Submission Date: ${currentDate}</p>
+                  </div>
+                  <div style="padding: 20px;">
+                      ${formType === 'member_application' ? createMemberApplicationTable(formData) : createEOITable(formData)}
+                  </div>
+              </body>
+          </html>
+      `;
+
+      // Generate unique filename for PDF
+      const pdfFileName = `${Date.now()}_${formType}_${email.split('@')[0]}.pdf`;
+      const pdfFilePath = path.join(__dirname, '../temp', pdfFileName);
+
+      // Ensure temp directory exists
+      if (!fs.existsSync(path.join(__dirname, '../temp'))) {
+          fs.mkdirSync(path.join(__dirname, '../temp'), { recursive: true });
+      }
+
+      // Generate PDF using puppeteer
+      const browser = await puppeteer.launch({
+          headless: 'new',
+          args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+      const page = await browser.newPage();
+      await page.setContent(pdfContent, { waitUntil: 'networkidle0' });
+      await page.pdf({
+          path: pdfFilePath,
+          format: 'A4',
+          margin: {
+              top: '20px',
+              right: '20px',
+              bottom: '20px',
+              left: '20px'
+          }
+      });
+      await browser.close();
+
+      // Create mail options with PDF attachment
+      const mailOptions = {
+          from: 'BNI N E W Delhi <info@bninewdelhi.in>',
+          to: `${name} <${email}>`,
+          // cc: [
+          //     'SUNIL K. BNI DIRECTOR <sunilk@bni-india.in>',
+          //     'Shini Sunil <shini.sunil@adico.in>',
+          //     'Raja Shukla | Digital Marketing | Prolific Shukla <rajashukla@outlook.com>',
+          //     'Yatin wadhwa| Prolific| General Insurance <yatinwadhwa@ymail.com>',
+          //     'admin.bnidw@adico.in',
+          //     'BNI N E W Delhi Admin <admin@bninewdelhi.com>',
+          //     'sunil.k@adico.in'
+          // ],
+          subject: emailSubject,
+          html: emailContent,
+          attachments: [{
+              filename: 'application_form.pdf',
+              path: pdfFilePath
+          }]
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log('✅ Form submission email sent successfully to:', email);
+
+      // Clean up - delete the temporary PDF file
+      fs.unlink(pdfFilePath, (err) => {
+          if (err) console.error('Error deleting temporary PDF:', err);
+          else console.log('✅ Temporary PDF file deleted successfully');
+      });
+
+      res.status(200).json({
+          success: true,
+          message: `Form submission confirmation email sent successfully to ${email}`
+      });
+
+  } catch (error) {
+      console.error('❌ Error sending form submission email:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Failed to send form submission email',
+          error: error.message
+      });
+  }
+};
+
+
+const sendInterviewSheetEmail = async (req, res) => {
+  try {
+      const { 
+          commitmentChapter,
+          visitorName,
+          visitor_id,
+          date,
+          interviewBy,
+          applicantSign,
+          dynamicAnswers,
+          chapter_name
+      } = req.body;
+
+      console.log('📧 Preparing interview sheet email for:', visitorName);
+
+       // Get visitor email from database
+       const visitorQuery = 'SELECT visitor_email FROM visitors WHERE visitor_id = $1';
+       const visitorResult = await con.query(visitorQuery, [visitor_id]);
+      
+      if (!visitorResult.rows[0]) {
+          throw new Error('Visitor not found');
+      }
+
+      const { visitor_email } = visitorResult.rows[0];
+
+      // Get questions
+      const questionsQuery = 'SELECT * FROM interview_sheet_questions WHERE delete_status = false ORDER BY question_id';
+      const questionsResult = await con.query(questionsQuery);
+      const questions = questionsResult.rows;
+
+      // Create PDF content
+      const pdfContent = `
+          <html>
+              <head>
+                  <style>
+                      body { 
+                          font-family: Arial, sans-serif;
+                          margin: 0;
+                          padding: 20px;
+                      }
+                      .header { 
+                          background-color: #dc2626; 
+                          padding: 20px;
+                          text-align: center;
+                          margin-bottom: 20px;
+                      }
+                      .header h1 {
+                          color: #dc2626;
+                          background-color: white;
+                          padding: 10px;
+                          margin: 0;
+                          border-radius: 4px;
+                      }
+                      .info-section {
+                          margin-bottom: 20px;
+                          padding: 10px;
+                          background-color: #f8f9fa;
+                          border-radius: 4px;
+                      }
+                      .question {
+                          margin: 15px 0;
+                          padding: 15px;
+                          border: 1px solid #dee2e6;
+                          border-radius: 4px;
+                      }
+                      .question-text {
+                          font-weight: bold;
+                          color: #dc2626;
+                          margin-bottom: 10px;
+                      }
+                      .answer {
+                          margin-left: 20px;
+                          padding: 10px;
+                          background-color: #fff;
+                          border-left: 3px solid #dc2626;
+                      }
+                      .signature-section {
+                          margin-top: 30px;
+                          border-top: 1px solid #dee2e6;
+                          padding-top: 20px;
+                          display: grid;
+                          grid-template-columns: 1fr 1fr;
+                          gap: 20px;
+                      }
+                  </style>
+              </head>
+              <body>
+                  <div class="header">
+                      <h1>BNI Interview Sheet</h1>
+                      <p style="color: white;">Chapter: ${chapter_name}</p>
+                  </div>
+
+                  <div class="info-section">
+                      <p><strong>Visitor Name:</strong> ${visitorName}</p>
+                      <p><strong>Interview Date:</strong> ${date}</p>
+                      <p><strong>Region:</strong> West</p>
+                  </div>
+
+                  ${questions.map(q => `
+                      <div class="question">
+                          <div class="question-text">${q.question_id}. ${q.question}</div>
+                          <div class="answer">${dynamicAnswers[q.question_id] || 'No answer provided'}</div>
+                      </div>
+                  `).join('')}
+
+                  <div class="signature-section">
+                      <div>
+                          <p><strong>Interviewed By:</strong> ${interviewBy}</p>
+                      </div>
+                      <div>
+                          <p><strong>Applicant's Signature:</strong> ${applicantSign}</p>
+                      </div>
+                  </div>
+              </body>
+          </html>
+      `;
+
+      // Generate PDF
+      const browser = await puppeteer.launch({
+          headless: 'new',
+          args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+      const page = await browser.newPage();
+      await page.setContent(pdfContent, { waitUntil: 'networkidle0' });
+      
+      const pdfBuffer = await page.pdf({
+          format: 'A4',
+          margin: {
+              top: '20px',
+              right: '20px',
+              bottom: '20px',
+              left: '20px'
+          }
+      });
+      await browser.close();
+
+      // Create temporary file
+      const pdfFileName = `interview-sheet-${Date.now()}.pdf`;
+      const pdfFilePath = path.join(__dirname, '../temp', pdfFileName);
+
+      // Ensure temp directory exists
+      if (!fs.existsSync(path.join(__dirname, '../temp'))) {
+          fs.mkdirSync(path.join(__dirname, '../temp'), { recursive: true });
+      }
+
+      fs.writeFileSync(pdfFilePath, pdfBuffer);
+
+      // Send email using existing transporter
+      const mailOptions = {
+          from: 'BNI N E W Delhi <info@bninewdelhi.in>',
+          to: `${visitorName} <${visitor_email}>`,
+          cc: [
+              'SUNIL K. BNI DIRECTOR <sunilk@bni-india.in>',
+              'Shini Sunil <shini.sunil@adico.in>',
+              'Raja Shukla | Digital Marketing | Prolific Shukla <rajashukla@outlook.com>',
+              'admin.bnidw@adico.in',
+              'BNI N E W Delhi Admin <admin@bninewdelhi.com>'
+          ],
+          subject: `Interview Sheet - BNI ${chapter_name}`,
+          html: `
+              <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+                  <div style="background-color: #dc2626; padding: 20px; text-align: center; margin-bottom: 20px;">
+                      <h1 style="color: white; margin: 0;">BNI Interview Sheet</h1>
+                  </div>
+                  
+                  <p style="font-size: 16px;">Dear ${visitorName},</p>
+                  
+                  <p style="font-size: 16px;">Thank you for completing the interview process with BNI ${chapter_name} Chapter. 
+                  Please find attached your interview sheet with all responses.</p>
+                  
+                  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+                      <p style="margin: 0;">Best Regards,<br>
+                      <strong>BNI ${chapter_name} Chapter</strong></p>
+                  </div>
+              </div>
+          `,
+          attachments: [{
+              filename: 'interview-sheet.pdf',
+              path: pdfFilePath
+          }]
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log('✅ Interview sheet email sent successfully to:', visitor_email);
+
+      // Clean up - delete temporary PDF file
+      fs.unlink(pdfFilePath, (err) => {
+          if (err) console.error('Error deleting temporary PDF:', err);
+          else console.log('✅ Temporary PDF file deleted successfully');
+      });
+
+      res.status(200).json({
+          success: true,
+          message: `Interview sheet sent successfully to ${visitor_email}`
+      });
+
+  } catch (error) {
+      console.error('❌ Error sending interview sheet:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Failed to send interview sheet',
+          error: error.message
+      });
+  }
+};
+
 
 module.exports = {
   addInvoiceManually,
@@ -8445,5 +9101,10 @@ module.exports = {
   updateCommitmentSheet,
   updateInclusionSheet,
   addVisitorPayment,
-  addKittyPaymentManually 
+  addKittyPaymentManually,
+  exportAccoladesToExcel,
+  importMemberAccolades,
+  getAllMemberAccolades,
+  sendFormSubmissionEmail,
+  sendInterviewSheetEmail   
 };

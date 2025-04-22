@@ -84,6 +84,10 @@ app.get("/upload", (req, res) => {
   res.sendFile(path.join(__dirname, "upload.html")); // Serves the HTML form
 });
 
+app.get("/uploadMemberAccolades", (req, res) => {
+  res.sendFile(path.join(__dirname, "uploadAccolades.html")); // Serves the HTML form
+});
+
 const elvoiceRoutes = require("./allRoutes/eInvoiceRoutes");
 app.use("/einvoice", elvoiceRoutes);
 
