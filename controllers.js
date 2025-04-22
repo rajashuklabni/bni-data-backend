@@ -8189,7 +8189,7 @@ const addKittyPaymentManually = async (req, res) => {
         $1, $2, 1,
         $3, 'INR', 'SUCCESS',
         'Kitty Payment Successful', NOW(), NOW(),
-        'KITTY_PAYMENT', $4, '{}', 'kitty_payment'
+        'KITTY_PAYMENT', $4, '{}', 'cash'
       ) RETURNING *
     `;
 
@@ -8210,40 +8210,50 @@ const addKittyPaymentManually = async (req, res) => {
     let bankorderValues;
 
     if (payment_type === "advance") {
-      // First get current amount_to_pay
+      // Get both amount_to_pay and current advance_pay
       const currentBankorderQuery = `
-        SELECT amount_to_pay 
-        FROM bankorder 
-        WHERE chapter_id = $1 AND member_id = $2
+          SELECT amount_to_pay, advance_pay 
+          FROM bankorder 
+          WHERE chapter_id = $1 AND member_id = $2
       `;
       const currentBankorder = await con.query(currentBankorderQuery, [chapter_id, member_id]);
       const currentAmountToPay = currentBankorder.rows[0]?.amount_to_pay || 0;
-
+      const currentAdvancePay = currentBankorder.rows[0]?.advance_pay || 0;
+  
       if (currentAmountToPay === 0) {
-        // If amount_to_pay is 0, just store order_amount in advance_pay
-        updateBankorderQuery = `
-          UPDATE bankorder 
-          SET advance_pay = $3
-          WHERE chapter_id = $1 AND member_id = $2
-          RETURNING *
-        `;
-        bankorderValues = [chapter_id, member_id, order_amount];
-      } else {
+          // If amount_to_pay is 0, add order_amount to existing advance_pay
+          updateBankorderQuery = `
+              UPDATE bankorder 
+              SET advance_pay = advance_pay + $3
+              WHERE chapter_id = $1 AND member_id = $2
+              RETURNING *
+          `;
+          bankorderValues = [chapter_id, member_id, order_amount];
+      }
+      else {
         // If amount_to_pay exists:
         // 1. Calculate remaining after paying amount_to_pay
         const remainingAmount = order_amount - currentAmountToPay;
         
-        // 2. Set amount_to_pay to 0 and store remaining in advance_pay
+        // 2. Set amount_to_pay to 0 and add remaining to existing advance_pay
         updateBankorderQuery = `
-          UPDATE bankorder 
-          SET amount_to_pay = 0,
-              advance_pay = $3
-          WHERE chapter_id = $1 AND member_id = $2
-          RETURNING *
+            UPDATE bankorder 
+            SET amount_to_pay = 0,
+                advance_pay = advance_pay + $3
+            WHERE chapter_id = $1 AND member_id = $2
+            RETURNING *
         `;
         bankorderValues = [chapter_id, member_id, remainingAmount];
-      }
-    } else {
+    }
+
+    console.log("💰 Advance Payment Update:", {
+        currentAdvancePay,
+        newAmount: order_amount,
+        currentAmountToPay,
+        finalQuery: updateBankorderQuery,
+        values: bankorderValues
+    });
+}else {
       // Existing logic for partial/full payments
       updateBankorderQuery = `
         UPDATE bankorder 
