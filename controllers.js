@@ -1639,6 +1639,7 @@ const deleteAccolade = async (req, res) => {
   }
 };
 
+
 const updateAccolade = async (req, res) => {
   const { accolade_id } = req.params; // Get id from URL parameter
   const linkData = req.body; // Get the updated data from the request body
@@ -1659,8 +1660,9 @@ const updateAccolade = async (req, res) => {
         stock_available = $6,
         item_type = $7,
         accolade_type = $8,
-        eligibility_and_condition = $9
-      WHERE accolade_id = $10
+        eligibility_and_condition = $9,
+        accolade_price = $10
+      WHERE accolade_id = $11
       RETURNING *;`;
 
     // Prepare the values for the SQL query
@@ -1674,6 +1676,7 @@ const updateAccolade = async (req, res) => {
       linkData.item_type,
       linkData.accolade_type,
       linkData.eligibility_and_condition,
+      linkData.accolade_price, // Added accolade_price
       accolade_id, // Ensure the id is used for the WHERE clause
     ];
 
@@ -1692,6 +1695,7 @@ const updateAccolade = async (req, res) => {
     res.status(500).json({ message: "Error updating accolade" });
   }
 };
+
 
 const addAccolade = async (req, res) => {
   const {
