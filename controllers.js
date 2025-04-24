@@ -15,6 +15,7 @@ const dotEnv = require("dotenv");
 const multer = require('multer');
 const csv = require('csv-parser');
 const format = require('pg-format'); // Import pg-format for PostgreSQL queries
+const puppeteer = require('puppeteer');
 dotEnv.config();
 
 
@@ -6615,8 +6616,6 @@ const addChapterRequisition = async (req, res) => {
   }
 };;
 
-
-
 const updateChapterRequisition = async (req, res) => {
   console.log('\n🔄 Starting Chapter Requisition Update');
   console.log('=====================================');
@@ -6634,195 +6633,224 @@ const updateChapterRequisition = async (req, res) => {
           pick_up_status_ro_comment 
       } = req.body;
 
-      // First, check if this is a visitor requisition
-      const visitorCheck = await con.query(
-          'SELECT visitor_id FROM chapter_requisition WHERE chapter_requisition_id = $1',
-          [chapter_requisition_id]
-      );
-      
-      const isVisitorRequest = visitorCheck.rows[0]?.visitor_id !== null;
-      console.log('👤 Is Visitor Request:', isVisitorRequest);
+      // Begin transaction
+      await con.query('BEGIN');
 
-      // Keep existing slab wise comment check
-      const isOnlySlabWiseCommentUpdate = slab_wise_comment && 
-          !approve_status && 
-          !ro_comment && 
-          pickup_status === undefined && 
-          !pickup_date && 
-          !given_status;
-
-      if (!chapter_requisition_id) {
-          console.log('❌ Missing chapter_requisition_id in request body');
-          return res.status(400).json({
-              success: false,
-              message: "chapter_requisition_id is required in request body"
-          });
-      }
-
-      // Get existing requisition data
-      const existingRequisition = await con.query(
-          'SELECT * FROM chapter_requisition WHERE chapter_requisition_id = $1',
-          [chapter_requisition_id]
-      );
-
-      if (existingRequisition.rows.length === 0) {
-          console.log('❌ No requisition found with ID:', chapter_requisition_id);
-          return res.status(404).json({
-              success: false,
-              message: "Requisition not found"
-          });
-      }
-
-      let finalApproveStatus = {};
-      let finalRoComment = {};
-      let finalGivenStatus = {};
-
-      // Helper function to safely parse JSON
-      const safeJSONParse = (str) => {
-          if (!str) return {};
-          try {
-              return typeof str === 'object' ? str : JSON.parse(str);
-          } catch (e) {
-              console.error('Error parsing JSON:', e);
-              return {};
-          }
-      };
-
-      // Check if this is only a pickup status update
-      const isOnlyPickupUpdate = (pick_up_status_ro !== undefined || pick_up_status_ro_comment !== undefined) && 
-          !approve_status && 
-          !ro_comment && 
-          !given_status && 
-          !slab_wise_comment;
-
-      if (isOnlyPickupUpdate) {
-          // For pickup-only updates, preserve existing values
-          finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
-          finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
-          finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
-      } else if (isVisitorRequest) {
-          // For visitor requests, use direct values
-          finalApproveStatus = approve_status || existingRequisition.rows[0].approve_status;
-          finalRoComment = ro_comment || existingRequisition.rows[0].ro_comment;
-          finalGivenStatus = given_status || existingRequisition.rows[0].given_status || '{}';
-      } else {
-          // Handle existing data for member requests
-          finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
-          finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
-          finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
-
-          // Merge with new data for member requests
-          if (approve_status) {
-              finalApproveStatus = { ...finalApproveStatus, ...safeJSONParse(approve_status) };
-          }
-          if (ro_comment) {
-              finalRoComment = { ...finalRoComment, ...safeJSONParse(ro_comment) };
-          }
-          if (given_status) {
-              finalGivenStatus = { ...finalGivenStatus, ...safeJSONParse(given_status) };
-          }
-      }
-
-      // Add given status update logic for members
-      if (!isVisitorRequest && given_status) {
-          console.log('📝 Processing member accolade updates for given status:', given_status);
+      try {
+          // First, check if this is a visitor requisition
+          const visitorCheck = await con.query(
+              'SELECT visitor_id FROM chapter_requisition WHERE chapter_requisition_id = $1',
+              [chapter_requisition_id]
+          );
           
-          const givenStatusObj = safeJSONParse(given_status);
-          
-          // Iterate through newly given accolades
-          for (const [key, value] of Object.entries(givenStatusObj)) {
-              // Only process if it has a date (meaning it was just marked as given)
-              if (value && value.date) {
-                  const [memberId, accoladeId] = key.split('_').map(Number);
-                  console.log(`🎯 Processing accolade ${accoladeId} for member ${memberId}`);
+          const isVisitorRequest = visitorCheck.rows[0]?.visitor_id !== null;
+          console.log('👤 Is Visitor Request:', isVisitorRequest);
 
-                  // Get current member's accolades
-                  const memberResult = await con.query(
-                      'SELECT accolades_id FROM member WHERE member_id = $1',
-                      [memberId]
-                  );
+          // Keep existing slab wise comment check
+          const isOnlySlabWiseCommentUpdate = slab_wise_comment && 
+              !approve_status && 
+              !ro_comment && 
+              pickup_status === undefined && 
+              !pickup_date && 
+              !given_status;
 
-                  if (memberResult.rows.length > 0) {
-                      let currentAccolades = memberResult.rows[0].accolades_id || [];
-                      
-                      // Add the accolade if it's not already in the array
-                      if (!currentAccolades.includes(accoladeId)) {
-                          currentAccolades.push(accoladeId);
-                          console.log(`✨ Adding accolade ${accoladeId} to member ${memberId}'s accolades:`, currentAccolades);
+          if (!chapter_requisition_id) {
+              console.log('❌ Missing chapter_requisition_id in request body');
+              return res.status(400).json({
+                  success: false,
+                  message: "chapter_requisition_id is required in request body"
+              });
+          }
+
+          // Get existing requisition data
+          const existingRequisition = await con.query(
+              'SELECT * FROM chapter_requisition WHERE chapter_requisition_id = $1',
+              [chapter_requisition_id]
+          );
+
+          if (existingRequisition.rows.length === 0) {
+              console.log('❌ No requisition found with ID:', chapter_requisition_id);
+              return res.status(404).json({
+                  success: false,
+                  message: "Requisition not found"
+              });
+          }
+
+          let finalApproveStatus = {};
+          let finalRoComment = {};
+          let finalGivenStatus = {};
+
+          // Helper function to safely parse JSON
+          const safeJSONParse = (str) => {
+              if (!str) return {};
+              try {
+                  return typeof str === 'object' ? str : JSON.parse(str);
+              } catch (e) {
+                  console.error('Error parsing JSON:', e);
+                  return {};
+              }
+          };
+
+          // Check if this is only a pickup status update
+          const isOnlyPickupUpdate = (pick_up_status_ro !== undefined || pick_up_status_ro_comment !== undefined) && 
+              !approve_status && 
+              !ro_comment && 
+              !given_status && 
+              !slab_wise_comment;
+
+          if (isOnlyPickupUpdate) {
+              // For pickup-only updates, preserve existing values
+              finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
+              finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
+              finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
+          } else if (isVisitorRequest) {
+              // For visitor requests, use direct values
+              finalApproveStatus = approve_status || existingRequisition.rows[0].approve_status;
+              finalRoComment = ro_comment || existingRequisition.rows[0].ro_comment;
+              finalGivenStatus = given_status || existingRequisition.rows[0].given_status || '{}';
+          } else {
+              // Handle existing data for member requests
+              finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
+              finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
+              finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
+
+              // Merge with new data for member requests
+              if (approve_status) {
+                  finalApproveStatus = { ...finalApproveStatus, ...safeJSONParse(approve_status) };
+              }
+              if (ro_comment) {
+                  finalRoComment = { ...finalRoComment, ...safeJSONParse(ro_comment) };
+              }
+              if (given_status) {
+                  finalGivenStatus = { ...finalGivenStatus, ...safeJSONParse(given_status) };
+              }
+          }
+
+          // Handle member_accolades insertion for approved statuses
+          if (!isVisitorRequest && approve_status) {
+              const approveStatusObj = safeJSONParse(approve_status);
+              
+              for (const [key, status] of Object.entries(approveStatusObj)) {
+                  if (status === 'approved') {
+                      const [memberId, accoladeId] = key.split('_').map(Number);
+                      console.log(`🎯 Processing approved accolade for member ${memberId}, accolade ${accoladeId}`);
+
+                      // Insert into member_accolades
+                      const insertQuery = `
+                          INSERT INTO member_accolades 
+                          (member_id, accolade_id, issue_date, count, given_date, comment)
+                          VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL)
+                          RETURNING *
+                      `;
+
+                      const insertResult = await con.query(insertQuery, [memberId, accoladeId]);
+                      console.log('✅ Inserted into member_accolades:', insertResult.rows[0]);
+                  }
+              }
+          }
+
+          // Add given status update logic for members (keeping existing logic)
+          if (!isVisitorRequest && given_status) {
+              console.log('📝 Processing member accolade updates for given status:', given_status);
+              
+              const givenStatusObj = safeJSONParse(given_status);
+              
+              // Iterate through newly given accolades
+              for (const [key, value] of Object.entries(givenStatusObj)) {
+                  // Only process if it has a date (meaning it was just marked as given)
+                  if (value && value.date) {
+                      const [memberId, accoladeId] = key.split('_').map(Number);
+                      console.log(`🎯 Processing accolade ${accoladeId} for member ${memberId}`);
+
+                      // Get current member's accolades
+                      const memberResult = await con.query(
+                          'SELECT accolades_id FROM member WHERE member_id = $1',
+                          [memberId]
+                      );
+
+                      if (memberResult.rows.length > 0) {
+                          let currentAccolades = memberResult.rows[0].accolades_id || [];
                           
-                          // Update member's accolades array
-                          await con.query(
-                              'UPDATE member SET accolades_id = $1 WHERE member_id = $2',
-                              [currentAccolades, memberId]
-                          );
-                      } else {
-                          console.log(`ℹ️ Accolade ${accoladeId} already exists for member ${memberId}`);
+                          // Add the accolade if it's not already in the array
+                          if (!currentAccolades.includes(accoladeId)) {
+                              currentAccolades.push(accoladeId);
+                              console.log(`✨ Adding accolade ${accoladeId} to member ${memberId}'s accolades:`, currentAccolades);
+                              
+                              // Update member's accolades array
+                              await con.query(
+                                  'UPDATE member SET accolades_id = $1 WHERE member_id = $2',
+                                  [currentAccolades, memberId]
+                              );
+                          } else {
+                              console.log(`ℹ️ Accolade ${accoladeId} already exists for member ${memberId}`);
+                          }
                       }
                   }
               }
           }
-      }
 
-      const finalPickupDate = pickup_date && pickup_date.trim() !== '' ? pickup_date : existingRequisition.rows[0].pickup_date;
+          const finalPickupDate = pickup_date && pickup_date.trim() !== '' ? pickup_date : existingRequisition.rows[0].pickup_date;
 
-      const query = `
-          UPDATE chapter_requisition 
-          SET 
-              approve_status = $1,
-              ro_comment = $2,
-              pickup_status = $3,
-              pickup_date = $4,
-              given_status = $5,
-              slab_wise_comment = $6,
-              pick_up_status_ro = $7,
-              pick_up_status_ro_comment = $8
-          WHERE chapter_requisition_id = $9
-          RETURNING *
-      `;
+          const query = `
+              UPDATE chapter_requisition 
+              SET 
+                  approve_status = $1,
+                  ro_comment = $2,
+                  pickup_status = $3,
+                  pickup_date = $4,
+                  given_status = $5,
+                  slab_wise_comment = $6,
+                  pick_up_status_ro = $7,
+                  pick_up_status_ro_comment = $8
+              WHERE chapter_requisition_id = $9
+              RETURNING *
+          `;
 
-      // Updated prepareValue function to handle already stringified JSON
-      const prepareValue = (value) => {
-          if (!value) return '{}';
-          
-          // If it's already a string but looks like a JSON object
-          if (typeof value === 'string') {
-              try {
-                  // Try to parse it first to remove any double stringification
-                  const parsed = JSON.parse(value);
-                  return JSON.stringify(parsed);
-              } catch (e) {
-                  // If it's not valid JSON, return as is
-                  return value;
+          // Updated prepareValue function to handle already stringified JSON
+          const prepareValue = (value) => {
+              if (!value) return '{}';
+              
+              if (typeof value === 'string') {
+                  try {
+                      const parsed = JSON.parse(value);
+                      return JSON.stringify(parsed);
+                  } catch (e) {
+                      return value;
+                  }
               }
-          }
-          
-          // If it's an object, stringify it once
-          return JSON.stringify(value);
-      };
+              
+              return JSON.stringify(value);
+          };
 
-      const values = [
-          prepareValue(finalApproveStatus),
-          prepareValue(finalRoComment),
-          isOnlySlabWiseCommentUpdate ? existingRequisition.rows[0].pickup_status : 
-              (pickup_status !== undefined ? pickup_status : existingRequisition.rows[0].pickup_status),
-          finalPickupDate,
-          prepareValue(finalGivenStatus),
-          slab_wise_comment || existingRequisition.rows[0].slab_wise_comment,
-          pick_up_status_ro !== undefined ? pick_up_status_ro : existingRequisition.rows[0].pick_up_status_ro,
-          pick_up_status_ro_comment !== undefined ? pick_up_status_ro_comment : existingRequisition.rows[0].pick_up_status_ro_comment,
-          chapter_requisition_id
-      ];
+          const values = [
+              prepareValue(finalApproveStatus),
+              prepareValue(finalRoComment),
+              isOnlySlabWiseCommentUpdate ? existingRequisition.rows[0].pickup_status : 
+                  (pickup_status !== undefined ? pickup_status : existingRequisition.rows[0].pickup_status),
+              finalPickupDate,
+              prepareValue(finalGivenStatus),
+              slab_wise_comment || existingRequisition.rows[0].slab_wise_comment,
+              pick_up_status_ro !== undefined ? pick_up_status_ro : existingRequisition.rows[0].pick_up_status_ro,
+              pick_up_status_ro_comment !== undefined ? pick_up_status_ro_comment : existingRequisition.rows[0].pick_up_status_ro_comment,
+              chapter_requisition_id
+          ];
 
-      const result = await con.query(query, values);
-      const updatedRequisition = result.rows[0];
+          const result = await con.query(query, values);
+          const updatedRequisition = result.rows[0];
 
-      console.log('✅ Chapter Requisition updated successfully:', updatedRequisition);
+          await con.query('COMMIT');
+          console.log('✅ Chapter Requisition updated successfully:', updatedRequisition);
 
-      res.json({
-          success: true,
-          message: "Chapter requisition updated successfully",
-          data: updatedRequisition
-      });
+          res.json({
+              success: true,
+              message: "Chapter requisition updated successfully",
+              data: updatedRequisition
+          });
+
+      } catch (error) {
+          await con.query('ROLLBACK');
+          throw error;
+      }
 
   } catch (error) {
       console.error('❌ Error in updateChapterRequisition:', error);
@@ -6834,6 +6862,7 @@ const updateChapterRequisition = async (req, res) => {
       });
   }
 };
+
 
 
 const updateMemberRequisition = async (req, res) => {
@@ -6886,7 +6915,7 @@ const updateMemberRequisition = async (req, res) => {
           try {
               await client.query('BEGIN');
 
-              // First update member_requisition_request
+              // Update member_requisition_request
               query = `
                   UPDATE member_requisition_request 
                   SET 
@@ -6925,29 +6954,6 @@ const updateMemberRequisition = async (req, res) => {
                       success: false,
                       message: "No matching requisition found or conditions not met"
                   });
-              }
-
-              // If status is 'approved', insert into member_accolades
-              if (approve_status === 'approved') {
-                  const insertQuery = `
-                      INSERT INTO member_accolades 
-                      (member_id, accolade_id, issue_date, given_date, comment)
-                      VALUES ($1, $2, $3, $4, $5)
-                      RETURNING *
-                  `;
-
-                  const insertValues = [
-                      member_id,
-                      accolade_id,
-                      result.rows[0].approved_date,
-                      null,
-                      response_comment || ''
-                  ];
-
-                  console.log('🎯 Inserting into member_accolades:', insertValues);
-
-                  const accoladeResult = await client.query(insertQuery, insertValues);
-                  console.log('✅ Inserted into member_accolades:', accoladeResult.rows[0]);
               }
 
               await client.query('COMMIT');
@@ -8787,11 +8793,11 @@ const sendFormSubmissionEmail = async (req, res) => {
 
       // Generate unique filename for PDF
       const pdfFileName = `${Date.now()}_${formType}_${email.split('@')[0]}.pdf`;
-      const pdfFilePath = path.join(__dirname, '../temp', pdfFileName);
+      const pdfFilePath = path.join(__dirname, 'temp', pdfFileName);
 
       // Ensure temp directory exists
-      if (!fs.existsSync(path.join(__dirname, '../temp'))) {
-          fs.mkdirSync(path.join(__dirname, '../temp'), { recursive: true });
+      if (!fs.existsSync(path.join(__dirname, '/temp'))) {
+          fs.mkdirSync(path.join(__dirname, '/temp'), { recursive: true });
       }
 
       // Generate PDF using puppeteer
@@ -8857,7 +8863,6 @@ const sendFormSubmissionEmail = async (req, res) => {
       });
   }
 };
-
 
 const sendInterviewSheetEmail = async (req, res) => {
   try {
@@ -8997,11 +9002,11 @@ const sendInterviewSheetEmail = async (req, res) => {
 
       // Create temporary file
       const pdfFileName = `interview-sheet-${Date.now()}.pdf`;
-      const pdfFilePath = path.join(__dirname, '../temp', pdfFileName);
+      const pdfFilePath = path.join(__dirname, '/temp', pdfFileName);
 
       // Ensure temp directory exists
-      if (!fs.existsSync(path.join(__dirname, '../temp'))) {
-          fs.mkdirSync(path.join(__dirname, '../temp'), { recursive: true });
+      if (!fs.existsSync(path.join(__dirname, '/temp'))) {
+          fs.mkdirSync(path.join(__dirname, '/temp'), { recursive: true });
       }
 
       fs.writeFileSync(pdfFilePath, pdfBuffer);
