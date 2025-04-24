@@ -1060,7 +1060,13 @@ router.put("/updateInclusionSheet/:visitor_id", updateInclusionSheet);
 router.post("/addVisitorPayment", addVisitorPayment);
 router.post("/addKittyPaymentManually", addKittyPaymentManually);
 router.get('/export-accolades', exportAccoladesToExcel);
-router.post('/import-member-accolades', upload.single('file'), importMemberAccolades);
+
+const storageee = multer.memoryStorage();
+
+const uploadddd = multer({ storageee });
+
+
+router.post('/import-member-accolades', uploadddd.single('file'), importMemberAccolades);
 router.get("/getAllMemberAccolades", getAllMemberAccolades);
 router.post("/sendInterviewSheetEmail", sendInterviewSheetEmail)
 router.post("/sendFormSubmissionEmail", sendFormSubmissionEmail);

@@ -6836,11 +6836,6 @@ const updateChapterRequisition = async (req, res) => {
 };
 
 
-
-
-
-
-
 const updateMemberRequisition = async (req, res) => {
   console.log('\n🔄 Starting Member Requisition Update');
   console.log('=====================================');
@@ -6885,34 +6880,92 @@ const updateMemberRequisition = async (req, res) => {
               });
           }
 
-          query = `
-              UPDATE member_requisition_request 
-              SET 
-                  approve_status = CAST($1 AS VARCHAR),
-                  response_comment = $2,
-                  approved_date = CASE 
-                      WHEN CAST($1 AS VARCHAR) = 'approved' THEN CURRENT_TIMESTAMP 
-                      ELSE approved_date 
-                  END
-              WHERE 
-                  member_request_id = $3 
-                  AND member_id = $4 
-                  AND chapter_id = $5 
-                  AND accolade_id = $6
-                  AND given_status = false
-                  AND request_status = 'open'
-                  AND given_date IS NULL
-              RETURNING *
-          `;
+          // Begin transaction
+          const client = await con.connect();
 
-          values = [
-              approve_status || 'pending',
-              response_comment || '',
-              member_request_id,
-              member_id,
-              chapter_id,
-              accolade_id
-          ];
+          try {
+              await client.query('BEGIN');
+
+              // First update member_requisition_request
+              query = `
+                  UPDATE member_requisition_request 
+                  SET 
+                      approve_status = CAST($1 AS VARCHAR),
+                      response_comment = $2,
+                      approved_date = CASE 
+                          WHEN CAST($1 AS VARCHAR) = 'approved' THEN CURRENT_TIMESTAMP 
+                          ELSE approved_date 
+                      END
+                  WHERE 
+                      member_request_id = $3 
+                      AND member_id = $4 
+                      AND chapter_id = $5 
+                      AND accolade_id = $6
+                      AND given_status = false
+                      AND request_status = 'open'
+                      AND given_date IS NULL
+                  RETURNING *
+              `;
+
+              values = [
+                  approve_status || 'pending',
+                  response_comment || '',
+                  member_request_id,
+                  member_id,
+                  chapter_id,
+                  accolade_id
+              ];
+
+              const result = await client.query(query, values);
+
+              if (result.rows.length === 0) {
+                  await client.query('ROLLBACK');
+                  console.log('❌ No matching requisition found or conditions not met');
+                  return res.status(404).json({
+                      success: false,
+                      message: "No matching requisition found or conditions not met"
+                  });
+              }
+
+              // If status is 'approved', insert into member_accolades
+              if (approve_status === 'approved') {
+                  const insertQuery = `
+                      INSERT INTO member_accolades 
+                      (member_id, accolade_id, issue_date, given_date, comment)
+                      VALUES ($1, $2, $3, $4, $5)
+                      RETURNING *
+                  `;
+
+                  const insertValues = [
+                      member_id,
+                      accolade_id,
+                      result.rows[0].approved_date,
+                      null,
+                      response_comment || ''
+                  ];
+
+                  console.log('🎯 Inserting into member_accolades:', insertValues);
+
+                  const accoladeResult = await client.query(insertQuery, insertValues);
+                  console.log('✅ Inserted into member_accolades:', accoladeResult.rows[0]);
+              }
+
+              await client.query('COMMIT');
+
+              console.log('✅ Member Requisition updated successfully:', result.rows[0]);
+
+              res.json({
+                  success: true,
+                  message: "Member requisition updated successfully",
+                  data: result.rows[0]
+              });
+
+          } catch (error) {
+              await client.query('ROLLBACK');
+              throw error;
+          } finally {
+              client.release();
+          }
       }
       // Case 2: Update given status flow
       else {
@@ -6925,51 +6978,87 @@ const updateMemberRequisition = async (req, res) => {
               });
           }
 
-          query = `
-              UPDATE member_requisition_request 
-              SET 
-                  given_status = $1,
-                  given_date = $2,
-                  request_status = $3
-              WHERE 
-                  member_id = $4 
-                  AND chapter_id = $5 
-                  AND accolade_id = $6
-                  AND given_status = false
-                  AND request_status = 'open'
-                  AND given_date IS NULL
-              RETURNING *
-          `;
+          // Begin transaction
+          const client = await con.connect();
 
-          values = [
-              given_status,
-              given_date,
-              request_status,
-              member_id,
-              chapter_id,
-              accolade_id
-          ];
+          try {
+              await client.query('BEGIN');
+
+              // First update member_requisition_request
+              query = `
+                  UPDATE member_requisition_request 
+                  SET 
+                      given_status = $1,
+                      given_date = $2,
+                      request_status = $3
+                  WHERE 
+                      member_id = $4 
+                      AND chapter_id = $5 
+                      AND accolade_id = $6
+                      AND given_status = false
+                      AND request_status = 'open'
+                      AND given_date IS NULL
+                  RETURNING *
+              `;
+
+              values = [
+                  given_status,
+                  given_date,
+                  request_status,
+                  member_id,
+                  chapter_id,
+                  accolade_id
+              ];
+
+              const result = await client.query(query, values);
+
+              if (result.rows.length === 0) {
+                  await client.query('ROLLBACK');
+                  console.log('❌ No matching requisition found or conditions not met');
+                  return res.status(404).json({
+                      success: false,
+                      message: "No matching requisition found or conditions not met"
+                  });
+              }
+
+              // Update member_accolades if record exists
+              const updateAccoladeQuery = `
+                  UPDATE member_accolades 
+                  SET given_date = $1
+                  WHERE member_id = $2 
+                  AND accolade_id = $3 
+                  AND issue_date IS NOT NULL
+                  RETURNING *
+              `;
+
+              const accoladeValues = [
+                  given_date,
+                  member_id,
+                  accolade_id
+              ];
+
+              console.log('🎯 Updating member_accolades:', accoladeValues);
+
+              const accoladeResult = await client.query(updateAccoladeQuery, accoladeValues);
+              console.log('✅ Updated member_accolades:', accoladeResult.rows[0]);
+
+              await client.query('COMMIT');
+
+              console.log('✅ Member Requisition updated successfully:', result.rows[0]);
+
+              res.json({
+                  success: true,
+                  message: "Member requisition updated successfully",
+                  data: result.rows[0]
+              });
+
+          } catch (error) {
+              await client.query('ROLLBACK');
+              throw error;
+          } finally {
+              client.release();
+          }
       }
-
-      console.log('🔍 Executing update query with values:', values);
-
-      const result = await con.query(query, values);
-
-      if (result.rows.length === 0) {
-          console.log('❌ No matching requisition found or conditions not met');
-          return res.status(404).json({
-              success: false,
-              message: "No matching requisition found or conditions not met"
-          });
-      }
-
-      console.log('✅ Member Requisition updated successfully:', result.rows[0]);
-
-      res.json({
-          success: true,
-          message: "Member requisition updated successfully",
-          data: result.rows[0]
-      });
 
   } catch (error) {
       console.error('❌ Error in updateMemberRequisition:', error);
@@ -8344,6 +8433,16 @@ const importMemberAccolades = async (req, res) => {
     const sheet = workbook.Sheets[sheetName];
     const data = xlsx.utils.sheet_to_json(sheet);
 
+    // Function to convert Excel serial to JS date string
+    const excelDateToJSDate = (serial) => {
+      if (!serial) return null;
+      if (typeof serial === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(serial)) return serial; // Already formatted
+      const utc_days = Math.floor(serial - 25569);
+      const utc_value = utc_days * 86400;
+      const date_info = new Date(utc_value * 1000);
+      return date_info.toISOString().split('T')[0]; // YYYY-MM-DD
+    };
+
     for (const row of data) {
       const {
         member_id,
@@ -8354,10 +8453,20 @@ const importMemberAccolades = async (req, res) => {
         comment
       } = row;
 
+      const formatted_given_date = excelDateToJSDate(given_date);
+      const formatted_issue_date = excelDateToJSDate(issue_date);
+
       await con.query(
         `INSERT INTO member_accolades (member_id, accolade_id, given_date, issue_date, count, comment)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [member_id, accolade_id, given_date, issue_date, count, comment || null]
+        [
+          member_id,
+          accolade_id,
+          formatted_given_date,
+          formatted_issue_date,
+          count,
+          comment || null
+        ]
       );
     }
 
@@ -8368,6 +8477,7 @@ const importMemberAccolades = async (req, res) => {
     res.status(500).json({ message: 'Failed to import member accolades' });
   }
 };
+
 
 const getAllMemberAccolades = async (req, res) => {
   try {
