@@ -6616,6 +6616,8 @@ const addChapterRequisition = async (req, res) => {
   }
 };;
 
+
+
 const updateChapterRequisition = async (req, res) => {
   console.log('\n🔄 Starting Chapter Requisition Update');
   console.log('=====================================');
@@ -6633,7 +6635,6 @@ const updateChapterRequisition = async (req, res) => {
           pick_up_status_ro_comment 
       } = req.body;
 
-      // Begin transaction
       await con.query('BEGIN');
 
       try {
@@ -6699,22 +6700,18 @@ const updateChapterRequisition = async (req, res) => {
               !slab_wise_comment;
 
           if (isOnlyPickupUpdate) {
-              // For pickup-only updates, preserve existing values
               finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
               finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
               finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
           } else if (isVisitorRequest) {
-              // For visitor requests, use direct values
               finalApproveStatus = approve_status || existingRequisition.rows[0].approve_status;
               finalRoComment = ro_comment || existingRequisition.rows[0].ro_comment;
               finalGivenStatus = given_status || existingRequisition.rows[0].given_status || '{}';
           } else {
-              // Handle existing data for member requests
               finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
               finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
               finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
 
-              // Merge with new data for member requests
               if (approve_status) {
                   finalApproveStatus = { ...finalApproveStatus, ...safeJSONParse(approve_status) };
               }
@@ -6735,55 +6732,63 @@ const updateChapterRequisition = async (req, res) => {
                       const [memberId, accoladeId] = key.split('_').map(Number);
                       console.log(`🎯 Processing approved accolade for member ${memberId}, accolade ${accoladeId}`);
 
-                      // Insert into member_accolades
-                      const insertQuery = `
-                          INSERT INTO member_accolades 
-                          (member_id, accolade_id, issue_date, count, given_date, comment)
-                          VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL)
-                          RETURNING *
+                      // First check if this combination already exists
+                      const checkQuery = `
+                          SELECT id FROM member_accolades 
+                          WHERE member_id = $1 AND accolade_id = $2
+                          LIMIT 1
                       `;
+                      
+                      const existingRecord = await con.query(checkQuery, [memberId, accoladeId]);
+                      
+                      if (existingRecord.rows.length === 0) { 
+                          const insertQuery = `
+                              INSERT INTO member_accolades 
+                              (member_id, accolade_id, issue_date, count, given_date, comment)
+                              VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL)
+                              RETURNING *
+                          `;
 
-                      const insertResult = await con.query(insertQuery, [memberId, accoladeId]);
-                      console.log('✅ Inserted into member_accolades:', insertResult.rows[0]);
+                          const insertResult = await con.query(insertQuery, [memberId, accoladeId]);
+                          console.log('✅ Inserted new record into member_accolades:', insertResult.rows[0]);
+                      } else {
+                          console.log(`ℹ️ Skipping insert: Accolade ${accoladeId} already exists for member ${memberId}`);
+                      }
                   }
               }
           }
 
-          // Add given status update logic for members (keeping existing logic)
-          if (!isVisitorRequest && given_status) {
+          // Handle given status updates - Only update member_accolades table
+          if (given_status) {
               console.log('📝 Processing member accolade updates for given status:', given_status);
               
               const givenStatusObj = safeJSONParse(given_status);
               
-              // Iterate through newly given accolades
               for (const [key, value] of Object.entries(givenStatusObj)) {
-                  // Only process if it has a date (meaning it was just marked as given)
                   if (value && value.date) {
                       const [memberId, accoladeId] = key.split('_').map(Number);
-                      console.log(`🎯 Processing accolade ${accoladeId} for member ${memberId}`);
+                      console.log(`🎯 Processing given status for member ${memberId}, accolade ${accoladeId}`);
 
-                      // Get current member's accolades
-                      const memberResult = await con.query(
-                          'SELECT accolades_id FROM member WHERE member_id = $1',
-                          [memberId]
-                      );
+                      // Update member_accolades table
+                      const updateAccoladeQuery = `
+                          UPDATE member_accolades 
+                          SET given_date = $1
+                          WHERE member_id = $2 
+                          AND accolade_id = $3 
+                          AND given_date IS NULL
+                          RETURNING *
+                      `;
 
-                      if (memberResult.rows.length > 0) {
-                          let currentAccolades = memberResult.rows[0].accolades_id || [];
-                          
-                          // Add the accolade if it's not already in the array
-                          if (!currentAccolades.includes(accoladeId)) {
-                              currentAccolades.push(accoladeId);
-                              console.log(`✨ Adding accolade ${accoladeId} to member ${memberId}'s accolades:`, currentAccolades);
-                              
-                              // Update member's accolades array
-                              await con.query(
-                                  'UPDATE member SET accolades_id = $1 WHERE member_id = $2',
-                                  [currentAccolades, memberId]
-                              );
-                          } else {
-                              console.log(`ℹ️ Accolade ${accoladeId} already exists for member ${memberId}`);
-                          }
+                      const accoladeResult = await con.query(updateAccoladeQuery, [
+                          value.date,
+                          memberId,
+                          accoladeId
+                      ]);
+
+                      if (accoladeResult.rows.length > 0) {
+                          console.log('✅ Updated member_accolades:', accoladeResult.rows[0]);
+                      } else {
+                          console.log(`ℹ️ No eligible record found to update given_date for member ${memberId}, accolade ${accoladeId}`);
                       }
                   }
               }
@@ -6806,7 +6811,6 @@ const updateChapterRequisition = async (req, res) => {
               RETURNING *
           `;
 
-          // Updated prepareValue function to handle already stringified JSON
           const prepareValue = (value) => {
               if (!value) return '{}';
               
