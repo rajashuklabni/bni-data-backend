@@ -247,9 +247,10 @@ const verifyOtpController = async (req, res) => {
             }, 
             process.env.JWT_SECRET,
             { 
-                expiresIn: '7200h'
+                expiresIn: '2m'  // expires in 10 minutes
             }
         );
+        
 
         // Delete used OTP
         await db.query(
