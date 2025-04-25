@@ -6616,8 +6616,6 @@ const addChapterRequisition = async (req, res) => {
   }
 };;
 
-
-
 const updateChapterRequisition = async (req, res) => {
   console.log('\n🔄 Starting Chapter Requisition Update');
   console.log('=====================================');
