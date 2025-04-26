@@ -5255,7 +5255,13 @@ const addHotel = async (req, res) => {
           hotel_published_by,
           hotel_email,
           hotel_phone,
-          date_of_publishing
+          date_of_publishing,
+          bank_name,
+          ifsc_code,
+          account_no,
+          account_type,
+          hotel_gst,
+          hotel_bank_proof,
       } = req.body;
 
       // Validate required fields
@@ -5281,8 +5287,14 @@ const addHotel = async (req, res) => {
               hotel_published_by,
               date_of_publishing,
               hotel_email,
-              hotel_phone
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+              hotel_phone,
+              bank_name,
+              ifsc_code,
+              account_no,
+              account_type,
+              hotel_gst,
+              hotel_bank_proof
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
           RETURNING *
       `;
 
@@ -5295,7 +5307,13 @@ const addHotel = async (req, res) => {
           hotel_published_by,
           date_of_publishing || new Date(),
           hotel_email,
-          hotel_phone
+          hotel_phone,
+          bank_name,
+          ifsc_code,
+          account_no,
+          account_type,
+          hotel_gst,
+          hotel_bank_proof,
       ];
 
       console.log('💾 Executing query with values:', values);
@@ -5358,7 +5376,13 @@ const updateHotel = async (req, res) => {
           hotel_published_by,
           date_of_publishing,
           hotel_email,
-          hotel_phone
+          hotel_phone,
+          bank_name,
+          ifsc_code,
+          account_no,
+          account_type,
+          hotel_gst,
+          hotel_bank_proof,
       } = req.body;
 
       // Validate required fields
@@ -5380,7 +5404,13 @@ const updateHotel = async (req, res) => {
               date_of_publishing = $6,
               hotel_published_by = $7,
               hotel_email = $8,
-              hotel_phone = $9
+              hotel_phone = $9,
+              bank_name = $10,
+              ifsc_code = $11,
+              account_no = $12,
+              account_type = $13,
+              hotel_gst = $14,
+              hotel_bank_proof = $15
       `;
 
       let values = [
@@ -5392,7 +5422,13 @@ const updateHotel = async (req, res) => {
           date_of_publishing || new Date(),
           hotel_published_by,
           hotel_email,
-          hotel_phone
+          hotel_phone,
+          bank_name,
+          ifsc_code,
+          account_no,
+          account_type,
+          hotel_gst,
+          hotel_bank_proof
       ];
 
 
