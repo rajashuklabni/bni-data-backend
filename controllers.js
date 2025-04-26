@@ -18,6 +18,9 @@ const format = require('pg-format'); // Import pg-format for PostgreSQL queries
 const puppeteer = require('puppeteer');
 dotEnv.config();
 
+const axios = require('axios');
+
+
 
 
 // Instead of this:
@@ -672,77 +675,161 @@ const addMember = async (req, res) => {
       const companyLogoFilename = req.files?.['member_company_logo']?.[0]?.filename || null;
 
       const result = await con.query(
-          `INSERT INTO member (
-              member_first_name, member_last_name, member_date_of_birth, member_phone_number,
-              member_alternate_mobile_number, member_email_address, address_pincode,
-              address_city, address_state, region_id, chapter_id, accolades_id, category_name,
-              member_induction_date, member_current_membership, member_renewal_date, member_gst_number,
-              member_company_name, member_company_address, member_company_state, member_company_city,
-              member_photo, member_website, member_company_logo,
-              member_facebook, member_instagram, member_linkedin, member_youtube, country,
-              street_address_line_1, street_address_line_2, gender, notification_consent,
-              date_of_publishing, member_sponsored_by, member_status, meeting_opening_balance,
-              member_company_pincode
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 
-                   $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, 
-                   $33, $34, $35, $36, $37, $38)
-          RETURNING *`,
-          [
-              req.body.member_first_name,
-              req.body.member_last_name,
-              req.body.member_date_of_birth,
-              req.body.member_phone_number,
-              req.body.member_alternate_mobile_number,
-              req.body.member_email_address,
-              req.body.address_pincode,
-              req.body.address_city,
-              req.body.address_state,
-              parseInt(req.body.region_id) || null,      // Convert to integer
-              parseInt(req.body.chapter_id) || null,     // Convert to integer
-              parsedAccolades,
-              req.body.category_name,    // Convert to integer
-              req.body.member_induction_date,
-              req.body.member_current_membership,
-              req.body.member_renewal_date,
-              req.body.member_gst_number,
-              req.body.member_company_name,
-              req.body.member_company_address,
-              req.body.member_company_state,
-              req.body.member_company_city,
-              memberPhotoFilename,
-              req.body.member_website,
-              companyLogoFilename,
-              req.body.member_facebook,
-              req.body.member_instagram,
-              req.body.member_linkedin,
-              req.body.member_youtube,
-              req.body.country,
-              req.body.street_address_line_1,
-              req.body.street_address_line_2,
-              req.body.gender,
-              req.body.notification_consent,
-              req.body.date_of_publishing,
-              req.body.member_sponsored_by,
-              req.body.member_status,
-              parseFloat(req.body.meeting_opening_balance) || 0,
-              req.body.member_company_pincode
-          ]
-      );
+        `INSERT INTO member (
+            member_first_name, member_last_name, member_date_of_birth, member_phone_number,
+            member_alternate_mobile_number, member_email_address, address_pincode,
+            address_city, address_state, region_id, chapter_id, accolades_id, category_name,
+            member_induction_date, member_current_membership, member_renewal_date, member_gst_number,
+            member_company_name, member_company_address, member_company_state, member_company_city,
+            member_photo, member_website, member_company_logo,
+            member_facebook, member_instagram, member_linkedin, member_youtube, country,
+            street_address_line_1, street_address_line_2, gender, notification_consent,
+            date_of_publishing, member_sponsored_by, member_status, meeting_opening_balance,
+            member_company_pincode
+        ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+            $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32,
+            $33, $34, $35, $36, $37, $38
+        )
+        RETURNING *`,
+        [
+            req.body.member_first_name,
+            req.body.member_last_name,
+            req.body.member_date_of_birth,
+            req.body.member_phone_number,
+            req.body.member_alternate_mobile_number,
+            req.body.member_email_address,
+            req.body.address_pincode,
+            req.body.address_city,
+            req.body.address_state,
+            parseInt(req.body.region_id) || null,
+            parseInt(req.body.chapter_id) || null,
+            parsedAccolades,
+            req.body.category_name,
+            req.body.member_induction_date,
+            req.body.member_current_membership,
+            req.body.member_renewal_date,
+            req.body.member_gst_number,
+            req.body.member_company_name,
+            req.body.member_company_address,
+            req.body.member_company_state,
+            req.body.member_company_city,
+            memberPhotoFilename,
+            req.body.member_website,
+            companyLogoFilename,
+            req.body.member_facebook,
+            req.body.member_instagram,
+            req.body.member_linkedin,
+            req.body.member_youtube,
+            req.body.country,
+            req.body.street_address_line_1,
+            req.body.street_address_line_2,
+            req.body.gender,
+            req.body.notification_consent,
+            req.body.date_of_publishing,
+            req.body.member_sponsored_by,
+            req.body.member_status,
+            parseFloat(req.body.meeting_opening_balance) || 0,
+            req.body.member_company_pincode
+        ]
+    );
+    
+    // ✅ Member inserted
+    const newMember = result.rows[0];
+    const member_id = newMember.member_id;
+    
+    // ✅ Declare meeting_opening_balance properly
+    const meeting_opening_balance = parseFloat(req.body.meeting_opening_balance) || 0;
+    
+    // 1. Fetch Kitty Bills
+    const chapterId = parseInt(req.body.chapter_id);
+    const dateOfPublishing = new Date(req.body.date_of_publishing);
+    
+    const kittyBillsResponse = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
+    const allKittyBills = kittyBillsResponse.data;
+    
+    const chapterKittyBills = allKittyBills.filter(bill => bill.chapter_id === chapterId && bill.delete_status === 0);
+    
+    // 2. Fetch chapter meeting day
+    const chaptersResponse = await axios.get('https://backend.bninewdelhi.com/api/chapters');
+    const chapterInfo = chaptersResponse.data.find(ch => ch.chapter_id === chapterId);
+    
+    if (!chapterInfo) {
+        throw new Error('Chapter not found for meeting day');
+    }
+    const chapterMeetingDay = chapterInfo.chapter_meeting_day;
+    const chapterMeetingFees = chapterInfo.chapter_kitty_fees;
+    
+    // 🔥 Helper Function to calculate Meeting Dates
+    function getMeetingDatesInRange(startDate, endDate, meetingDay) {
+        const daysOfWeek = {
+            Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+            Thursday: 4, Friday: 5, Saturday: 6
+        };
+        const meetingDates = [];
+        const meetingDayNum = daysOfWeek[meetingDay];
+    
+        let current = new Date(startDate);
+        current.setHours(0, 0, 0, 0);
+    
+        while (current.getDay() !== meetingDayNum) {
+            current.setDate(current.getDate() + 1);
+        }
+    
+        while (current <= endDate) {
+            meetingDates.push(new Date(current));
+            current.setDate(current.getDate() + 7);
+        }
+        return meetingDates;
+    }
+    
+    // 3. Calculate Kitty Amount
+    let totalKittyAmount = 0;
+    let kittyDueDate = null;
+    let kittyPenalty = null;
+    
+    for (const bill of chapterKittyBills) {
+        const billStartDate = bill.raised_on ? new Date(bill.raised_on) : new Date(bill.payment_date);
+        const billEndDate = new Date(bill.kitty_due_date);
+    
+        if (dateOfPublishing > billEndDate) {
+            continue; // Ignore past bills
+        }
+    
+        // Capture kittyDueDate and kittyPenalty from the first eligible bill
+        if (!kittyDueDate && bill.kitty_due_date) {
+            kittyDueDate = bill.kitty_due_date;
+            kittyPenalty = bill.penalty_fee || 0;
+        }
+    
+        if (['weekly', 'monthly', 'quartely'].includes(bill.bill_type)) {
+            const meetingDates = getMeetingDatesInRange(
+                dateOfPublishing > billStartDate ? dateOfPublishing : billStartDate,
+                billEndDate,
+                chapterMeetingDay
+            );
+            totalKittyAmount += meetingDates.length * parseFloat(chapterMeetingFees);
+        }
+    }
+    
+    // If somehow not found, fallback
+    if (!kittyDueDate) kittyDueDate = new Date(); // default to now
+    if (kittyPenalty === null || kittyPenalty === undefined) kittyPenalty = 0;
+    
+    // 4. Update bankorder amount_to_pay
+    const finalAmountToPay = meeting_opening_balance + totalKittyAmount;
+    
+    await con.query(
+        `INSERT INTO bankorder (amount_to_pay, member_id, chapter_id, kitty_due_date, kitty_penalty)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [finalAmountToPay, member_id, chapterId, kittyDueDate, kittyPenalty]
+    );
+    
+    console.log('✅ Updated bankorder with Kitty Amount:', finalAmountToPay);
+    
 
-      const newMember = result.rows[0];
-      const member_id = newMember.member_id;
 
-      // Convert meeting_opening_balance to number or set default to 0
-      const meeting_opening_balance = parseFloat(req.body.meeting_opening_balance) || 0;
-      
-      await con.query(
-          `INSERT INTO bankorder (member_id, chapter_id, amount_to_pay) VALUES ($1, $2, $3)`,
-          [
-              member_id, 
-              parseInt(req.body.chapter_id), 
-              meeting_opening_balance
-          ]
-      );
+
 
       console.log('✅ Member added successfully:', newMember);
 
@@ -4745,6 +4832,12 @@ const addMemberWriteOff = async (req, res) => {
   WHERE member_id = $1;
 `;
 
+const updateBankOrderQuery = `
+  UPDATE bankorder
+  SET amount_to_pay = 0
+  WHERE member_id = $1;
+`;
+
 
     let insertedRecords = [];
 
@@ -4780,6 +4873,7 @@ const addMemberWriteOff = async (req, res) => {
 
       // Update writeoff_status in member table
       await con.query(updateQuery, [parseInt(member_id)]);
+      await con.query(updateBankOrderQuery, [parseInt(member_id)]);
     }
 
     res.status(201).json({ message: "Member Write Off Successfully!", data: insertedRecords });
