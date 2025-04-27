@@ -3028,71 +3028,106 @@ const addExpense = async (req, res) => {
   try {
       console.log('\n🚀 Starting Add Expense Process');
       console.log('📝 Request Body:', req.body);
-      console.log('📎 File Details:', req.file);
+      console.log('📎 Files:', req.files);
 
-      if (!req.file) {
-          console.error('❌ No file uploaded');
-          return res.status(400).json({ message: "Bill file is required" });
+      // Check if both files exist
+      if (!req.files || !req.files.upload_bill || !req.files.upload_receipt) {
+          console.error('❌ Required files are missing');
+          return res.status(400).json({ message: "Both bill and receipt files are required" });
       }
 
-      // Store the original filename
-      const originalFilename = req.file.filename;
+      const billFile = req.files.upload_bill[0];
+      const receiptFile = req.files.upload_receipt[0];
+
+      // Parse numeric values
+      const amount = parseFloat(req.body.amount);
+      const gstPercentage = req.body.withGST === 'true' ? parseFloat(req.body.gstPercentage) : null;
+      const gstAmount = req.body.withGST === 'true' ? parseFloat(req.body.gstAmount) : null;
+      const totalAmount = req.body.withGST === 'true' ? parseFloat(req.body.totalAmount) : amount;
       
-      // Insert expense record first
+      // Insert expense record
       const result = await con.query(
-          `INSERT INTO expenses (
-              expense_type, submitted_by, description, amount, 
-              payment_status, bill_date, upload_bill, 
-              transaction_no, bill_no, chapter_id, is_gst
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
-          RETURNING *`,
-          [
-              req.body.expense_type,
-              req.body.submitted_by,
-              req.body.description,
-              req.body.amount,
-              req.body.payment_status,
-              req.body.bill_date,
-              originalFilename,  // Store original filename temporarily
-              req.body.transaction_no,
-              req.body.bill_no,
-              req.body.chapter_id,
-              req.body.withGST==='true' || req.body.withGST===true
-          ]
-      );
+        `INSERT INTO expenses (
+            expense_type, submitted_by, description, amount, 
+            payment_status, bill_date, upload_bill, upload_receipt,
+            transaction_no, bill_no, chapter_id, hotel_id, vendor_id,
+            mode_of_payment, gst_percentage, gst_amount, total_amount
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) 
+        RETURNING *`,
+        [
+            req.body.expense_type,
+            req.body.submitted_by,
+            req.body.description,
+            amount,
+            req.body.payment_status,
+            req.body.bill_date,
+            billFile.filename,
+            receiptFile.filename,
+            req.body.transaction_no,
+            req.body.bill_no,
+            req.body.chapter_id,
+            req.body.hotel_id || null,
+            req.body.vendor_id || null,
+            req.body.payment_mode,
+            gstPercentage,
+            gstAmount,
+            totalAmount
+        ]
+    );
 
       // Get the expense_id from the inserted record
       const expense_id = result.rows[0].expense_id;
 
-      // Rename the file to include expense_id
-      const fileExt = path.extname(originalFilename);
-      const newFilename = `expense_${expense_id}${fileExt}`;
-      const oldPath = path.join(__dirname, 'uploads', 'expenses', originalFilename);
-      const newPath = path.join(__dirname, 'uploads', 'expenses', newFilename);
+      // Rename both files to include expense_id
+      const renameBillFile = () => {
+          const fileExt = path.extname(billFile.filename);
+          const newFilename = `expense_bill_${expense_id}${fileExt}`;
+          const oldPath = path.join(__dirname, 'uploads', 'expenses', billFile.filename);
+          const newPath = path.join(__dirname, 'uploads', 'expenses', newFilename);
+          fs.renameSync(oldPath, newPath);
+          return newFilename;
+      };
 
-      // Rename the file
-      fs.renameSync(oldPath, newPath);
+      const renameReceiptFile = () => {
+          const fileExt = path.extname(receiptFile.filename);
+          const newFilename = `expense_receipt_${expense_id}${fileExt}`;
+          const oldPath = path.join(__dirname, 'uploads', 'expenses', receiptFile.filename);
+          const newPath = path.join(__dirname, 'uploads', 'expenses', newFilename);
+          fs.renameSync(oldPath, newPath);
+          return newFilename;
+      };
 
-      // Update the filename in database
+      const newBillFilename = renameBillFile();
+      const newReceiptFilename = renameReceiptFile();
+
+      // Update both filenames in database
       await con.query(
-          'UPDATE expenses SET upload_bill = $1 WHERE expense_id = $2',
-          [newFilename, expense_id]
+          'UPDATE expenses SET upload_bill = $1, upload_receipt = $2 WHERE expense_id = $3',
+          [newBillFilename, newReceiptFilename, expense_id]
       );
 
       console.log('✅ Expense added successfully:', {
           id: expense_id,
-          filename: newFilename,
+          billFile: newBillFilename,
+          receiptFile: newReceiptFilename,
           is_gst: result.rows[0].is_gst
       });
 
       res.status(201).json({
           message: "Expense added successfully!",
-          data: {...result.rows[0], upload_bill: newFilename}
+          data: {
+              ...result.rows[0], 
+              upload_bill: newBillFilename,
+              upload_receipt: newReceiptFilename
+          }
       });
 
   } catch (error) {
       console.error('❌ Error adding expense:', error);
-      res.status(500).json({ message: "Error adding expense" });
+      res.status(500).json({ 
+          message: "Error adding expense",
+          error: error.message 
+      });
   }
 };
 
@@ -5795,9 +5830,9 @@ const importMembersCSV = async (req, res) => {
           data.accolades_id = [];
         }
 
-        phoneNumbers.add(data.member_phone_number);
-        emailAddresses.add(data.member_email_address);
-        gstNumbers.add(data.member_gst_number);
+        // phoneNumbers.add(data.member_phone_number);
+        // emailAddresses.add(data.member_email_address);
+        // gstNumbers.add(data.member_gst_number);
 
         members.push(data);
       })
@@ -9226,59 +9261,60 @@ const addVendor = async (req, res) => {
       vendor_account_type,
       vendor_status,
       phone_number,
-      email_id
+      email_id,
+      chapter_id
     } = req.body;
 
     // Validate required fields
-    if (!vendor_name || !vendor_company_name || !vendor_company_address || !vendor_company_gst || 
-        !vendor_account || !vendor_bank_name || !vendor_ifsc_code || !vendor_account_type || 
-        !vendor_status || !phone_number || !email_id) {
-      return res.status(400).json({ message: 'All fields are required' });
-    }
+    // if (!vendor_name || !vendor_company_name || !vendor_company_address || !vendor_company_gst || 
+    //     !vendor_account || !vendor_bank_name || !vendor_ifsc_code || !vendor_account_type || 
+    //     !vendor_status || !phone_number || !email_id) {
+    //   return res.status(400).json({ message: 'All fields are required' });
+    // }
 
     // Validate GST format
-    const gstPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-    if (!gstPattern.test(vendor_company_gst)) {
-      return res.status(400).json({ message: 'Invalid GST number format' });
-    }
+    // const gstPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    // if (!gstPattern.test(vendor_company_gst)) {
+    //   return res.status(400).json({ message: 'Invalid GST number format' });
+    // }
 
     // Validate IFSC format
-    const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-    if (!ifscPattern.test(vendor_ifsc_code)) {
-      return res.status(400).json({ message: 'Invalid IFSC code format' });
-    }
+    // const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    // if (!ifscPattern.test(vendor_ifsc_code)) {
+    //   return res.status(400).json({ message: 'Invalid IFSC code format' });
+    // }
 
     // Validate phone number
-    const phonePattern = /^[0-9]{10}$/;
-    if (!phonePattern.test(phone_number)) {
-      return res.status(400).json({ message: 'Invalid phone number format' });
-    }
+    // const phonePattern = /^[0-9]{10}$/;
+    // if (!phonePattern.test(phone_number)) {
+    //   return res.status(400).json({ message: 'Invalid phone number format' });
+    // }
 
     // Validate email
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(email_id)) {
-      return res.status(400).json({ message: 'Invalid email format' });
-    }
+    // const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // if (!emailPattern.test(email_id)) {
+    //   return res.status(400).json({ message: 'Invalid email format' });
+    // }
 
     // Check if vendor with same GST number already exists
-    const existingVendorGST = await con.query(
-      'SELECT * FROM vendors WHERE vendor_company_gst = $1',
-      [vendor_company_gst]
-    );
+    // const existingVendorGST = await con.query(
+    //   'SELECT * FROM vendors WHERE vendor_company_gst = $1',
+    //   [vendor_company_gst]
+    // );
 
-    if (existingVendorGST.rows.length > 0) {
-      return res.status(400).json({ message: 'Vendor with this GST number already exists' });
-    }
+    // if (existingVendorGST.rows.length > 0) {
+    //   return res.status(400).json({ message: 'Vendor with this GST number already exists' });
+    // }
 
     // Check if vendor with same email already exists
-    const existingVendorEmail = await con.query(
-      'SELECT * FROM vendors WHERE email_id = $1',
-      [email_id]
-    );
+    // const existingVendorEmail = await con.query(
+    //   'SELECT * FROM vendors WHERE email_id = $1',
+    //   [email_id]
+    // );
 
-    if (existingVendorEmail.rows.length > 0) {
-      return res.status(400).json({ message: 'Vendor with this email already exists' });
-    }
+    // if (existingVendorEmail.rows.length > 0) {
+    //   return res.status(400).json({ message: 'Vendor with this email already exists' });
+    // }
 
     // Insert new vendor
     const result = await con.query(
@@ -9293,8 +9329,9 @@ const addVendor = async (req, res) => {
         vendor_account_type,
         vendor_status,
         phone_number,
-        email_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        email_id,
+        chapter_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *`,
       [
         vendor_name,
@@ -9307,7 +9344,8 @@ const addVendor = async (req, res) => {
         vendor_account_type,
         vendor_status,
         phone_number,
-        email_id
+        email_id,
+        chapter_id
       ]
     );
 
@@ -9473,5 +9511,5 @@ module.exports = {
   sendFormSubmissionEmail,
   sendInterviewSheetEmail,
   getAllVendors,
-  addVendor   
+  addVendor
 };

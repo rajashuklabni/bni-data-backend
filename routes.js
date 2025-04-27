@@ -311,10 +311,10 @@ const expenseUpload = multer({
         const mimetype = allowedTypes.test(file.mimetype);
 
         if (extname && mimetype) {
-            console.log('✅ File validation passed');
+            console.log('✅ File validation passed for:', file.fieldname);
             cb(null, true);
         } else {
-            console.error('❌ Invalid file type');
+            console.error('❌ Invalid file type for:', file.fieldname);
             cb(new Error('Only .png, .jpg, .jpeg and .pdf files are allowed'));
         }
     }
@@ -673,7 +673,10 @@ router.get("/expense/:expense_id", getExpenseById);
 router.post("/addExpense", (req, res, next) => {
     console.log('📝 Incoming Request Body:', req.body);
     next();
-}, expenseUpload.single("upload_bill"), addExpense);
+}, expenseUpload.fields([
+    { name: 'upload_bill', maxCount: 1 },
+    { name: 'upload_receipt', maxCount: 1 }
+]), addExpense);
 router.put("/expense/:expense_id", expenseUpload.single("upload_bill"), updateExpense);
 router.delete("/expense/:expense_id", deleteExpense);
 router.put("/updateMemberSettings", 
