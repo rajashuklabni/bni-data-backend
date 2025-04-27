@@ -9213,6 +9213,113 @@ const sendInterviewSheetEmail = async (req, res) => {
   }
 };
 
+const addVendor = async (req, res) => {
+  try {
+    const {
+      vendor_name,
+      vendor_company_name,
+      vendor_company_address,
+      vendor_company_gst,
+      vendor_account,
+      vendor_bank_name,
+      vendor_ifsc_code,
+      vendor_account_type,
+      vendor_status,
+      phone_number,
+      email_id
+    } = req.body;
+
+    // Validate required fields
+    if (!vendor_name || !vendor_company_name || !vendor_company_address || !vendor_company_gst || 
+        !vendor_account || !vendor_bank_name || !vendor_ifsc_code || !vendor_account_type || 
+        !vendor_status || !phone_number || !email_id) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // Validate GST format
+    const gstPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (!gstPattern.test(vendor_company_gst)) {
+      return res.status(400).json({ message: 'Invalid GST number format' });
+    }
+
+    // Validate IFSC format
+    const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    if (!ifscPattern.test(vendor_ifsc_code)) {
+      return res.status(400).json({ message: 'Invalid IFSC code format' });
+    }
+
+    // Validate phone number
+    const phonePattern = /^[0-9]{10}$/;
+    if (!phonePattern.test(phone_number)) {
+      return res.status(400).json({ message: 'Invalid phone number format' });
+    }
+
+    // Validate email
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email_id)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+
+    // Check if vendor with same GST number already exists
+    const existingVendorGST = await con.query(
+      'SELECT * FROM vendors WHERE vendor_company_gst = $1',
+      [vendor_company_gst]
+    );
+
+    if (existingVendorGST.rows.length > 0) {
+      return res.status(400).json({ message: 'Vendor with this GST number already exists' });
+    }
+
+    // Check if vendor with same email already exists
+    const existingVendorEmail = await con.query(
+      'SELECT * FROM vendors WHERE email_id = $1',
+      [email_id]
+    );
+
+    if (existingVendorEmail.rows.length > 0) {
+      return res.status(400).json({ message: 'Vendor with this email already exists' });
+    }
+
+    // Insert new vendor
+    const result = await con.query(
+      `INSERT INTO vendors (
+        vendor_name,
+        vendor_company_name,
+        vendor_company_address,
+        vendor_company_gst,
+        vendor_account,
+        vendor_bank_name,
+        vendor_ifsc_code,
+        vendor_account_type,
+        vendor_status,
+        phone_number,
+        email_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *`,
+      [
+        vendor_name,
+        vendor_company_name,
+        vendor_company_address,
+        vendor_company_gst,
+        vendor_account,
+        vendor_bank_name,
+        vendor_ifsc_code,
+        vendor_account_type,
+        vendor_status,
+        phone_number,
+        email_id
+      ]
+    );
+
+    res.status(201).json({
+      message: 'Vendor added successfully',
+      vendor: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error in addVendor:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
 
 module.exports = {
   addInvoiceManually,
@@ -9365,5 +9472,6 @@ module.exports = {
   getAllMemberAccolades,
   sendFormSubmissionEmail,
   sendInterviewSheetEmail,
-  getAllVendors   
+  getAllVendors,
+  addVendor   
 };
