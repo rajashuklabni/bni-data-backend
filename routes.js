@@ -152,7 +152,8 @@ const {
   importMemberAccolades,
   getAllMemberAccolades,
   sendInterviewSheetEmail,
-  sendFormSubmissionEmail
+  sendFormSubmissionEmail,
+  getAllVendors
 } = require("./controllers");
 
 const path = require("path");
@@ -663,6 +664,7 @@ router.post("/addKittyPayment", addKittyPayment);
 router.get("/getKittyPayments", getKittyPayments);
 router.put("/deleteKittyBill/:payment_id", deleteKittyBill);
 router.get("/expenseType", expenseType);
+router.get("/getAllVendors", getAllVendors);
 router.post("/expenseType", addExpenseType);
 router.get("/allExpenses", allExpenses);
 router.get("/expense/:expense_id", getExpenseById);

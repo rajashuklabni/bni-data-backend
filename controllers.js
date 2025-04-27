@@ -2957,6 +2957,17 @@ const expenseType = async (req, res) => {
   }
 };
 
+const getAllVendors = async (req, res) => {
+  try {
+    const query = "SELECT * FROM vendors"; // Default query (non-deleted regions)
+    const result = await con.query(query); // Execute the query
+    res.json(result.rows); // Return filtered data
+  } catch (error) {
+    console.error("Error fetching vendors:", error);
+    res.status(500).send("Error fetching vendors");
+  }
+};
+
 // Fetch all active members
 const allExpenses = async (req, res) => {
   try {
@@ -9353,5 +9364,6 @@ module.exports = {
   importMemberAccolades,
   getAllMemberAccolades,
   sendFormSubmissionEmail,
-  sendInterviewSheetEmail   
+  sendInterviewSheetEmail,
+  getAllVendors   
 };
