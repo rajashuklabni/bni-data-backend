@@ -855,7 +855,15 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     // Create a PDF from the HTML
     const browser = await puppeteer.launch({
       headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--disable-extensions'
+      ],
+      executablePath: '/usr/bin/chromium-browser' // Use the installed Chromium browser
     });
     const page = await browser.newPage();
     
