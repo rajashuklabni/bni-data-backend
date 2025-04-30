@@ -457,7 +457,7 @@ async function generateIRN(req, res) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "nationalmarketing",
+        user_name: "sunilk",
         AuthToken: authtoken
       }
     });
@@ -471,7 +471,7 @@ async function generateIRN(req, res) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "nationalmarketing",
+        user_name: "sunilk",
         AuthToken: authtoken
       }
     });
@@ -975,7 +975,7 @@ async function cancelIRN(req, res) {
               client_id: process.env.CLIENT_ID,
               client_secret: process.env.CLIENT_SECRET,
               gstin: process.env.GSTIN,
-              user_name: "nationalmarketing",
+              user_name: "sunilk",
               AuthToken: authtoken
           }
       });
@@ -993,7 +993,7 @@ async function cancelIRN(req, res) {
               client_id: process.env.CLIENT_ID,
               client_secret: process.env.CLIENT_SECRET,
               gstin: process.env.GSTIN,
-              user_name: "nationalmarketing",
+              user_name: "sunilk",
               AuthToken: authtoken
           }
       });
@@ -1104,7 +1104,7 @@ async function getGstDetails(req, res) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "nationalmarketing",
+        user_name: "sunilk",
         AuthToken: authtoken
       }
     });
@@ -1125,7 +1125,7 @@ async function getGstDetails(req, res) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "nationalmarketing",
+        user_name: "sunilk",
         AuthToken: authtoken
       }
     });
@@ -1173,7 +1173,7 @@ async function fetchGstDetails(gstNo, authToken, sek) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "nationalmarketing",
+        user_name: "sunilk",
         AuthToken: authToken
       }
     });
@@ -1191,7 +1191,7 @@ async function fetchGstDetails(gstNo, authToken, sek) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "nationalmarketing",
+        user_name: "sunilk",
         AuthToken: authToken
       }
     });
