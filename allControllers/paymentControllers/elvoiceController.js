@@ -11,6 +11,61 @@ const path = require('path');
 const QRCode = require('qrcode');
 const puppeteer = require('puppeteer');
 
+// Add Delhi zipcodes at the top of the file
+const delhiZipCodes = ["110080", "110081", "110082", "110083", "110084", "110085", "110086", "110087", "110088", "110089", "110090", "110091", "110092", "110093", "110094", "110095", "110096", "110097", "110099", "110110", "110001", "110002", "110003", "110004", "110005", "110006", "110007", "110008", "110009", "110010", "110011", "110012", "110013", "110014", "110015", "110016", "110017", "110018", "110019", "110020", "110021", "110022", "110023", "110024", "110025", "110026", "110027", "110028", "110029", "110030", "110031", "110032", "110033", "110034", "110035", "110036", "110037", "110038", "110039", "110040", "110041", "110042", "110043", "110044", "110045", "110046", "110047", "110048", "110049", "110051", "110052", "110053", "110054", "110055", "110056", "110057", "110058", "110059", "110060", "110061", "110062", "110063", "110064", "110065", "110066", "110067", "110068", "110069", "110070", "110071", "110072", "110073", "110074", "110075", "110076", "110077", "110078"];
+
+// Function to convert number to words
+function numberToWords(amount) {
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  
+  function convertLessThanThousand(n) {
+    if (n === 0) return '';
+    
+    if (n < 20) return ones[n];
+    
+    if (n < 100) {
+      return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+    }
+    
+    return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' and ' + convertLessThanThousand(n % 100) : '');
+  }
+  
+  // Convert the amount to a fixed 2 decimal number
+  let rupeesValue = Math.floor(amount);
+  const paise = Math.round((amount - rupeesValue) * 100);
+  
+  if (rupeesValue === 0 && paise === 0) return 'Zero Rupees';
+  
+  let result = '';
+  
+  if (rupeesValue > 0) {
+    if (rupeesValue >= 10000000) {
+      result += convertLessThanThousand(Math.floor(rupeesValue / 10000000)) + ' Crore ';
+      rupeesValue %= 10000000;
+    }
+    
+    if (rupeesValue >= 100000) {
+      result += convertLessThanThousand(Math.floor(rupeesValue / 100000)) + ' Lakh ';
+      rupeesValue %= 100000;
+    }
+    
+    if (rupeesValue >= 1000) {
+      result += convertLessThanThousand(Math.floor(rupeesValue / 1000)) + ' Thousand ';
+      rupeesValue %= 1000;
+    }
+    
+    result += convertLessThanThousand(rupeesValue);
+    result += ' Rupees';
+  }
+  
+  if (paise > 0) {
+    result += ' and ' + convertLessThanThousand(paise) + ' Paise';
+  }
+  
+  return result + ' Only';
+}
 
 // Initialize Axios client with base URL and headers
 const apiClient = axios.create({
@@ -21,7 +76,6 @@ const apiClient = axios.create({
     'gstin': process.env.GSTIN
   }
 });
-
 
 // Encrypt data function
 async function encryptData() {
@@ -125,64 +179,6 @@ async function decryptData(authToken, sek) {
     throw new Error("Failed to decrypt SEK");
   }
 }
-
-// Add Delhi zipcodes at the top of the file
-const delhiZipCodes = ["110080", "110081", "110082", "110083", "110084", "110085", "110086", "110087", "110088", "110089", "110090", "110091", "110092", "110093", "110094", "110095", "110096", "110097", "110099", "110110", "110001", "110002", "110003", "110004", "110005", "110006", "110007", "110008", "110009", "110010", "110011", "110012", "110013", "110014", "110015", "110016", "110017", "110018", "110019", "110020", "110021", "110022", "110023", "110024", "110025", "110026", "110027", "110028", "110029", "110030", "110031", "110032", "110033", "110034", "110035", "110036", "110037", "110038", "110039", "110040", "110041", "110042", "110043", "110044", "110045", "110046", "110047", "110048", "110049", "110051", "110052", "110053", "110054", "110055", "110056", "110057", "110058", "110059", "110060", "110061", "110062", "110063", "110064", "110065", "110066", "110067", "110068", "110069", "110070", "110071", "110072", "110073", "110074", "110075", "110076", "110077", "110078"];
-
-// Function to convert number to words
-function numberToWords(amount) {
-  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
-    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-  
-  function convertLessThanThousand(n) {
-    if (n === 0) return '';
-    
-    if (n < 20) return ones[n];
-    
-    if (n < 100) {
-      return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
-    }
-    
-    return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' and ' + convertLessThanThousand(n % 100) : '');
-  }
-  
-  // Convert the amount to a fixed 2 decimal number
-  let rupeesValue = Math.floor(amount);
-  const paise = Math.round((amount - rupeesValue) * 100);
-  
-  if (rupeesValue === 0 && paise === 0) return 'Zero Rupees';
-  
-  let result = '';
-  
-  if (rupeesValue > 0) {
-    if (rupeesValue >= 10000000) {
-      result += convertLessThanThousand(Math.floor(rupeesValue / 10000000)) + ' Crore ';
-      rupeesValue %= 10000000;
-    }
-    
-    if (rupeesValue >= 100000) {
-      result += convertLessThanThousand(Math.floor(rupeesValue / 100000)) + ' Lakh ';
-      rupeesValue %= 100000;
-    }
-    
-    if (rupeesValue >= 1000) {
-      result += convertLessThanThousand(Math.floor(rupeesValue / 1000)) + ' Thousand ';
-      rupeesValue %= 1000;
-    }
-    
-    result += convertLessThanThousand(rupeesValue);
-    result += ' Rupees';
-  }
-  
-  if (paise > 0) {
-    result += ' and ' + convertLessThanThousand(paise) + ' Paise';
-  }
-  
-  return result + ' Only';
-}
-
-
 
 // Function to format document number to match required pattern
 function formatDocumentNumber(docNo) {
