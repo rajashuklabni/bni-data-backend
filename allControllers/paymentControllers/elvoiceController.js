@@ -328,7 +328,7 @@ async function generateIRN(req, res) {
     const buyerDetails = {
       Addr1: memberData.member_company_address || "Address not found",
       Addr2: memberData.member_company_address || "",
-      Loc: memberData.member_company_state || "GANDHINAGAR",
+      Loc: (memberData.member_company_state || "Delhi").padEnd(3, ' '), // Ensure minimum 3 characters
       Pos: stateCode,
       Pin: memberData.address_pincode || 110001,
       Stcd: stateCode,  // Extract state code from GSTIN
@@ -398,14 +398,20 @@ async function generateIRN(req, res) {
           "LglNm": "ADI CORPORATE TRAINING",
           "TrdNm": "ADI CORPORATE TRAINING",
           "Addr1": "Flat No.09, Pocket 1, Sector 19, Dwarka, Delhi",
-          "Loc": "Dwarka",
+          "Loc": "Dwarka, Delhi",  // Ensure location is properly set
           "Pin": 110075,
           "Stcd": "07",
           "Ph": "9899789340",
           "Em": "sunilk@bni-india.in"
         },
-        "BuyerDtls": buyerDetails,
-        "ShipDtls": buyerDetails,
+        "BuyerDtls": {
+          ...buyerDetails,
+          Loc: buyerDetails.Loc.substring(0, 100)  // Ensure maximum 100 characters
+        },
+        "ShipDtls": {
+          ...buyerDetails,
+          Loc: buyerDetails.Loc.substring(0, 100)  // Ensure maximum 100 characters
+        },
         "ItemList": [
           {
             "SlNo": "1",
