@@ -31,7 +31,7 @@
     "pdfkit": "^0.16.0",
     "pg": "^8.15.5",
     "pg-format": "^1.0.4",
-    "puppeteer": "^24.7.1",
+    "puppeteer": "^24.7.2",
     "qrcode": "^1.5.4",
     "querystring": "^0.2.1",
     "raw-body": "^3.0.0",

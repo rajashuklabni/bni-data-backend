@@ -2624,8 +2624,8 @@ const getSettledPayments = async (req, res) => {
     const result = await con.query("SELECT * FROM settlementstatus");
     res.json(result.rows);
   } catch (error) {
-    console.error("Error fetching settlement transactions:", error);
-    res.status(500).send("Error fetching settlement transactions");
+    // console.error("Error fetching settlement transactions:", error);
+    // res.status(500).send("Error fetching settlement transactions");
   }
 };
 
