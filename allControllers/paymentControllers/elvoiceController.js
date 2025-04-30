@@ -414,7 +414,7 @@ async function generateIRN(req, res) {
             "HsnCd": "999511",
             "Barcde": null,
             "Qty": 1,
-            "Unit": "BAG",
+            "Unit": "Service",
             "UnitPrice": basePrice,
             "TotAmt": basePrice,
             "Discount": 0,
