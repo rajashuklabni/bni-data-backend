@@ -398,7 +398,7 @@ async function generateIRN(req, res) {
           "Dt": docDate
         },
         "SellerDtls": {
-          "Gstin": "07EVVPS9453K003",
+          "Gstin": "07AHIPK0486D1ZH",
           "LglNm": "ADI CORPORATE TRAINING",
           "TrdNm": "ADI CORPORATE TRAINING",
           "Addr1": "Flat No.09, Pocket 1, Sector 19, Dwarka, Delhi",
