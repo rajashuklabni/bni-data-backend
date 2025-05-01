@@ -98,7 +98,7 @@ const sessionIdGenerator = async (req, res) => {
               ];
               await db.query(
                 `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id,visitor_name,visitor_email,visitor_mobilenumber,visitor_address,visitor_company,visitor_gstin,visitor_business,visitor_company_address,created_at,updated_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)`,
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)`,
                 orderValues
             );
             }
@@ -744,7 +744,7 @@ const getSettlementStatus = async (req, res) => {
       );
 
       const settlementData = settlementResponse.data;
-      console.log(settlementData);
+      // console.log(settlementData);
 
       // Extract settlement details
       const {
@@ -806,7 +806,7 @@ const getSettlementStatus = async (req, res) => {
       res.status(200).json({ message: 'Settlement data stored successfully', settlementData });
 
   } catch (error) {
-      console.error('Error fetching settlement status:', error.response ? error.response.data : error.message);
+      // console.error('Error fetching settlement status:', error.response ? error.response.data : error.message);
       res.status(500).json({ error: 'Failed to fetch settlement status' });
   }
 };
