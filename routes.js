@@ -154,7 +154,10 @@ const {
   sendInterviewSheetEmail,
   sendFormSubmissionEmail,
   getAllVendors,
-  addVendor
+  addVendor,
+  getAllDocNumbers,
+  sendPaymentLinksEmail,
+ sendAllPaymentLinksEmail
 } = require("./controllers");
 
 const path = require("path");
@@ -666,6 +669,7 @@ router.get("/getKittyPayments", getKittyPayments);
 router.put("/deleteKittyBill/:payment_id", deleteKittyBill);
 router.get("/expenseType", expenseType);
 router.get("/getAllVendors", getAllVendors);
+router.get("/getAllDocNumbers", getAllDocNumbers);
 router.post("/expenseType", addExpenseType);
 router.post("/addVendor", addVendor);
 router.get("/allExpenses", allExpenses);
@@ -1077,6 +1081,8 @@ router.post('/import-member-accolades', uploadddd.single('file'), importMemberAc
 router.get("/getAllMemberAccolades", getAllMemberAccolades);
 router.post("/sendInterviewSheetEmail", sendInterviewSheetEmail)
 router.post("/sendFormSubmissionEmail", sendFormSubmissionEmail);
+router.post("/send-payment-links", sendPaymentLinksEmail);
+router.post('/send-all-payment-links', sendAllPaymentLinksEmail);
 
 
 

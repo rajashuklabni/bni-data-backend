@@ -2968,6 +2968,18 @@ const getAllVendors = async (req, res) => {
   }
 };
 
+const getAllDocNumbers = async (req, res) => {
+  try {
+    const query = "SELECT * FROM documentnumbers"; // Default query (non-deleted regions)
+    const result = await con.query(query); // Execute the query
+    res.json(result.rows); // Return filtered data
+  } catch (error) {
+    console.error("Error fetching documentnumbers:", error);
+    res.status(500).send("Error fetching documentnumbers");
+  }
+};
+
+
 // Fetch all active members
 const allExpenses = async (req, res) => {
   try {
@@ -5287,6 +5299,7 @@ const getHotels = async (req, res) => {
 };
 
 
+
 const addHotel = async (req, res) => {
   try {
       console.log('📝 Starting addHotel process');
@@ -5308,6 +5321,9 @@ const addHotel = async (req, res) => {
           account_type,
           hotel_gst,
           hotel_bank_proof,
+          beneficiary_name,         // <-- NEW FIELD
+          swift_code,               // <-- NEW FIELD
+          hotel_alternative_phone   // <-- NEW FIELD
       } = req.body;
 
       // Validate required fields
@@ -5339,8 +5355,11 @@ const addHotel = async (req, res) => {
               account_no,
               account_type,
               hotel_gst,
-              hotel_bank_proof
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+              hotel_bank_proof,
+              beneficiary_name,         -- NEW FIELD
+              swift_code,               -- NEW FIELD
+              hotel_alternative_phone   -- NEW FIELD
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
           RETURNING *
       `;
 
@@ -5360,6 +5379,9 @@ const addHotel = async (req, res) => {
           account_type,
           hotel_gst,
           hotel_bank_proof,
+          beneficiary_name,         // <-- NEW FIELD
+          swift_code,               // <-- NEW FIELD
+          hotel_alternative_phone   // <-- NEW FIELD
       ];
 
       console.log('💾 Executing query with values:', values);
@@ -5429,6 +5451,9 @@ const updateHotel = async (req, res) => {
           account_type,
           hotel_gst,
           hotel_bank_proof,
+          beneficiary_name,         // <-- NEW FIELD
+          swift_code,               // <-- NEW FIELD
+          hotel_alternative_phone   // <-- NEW FIELD
       } = req.body;
 
       // Validate required fields
@@ -5456,7 +5481,10 @@ const updateHotel = async (req, res) => {
               account_no = $12,
               account_type = $13,
               hotel_gst = $14,
-              hotel_bank_proof = $15
+              hotel_bank_proof = $15,
+              beneficiary_name = $16,         -- NEW FIELD
+              swift_code = $17,               -- NEW FIELD
+              hotel_alternative_phone = $18   -- NEW FIELD
       `;
 
       let values = [
@@ -5474,9 +5502,11 @@ const updateHotel = async (req, res) => {
           account_no,
           account_type,
           hotel_gst,
-          hotel_bank_proof
+          hotel_bank_proof,
+          beneficiary_name,         // <-- NEW FIELD
+          swift_code,               // <-- NEW FIELD
+          hotel_alternative_phone   // <-- NEW FIELD
       ];
-
 
       updateQuery += ` WHERE hotel_id = $${values.length + 1} RETURNING *`;
       values.push(hotel_id);
@@ -5501,6 +5531,8 @@ const updateHotel = async (req, res) => {
       });
   }
 };
+
+
 const addHotelToRegion = async (req, res) => {
   try {
       console.log('📝 Starting addHotelAndUpdateRegion process');
@@ -9359,6 +9391,144 @@ const addVendor = async (req, res) => {
   }
 };
 
+const sendPaymentLinksEmail = async (req, res) => {
+  try {
+    const { memberIds, paymentLink, qrUrl, paymentType, chapterName } = req.body;
+
+    // Validate request
+    if (!memberIds || !Array.isArray(memberIds) || !paymentLink || !qrUrl || !paymentType) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields"
+      });
+    }
+
+    // Get member details from database
+    const memberQuery = await con.query(
+      "SELECT member_email_address FROM member WHERE member_id = ANY($1)",
+      [memberIds]
+    );
+
+    const members = memberQuery.rows;
+
+    // Prepare email content
+    const emailSubject = `BNI ${chapterName} - ${paymentType} Payment Link`;
+    
+    // Send email to each member
+    for (const member of members) {
+      // Create HTML email content with inline styles
+      const emailContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #d01f2f;">BNI Payment Link</h2>
+          <p>Dear ${member.member_name},</p>
+          <p>Please find below your payment link for ${paymentType}:</p>
+          
+          <div style="margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
+            <p style="margin: 0;"><strong>Payment Link:</strong> <a href="${paymentLink}">${paymentLink}</a></p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <p><strong>Or scan this QR code to pay:</strong></p>
+            <img src="${qrUrl}" alt="Payment QR Code" style="width: 200px; height: 200px; border: 2px solid #d01f2f; border-radius: 10px;">
+          </div>
+
+          <p style="color: #666; font-size: 14px;">This is an automated message. Please do not reply to this email.</p>
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 12px;">
+            <p>© ${new Date().getFullYear()} BNI. All rights reserved.</p>
+          </div>
+        </div>
+      `;
+
+      // Configure mail options
+      const mailOptions = {
+        from: 'BNI N E W Delhi <info@bninewdelhi.in>',
+        to: member.email_id,
+        cc: ['Raja Shukla | Digital Marketing | Prolific Shukla <rajashukla@outlook.com>', 'scriptforprince@gmail.com'],
+        subject: emailSubject,
+        html: emailContent
+      };
+
+      // Send email using nodemailer transporter
+      await transporter.sendMail(mailOptions);
+    }
+
+    // Log the activity
+    // await con.query(
+    //   `INSERT INTO email_logs (email_type, sent_to, payment_type, sent_at) 
+    //    VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`,
+    //   ['payment_link', memberIds, paymentType]
+    // );
+
+    res.json({
+      success: true,
+      message: `Payment links sent successfully to ${members.length} members`
+    });
+
+  } catch (error) {
+    console.error('Error sending payment links:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send payment links",
+      error: error.message
+    });
+  }
+};
+
+const sendAllPaymentLinksEmail = async (req, res) => {
+  try {
+    const { memberIds, allLinks, chapterName } = req.body;
+    if (!memberIds || !Array.isArray(memberIds) || !allLinks || !Array.isArray(allLinks)) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    // Fetch member emails
+    const memberQuery = await con.query(
+      "SELECT member_email_address, member_first_name, member_last_name FROM member WHERE member_id = ANY($1)",
+      [memberIds]
+    );
+    const members = memberQuery.rows;
+
+    // Prepare email content
+    for (const member of members) {
+      let linksHtml = allLinks.map(l => `
+        <div style="margin-bottom:18px;">
+          <h3 style="color:#d01f2f;font-size:1.1em;">${l.type}</h3>
+          <div style="margin:8px 0;">
+            <a href="${l.link}" style="color:#1565c0;text-decoration:underline;">${l.link}</a>
+          </div>
+          <img src="${l.qr}" alt="QR" style="width:120px;height:120px;border:2px solid #d01f2f;border-radius:8px;">
+        </div>
+      `).join('');
+
+      const emailContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #d01f2f;">BNI Payment Links</h2>
+          <p>Dear ${member.member_first_name} ${member.member_last_name},</p>
+          <p>Please find below all your payment links for <b>${chapterName}</b>:</p>
+          ${linksHtml}
+          <p style="color: #666; font-size: 14px;">This is an automated message. Please do not reply to this email.</p>
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 12px;">
+            <p>© ${new Date().getFullYear()} BNI. All rights reserved.</p>
+          </div>
+        </div>
+      `;
+
+      // Send email (use your nodemailer transporter)
+      await transporter.sendMail({
+        from: 'BNI N E W Delhi <info@bninewdelhi.in>',
+        to: member.member_email_address,
+        subject: `BNI ${chapterName} - All Payment Links`,
+        html: emailContent
+      });
+    }
+
+    res.json({ success: true, message: `All payment links sent to ${members.length} members` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to send payment links", error: error.message });
+  }
+};
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -9511,5 +9681,8 @@ module.exports = {
   sendFormSubmissionEmail,
   sendInterviewSheetEmail,
   getAllVendors,
-  addVendor
+  addVendor,
+  getAllDocNumbers,
+  sendPaymentLinksEmail,
+  sendAllPaymentLinksEmail
 };
