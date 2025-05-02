@@ -9405,22 +9405,37 @@ const sendPaymentLinksEmail = async (req, res) => {
 
     // Get member details from database
     const memberQuery = await con.query(
-      "SELECT member_email_address FROM member WHERE member_id = ANY($1)",
+      "SELECT member_first_name, member_last_name, member_email_address FROM member WHERE member_id = ANY($1)",
       [memberIds]
     );
 
     const members = memberQuery.rows;
 
-    // Prepare email content
-    const emailSubject = `BNI ${chapterName} - ${paymentType} Payment Link`;
-    
+    // Check if we got any members
+    if (!members.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No members found with the provided IDs"
+      });
+    }
+
+    console.log('Members found:', members); // Debug log
+
     // Send email to each member
     for (const member of members) {
+      // Skip if no email address
+      if (!member.member_email_address) {
+        console.log('Skipping member - no email address:', member);
+        continue;
+      }
+
+      const memberName = `${member.member_first_name} ${member.member_last_name}`;
+      
       // Create HTML email content with inline styles
       const emailContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #d01f2f;">BNI Payment Link</h2>
-          <p>Dear ${member.member_name},</p>
+          <p>Dear ${memberName},</p>
           <p>Please find below your payment link for ${paymentType}:</p>
           
           <div style="margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
@@ -9443,22 +9458,16 @@ const sendPaymentLinksEmail = async (req, res) => {
       // Configure mail options
       const mailOptions = {
         from: 'BNI N E W Delhi <info@bninewdelhi.in>',
-        to: member.email_id,
-        cc: ['Raja Shukla | Digital Marketing | Prolific Shukla <rajashukla@outlook.com>', 'scriptforprince@gmail.com'],
-        subject: emailSubject,
+        to: member.member_email_address, // Fixed: Using member_email_address instead of email_id
+        subject: `BNI ${chapterName} - ${paymentType} Payment Link`,
         html: emailContent
       };
+
+      console.log('Sending email to:', member.member_email_address); // Debug log
 
       // Send email using nodemailer transporter
       await transporter.sendMail(mailOptions);
     }
-
-    // Log the activity
-    // await con.query(
-    //   `INSERT INTO email_logs (email_type, sent_to, payment_type, sent_at) 
-    //    VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`,
-    //   ['payment_link', memberIds, paymentType]
-    // );
 
     res.json({
       success: true,
