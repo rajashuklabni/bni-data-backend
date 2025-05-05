@@ -681,7 +681,10 @@ router.post("/addExpense", (req, res, next) => {
     { name: 'upload_bill', maxCount: 1 },
     { name: 'upload_receipt', maxCount: 1 }
 ]), addExpense);
-router.put("/expense/:expense_id", expenseUpload.single("upload_bill"), updateExpense);
+router.put("/expense/:expense_id", expenseUpload.fields([
+    { name: 'upload_bill', maxCount: 1 },
+    { name: 'upload_receipt', maxCount: 1 }
+]), updateExpense);
 router.delete("/expense/:expense_id", deleteExpense);
 router.put("/updateMemberSettings", 
     uploadMemberDocs.fields([

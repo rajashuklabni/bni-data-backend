@@ -3166,91 +3166,94 @@ const getExpenseById = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 const updateExpense = async (req, res) => {
   const {
     expense_type,
     submitted_by,
     description,
+    chapter,
+    vendor,
     amount,
     payment_status,
+    payment_mode,
     bill_date,
-    transaction_no,
     bill_no,
-    withGST
+    transaction_no,
+    gst_percentage,
+    gst_amount,
+    total_amount,
+    vendor_id,
+    vendor_name,
+    vendor_company_name,
+    vendor_company_address,
+    vendor_company_gst,
+    vendor_account,
+    vendor_bank_name,
+    vendor_ifsc_code,
+    vendor_account_type,
+    phone_number,
+    email_id,
   } = req.body;
 
-  const { expense_id } = req.params; // Get expense_id from URL params
+  const { expense_id } = req.params;
 
   try {
-    // Log data for debugging
-    console.log("Expense ID:", expense_id);
-    console.log("Request Body:", req.body);
-    console.log("Uploaded File:", req.file);
+    console.log("🔄 Updating Expense ID:", expense_id);
+    console.log("📝 Request Body:", req.body);
+    console.log("📎 Uploaded Files:", req.file);
 
-    // Validate expense_id
     if (!expense_id) {
       return res.status(400).json({ message: "Expense ID is required" });
     }
 
-    // Initialize file path
-    let uploadBillPath = null;
+    // Handle file renaming logic like in addExpense
+    let newBillFilename = null;
+    let newReceiptFilename = null;
 
-    // If a new file is uploaded, construct the file path
-    if (req.file) {
-      uploadBillPath = `/uploads/expenses/${req.file.filename}`;
+    if (req.files && req.files.upload_bill && req.files.upload_bill[0]) {
+      const billFile = req.files.upload_bill[0];
+      const billExt = path.extname(billFile.filename);
+      newBillFilename = `expense_bill_${expense_id}${billExt}`;
+      const oldBillPath = path.join(__dirname, "uploads", "expenses", billFile.filename);
+      const newBillPath = path.join(__dirname, "uploads", "expenses", newBillFilename);
+      fs.renameSync(oldBillPath, newBillPath);
     }
 
-    // Dynamically build the query and values array
+    if (req.files && req.files.upload_receipt && req.files.upload_receipt[0]) {
+      const receiptFile = req.files.upload_receipt[0];
+      const receiptExt = path.extname(receiptFile.filename);
+      newReceiptFilename = `expense_receipt_${expense_id}${receiptExt}`;
+      const oldReceiptPath = path.join(__dirname, "uploads", "expenses", receiptFile.filename);
+      const newReceiptPath = path.join(__dirname, "uploads", "expenses", newReceiptFilename);
+      fs.renameSync(oldReceiptPath, newReceiptPath);
+    }
+
+    // Build dynamic update query
     const query = [];
     const values = [];
     let index = 1;
 
-    if (expense_type) {
-      query.push(`expense_type = $${index++}`);
-      values.push(expense_type);
-    }
-    if (submitted_by) {
-      query.push(`submitted_by = $${index++}`);
-      values.push(submitted_by);
-    }
-    if (description) {
-      query.push(`description = $${index++}`);
-      values.push(description);
-    }
-    if (amount) {
-      query.push(`amount = $${index++}`);
-      values.push(amount);
-    }
-    if (payment_status) {
-      query.push(`payment_status = $${index++}`);
-      values.push(payment_status);
-    }
-    if (bill_date) {
-      query.push(`bill_date = $${index++}`);
-      values.push(bill_date);
-    }
-    if (uploadBillPath) {
-      query.push(`upload_bill = $${index++}`);
-      values.push(uploadBillPath);
-    }
-    if (transaction_no) {
-      query.push(`transaction_no = $${index++}`);
-      values.push(transaction_no);
-    }
-    if (bill_no) {
-      query.push(`bill_no = $${index++}`);
-      values.push(bill_no);
-    }
-     // Add GST update condition
-     if (withGST !== undefined) {
-      query.push(`is_gst = $${index++}`);
-      values.push(withGST === 'true' || withGST === true);
-    }
+    if (expense_type) query.push(`expense_type = $${index++}`), values.push(expense_type);
+    if (submitted_by) query.push(`submitted_by = $${index++}`), values.push(submitted_by);
+    if (description) query.push(`description = $${index++}`), values.push(description);
+    if (chapter) query.push(`chapter_id = $${index++}`), values.push(chapter);
+    if (vendor) query.push(`vendor_id = $${index++}`), values.push(vendor);
+    if (amount) query.push(`amount = $${index++}`), values.push(amount);
+    if (payment_status) query.push(`payment_status = $${index++}`), values.push(payment_status);
+    if (payment_mode) query.push(`mode_of_payment = $${index++}`), values.push(payment_mode);
+    if (bill_date) query.push(`bill_date = $${index++}`), values.push(bill_date);
+    if (bill_no) query.push(`bill_no = $${index++}`), values.push(bill_no);
+    if (transaction_no) query.push(`transaction_no = $${index++}`), values.push(transaction_no);
+    if (gst_percentage) query.push(`gst_percentage = $${index++}`), values.push(gst_percentage);
+    if (gst_amount) query.push(`gst_amount = $${index++}`), values.push(gst_amount);
+    if (total_amount) query.push(`total_amount = $${index++}`), values.push(total_amount);
+    if (newBillFilename) query.push(`upload_bill = $${index++}`), values.push(newBillFilename);
+    if (newReceiptFilename) query.push(`upload_receipt = $${index++}`), values.push(newReceiptFilename);
 
-    // Add expense_id to the values array for the WHERE clause
+    // Add expense_id for WHERE clause
     values.push(expense_id);
 
-    // Build the update query
     const updateQuery = `
       UPDATE expenses
       SET ${query.join(", ")}
@@ -3258,27 +3261,60 @@ const updateExpense = async (req, res) => {
       RETURNING *;
     `;
 
-    // Execute the query
     const result = await con.query(updateQuery, values);
 
-    // Handle case where no rows are updated
+    // Update vendor details if vendor_id and fields are present
+    if (vendor_id) {
+      const vendorFields = {
+        vendor_name,
+        vendor_company_name,
+        vendor_company_address,
+        vendor_company_gst,
+        vendor_account,
+        vendor_bank_name,
+        vendor_ifsc_code,
+        vendor_account_type,
+        phone_number,
+        email_id,
+      };
+      const setParts = [];
+      const vendorValues = [];
+      let idx = 1;
+      for (const [key, value] of Object.entries(vendorFields)) {
+        if (value !== undefined && value !== null && value !== "") {
+          setParts.push(`${key} = $${idx++}`);
+          vendorValues.push(value);
+        }
+      }
+      if (setParts.length > 0) {
+        vendorValues.push(vendor_id);
+        const vendorUpdateQuery = `
+          UPDATE vendors
+          SET ${setParts.join(", ")}
+          WHERE vendor_id = $${idx};
+        `;
+        await con.query(vendorUpdateQuery, vendorValues);
+      }
+    }
+
     if (result.rowCount === 0) {
       return res.status(404).json({ message: "Expense not found" });
     }
 
-    // Respond with the updated data
     res.status(200).json({
       message: "Expense updated successfully!",
       data: result.rows[0],
     });
   } catch (error) {
-    console.error("Error updating Expense:", error);
+    console.error("❌ Error updating Expense:", error);
     res.status(500).json({
       message: "Error updating Expense",
       error: error.message,
     });
   }
 };
+
+
 const deleteExpense = async (req, res) => {
   const { expense_id } = req.params; // Get expense_id from URL params
 
