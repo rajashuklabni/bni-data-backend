@@ -8224,6 +8224,8 @@ const addVisitorPayment = async (req, res) => {
   console.log("📥 Received Visitor Payment Data:", invoiceData);
 
   try {
+    const issuedDate = new Date(invoiceData.date_issued);
+
     // Generate unique IDs
     const order_id = `VIS${Date.now()}`;
     const cf_payment_id = `TRX${Date.now()}`;
@@ -8237,8 +8239,8 @@ const addVisitorPayment = async (req, res) => {
       payment_session_id: null,
       payment_currency: "INR",
       payment_status: "SUCCESS",
-      payment_time: new Date(),
-      payment_completion_time: new Date(),
+      payment_time: issuedDate,
+      payment_completion_time: issuedDate,
       payment_note: "Visitor Payment",
       error_details: {}
     };
@@ -8278,12 +8280,14 @@ const addVisitorPayment = async (req, res) => {
       invoiceData.visitor_company,
       invoiceData.visitor_gstin,
       invoiceData.visitor_business_category,
-      invoiceData.visitor_company_address
+      invoiceData.visitor_company_address,
+      issuedDate, // created_at
+      issuedDate  // updated_at
     ];
 
     console.log("📝 Prepared Order Data:", orderData);
 
-    // Insert into Orders table with visitor fields
+    // Insert into Orders table
     const orderResult = await con.query(
       `INSERT INTO Orders (
         order_id, order_amount, order_currency, payment_gateway_id, 
@@ -8293,10 +8297,11 @@ const addVisitorPayment = async (req, res) => {
         gstin, company, mobile_number, renewal_year, payment_note, 
         training_id, event_id, kitty_bill_id, visitor_id,
         visitor_name, visitor_email, visitor_mobilenumber, visitor_address,
-        visitor_company, visitor_gstin, visitor_business, visitor_company_address
+        visitor_company, visitor_gstin, visitor_business, visitor_company_address,
+        created_at, updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 
                 $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25,
-                $26, $27, $28, $29, $30, $31, $32, $33, $34) 
+                $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36) 
       RETURNING *`,
       orderData
     );
@@ -8324,15 +8329,15 @@ const addVisitorPayment = async (req, res) => {
       defaultValues.payment_currency,
       defaultValues.payment_status,
       "Visitor Payment Successful",
-      defaultValues.payment_time,
-      defaultValues.payment_completion_time,
+      issuedDate,
+      issuedDate,
       null, // bank_reference
       "VISITOR_PAYMENT", // auth_id
-      JSON.stringify(paymentMethod), // Updated payment method with correct note
+      JSON.stringify(paymentMethod),
       JSON.stringify(defaultValues.error_details),
       null, // gateway_order_id
       null, // gateway_payment_id
-      'visitor_payment' // payment_group
+      'visitor_payment'
     ];
 
     console.log("📝 Prepared Transaction Data:", transactionData);
@@ -8355,43 +8360,42 @@ const addVisitorPayment = async (req, res) => {
     const visitorData = [
       invoiceData.region_id,
       invoiceData.chapter_id,
-      invoiceData.member_id || null, // invited_by can be null
-      invoiceData.member_name || null, // invited_by_name can be null
+      invoiceData.member_id || null,
+      invoiceData.member_name || null,
       invoiceData.visitor_name,
       invoiceData.visitor_email,
-      invoiceData.visitor_mobile, // visitor_phone
-      invoiceData.visitor_company, // visitor_company_name
+      invoiceData.visitor_mobile,
+      invoiceData.visitor_company,
       invoiceData.visitor_address,
-      invoiceData.visitor_gstin, // visitor_gst
-      invoiceData.visitor_business_category, // visitor_business
-      invoiceData.visitor_business_category, // visitor_category
-      new Date(), // visited_date
+      invoiceData.visitor_gstin,
+      invoiceData.visitor_business_category,
+      invoiceData.visitor_business_category,
+      issuedDate, // visited_date
       invoiceData.total_amount,
-      invoiceData.taxable_amount, // sub_total
-      invoiceData.gst_amount, // tax
-      false, // delete_status
-      'active', // active_status
-      order_id, // order_id
-      true, // visitor_form
-      false, // eoi_form
-      false, // new_member_form
+      invoiceData.taxable_amount,
+      invoiceData.gst_amount,
+      false,
+      'active',
+      order_id,
+      true,
+      false,
+      false,
       invoiceData.visitor_company_address,
-      false, // interview_sheet
-      false, // commitment_sheet
-      false, // inclusion_exclusion_sheet
-      false, // member_application_form
-      null, // onboarding_call
-      false, // vp_mail
-      false, // welcome_mail
-      null, // chapter_apply_kit
-      false, // visitor_entry_excel
-      false, // google_updation_sheet
-      false, // approve_induction_kit
-      false, // induction_status
-      null // verification
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      false,
+      null
     ];
 
-    // Insert into Visitors table
     const visitorResult = await con.query(
       `INSERT INTO visitors (
         region_id, chapter_id, invited_by, invited_by_name, 
@@ -8434,6 +8438,7 @@ const addVisitorPayment = async (req, res) => {
     });
   }
 };
+
 
 const addKittyPaymentManually = async (req, res) => {
   try {
