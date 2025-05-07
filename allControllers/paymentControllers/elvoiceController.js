@@ -856,8 +856,8 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     const browser = await puppeteer.launch({
       headless: 'new',
       args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
+        '--no-production',
+        '--disable-setuid-production',
         '--disable-dev-shm-usage',
         '--disable-accelerated-2d-canvas',
         '--disable-gpu',

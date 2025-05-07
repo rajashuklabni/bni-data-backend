@@ -157,7 +157,10 @@ const {
   addVendor,
   getAllDocNumbers,
   sendPaymentLinksEmail,
- sendAllPaymentLinksEmail
+ sendAllPaymentLinksEmail,
+ addNewMemberPaymentManually,
+ allOtherPayment,
+addChapterPayment
 } = require("./controllers");
 
 const path = require("path");
@@ -674,14 +677,10 @@ router.post("/expenseType", addExpenseType);
 router.post("/addVendor", addVendor);
 router.get("/allExpenses", allExpenses);
 router.get("/expense/:expense_id", getExpenseById);
-router.post("/addExpense", (req, res, next) => {
-    console.log('📝 Incoming Request Body:', req.body);
-    next();
-}, expenseUpload.fields([
+router.put("/expense/:expense_id", expenseUpload.fields([
     { name: 'upload_bill', maxCount: 1 },
     { name: 'upload_receipt', maxCount: 1 }
-]), addExpense);
-router.put("/expense/:expense_id", expenseUpload.single("upload_bill"), updateExpense);
+]), updateExpense);
 router.delete("/expense/:expense_id", deleteExpense);
 router.put("/updateMemberSettings", 
     uploadMemberDocs.fields([
@@ -1083,7 +1082,9 @@ router.post("/sendInterviewSheetEmail", sendInterviewSheetEmail)
 router.post("/sendFormSubmissionEmail", sendFormSubmissionEmail);
 router.post("/send-payment-links", sendPaymentLinksEmail);
 router.post('/send-all-payment-links', sendAllPaymentLinksEmail);
-
+router.post("/addNewMemberPaymentManually", addNewMemberPaymentManually);
+router.get("/allOtherPayment", allOtherPayment);
+router.post("/addChapterPayment", addChapterPayment);
 
 
 module.exports = router;

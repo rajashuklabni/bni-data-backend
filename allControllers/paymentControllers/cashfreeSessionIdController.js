@@ -9,7 +9,7 @@ const app = express();
 // Set up Cashfree SDK with environment variables
 Cashfree.XClientId = process.env.x_client_id;
 Cashfree.XClientSecret = process.env.x_client_secret;
-Cashfree.XEnvironment = Cashfree.Environment.PRODUCTION; // Use SANDBOX for testing
+Cashfree.XEnvironment = Cashfree.Environment.PRODUCTION; // Use production for testing
 
 const headers = {
     'x-client-id': process.env.x_client_id,
@@ -61,11 +61,11 @@ const sessionIdGenerator = async (req, res) => {
                   responseData.order_id,
                   responseData.order_amount,
                   responseData.order_currency,
-                  data.customer_details.payment_gateway_id || null, // Ensure this is available
+                  data.customer_details.payment_gateway_id ? parseInt(data.customer_details.payment_gateway_id) : null, // Ensure this is available
                   data.customer_details.member_id || null, // Use member_id from customer_details
                   data.customer_details.chapter_id || null, // Use chapter_id from customer_details
                   data.customer_details.region_id || null, // Use region_id from customer_details
-                  data.customer_details.universal_link_id || null, // Ensure this is available
+                  data.customer_details.universal_link_id ? parseInt(data.customer_details.universal_link_id) : null,
                   data.customer_details.ulid_id || null, // Ensure this is available
                   responseData.order_status,
                   responseData.payment_session_id,
@@ -98,7 +98,7 @@ const sessionIdGenerator = async (req, res) => {
               ];
               await db.query(
                 `INSERT INTO Orders (order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id,visitor_name,visitor_email,visitor_mobilenumber,visitor_address,visitor_company,visitor_gstin,visitor_business,visitor_company_address,created_at,updated_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)`,
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)`,
                 orderValues
             );
             }
@@ -155,11 +155,11 @@ const sessionIdGenerator = async (req, res) => {
                 responseData.order_id,
                 responseData.order_amount,
                 responseData.order_currency,
-                data.customer_details.payment_gateway_id || null, // Ensure this is available
+                data.customer_details.payment_gateway_id ? parseInt(data.customer_details.payment_gateway_id) : 1, // Default to 1 if not available
                 data.customer_details.member_id || null, // Use member_id from customer_details
                 data.customer_details.chapter_id || null, // Use chapter_id from customer_details
                 data.customer_details.region_id || null, // Use region_id from customer_details
-                data.customer_details.universal_link_id || null, // Ensure this is available
+                data.customer_details.universal_link_id ? parseInt(data.customer_details.universal_link_id) : null, // Just parse to integer if available
                 data.customer_details.ulid_id || null, // Ensure this is available
                 responseData.order_status,
                 responseData.payment_session_id,
@@ -422,48 +422,61 @@ const getOrderStatus = async (req, res) => {
     // now i have to do like if penalty is 0 then means penalty is added in orderamount
     // else not added 
     // so in if case i will do 
-    if(responseData1.penalty_amount > 0){
-      const updateQuery = `
-          UPDATE bankorder 
-          SET amount_to_pay = amount_to_pay - $1,
-              no_of_late_payment = $2,
-              kitty_penalty = $3
-          WHERE member_id = $4
-      `;
-      console.log("bankorder penalty ",responseData1.penalty_amount);
-      console.log("bankorder no of late payment ",responseData1.no_of_late_payment);
+  // Fetch the current bankOrder for the member
+  const bankOrderResult = await db.query(
+    'SELECT * FROM bankorder WHERE member_id = $1',
+    [balance_data.member_id]
+  );
+  const bankOrder = bankOrderResult.rows[0];
 
-      const values = [amountPaid, responseData1.no_of_late_payment, responseData1.penalty_amount,balance_data.member_id];
-      await db.query(updateQuery, values);
-      console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
+  if (!bankOrder) {
+    console.error("No bankOrder found for member_id:", balance_data.member_id);
+    return res.status(404).json({ error: "No bankOrder found for this member" });
+  }
+
+  if(responseData1.penalty_amount > 0){
+    // === BANKORDER UPDATE: Penalty Case ===
+    console.log("=== BANKORDER UPDATE: Penalty Case ===");
+    console.log("amountPaid (from payment):", amountPaid);
+    console.log("amount_to_pay (from DB):", bankOrder.amount_to_pay);
+
+    const baseDue = parseFloat(bankOrder.amount_to_pay);
+    const expectedFullPayment = baseDue * 1.18;
+    const margin = 2;
+
+    let basePaid;
+    if (Math.abs(amountPaid - expectedFullPayment) < margin) {
+      // Full payment: subtract only the base
+      basePaid = baseDue;
+      console.log("Detected FULL payment (amountPaid ≈ amount_to_pay + 18% GST). Subtracting baseDue:", basePaid);
+    } else {
+      // Partial payment: subtract as-is
+      basePaid = amountPaid;
+      console.log("Detected PARTIAL payment. Subtracting amountPaid as-is:", basePaid);
     }
-    else{
 
-      const bankOrderResponse = await fetch("https://backend.bninewdelhi.com/api/getbankOrder");
-      const bankOrderData = await bankOrderResponse.json();
+    console.log("no_of_late_payment (to set):", responseData1.no_of_late_payment);
+    console.log("kitty_penalty (to set):", responseData1.penalty_amount);
+    console.log("member_id (to match):", balance_data.member_id);
 
-      // Filter bank orders based on member_id
-      const filteredBankOrders = bankOrderData.filter(order => order.member_id === balance_data.member_id);
+    const updateQuery = `
+        UPDATE bankorder 
+        SET amount_to_pay = amount_to_pay - $1,
+            no_of_late_payment = $2,
+            kitty_penalty = $3
+        WHERE member_id = $4
+    `;
+    const values = [basePaid, responseData1.no_of_late_payment, responseData1.penalty_amount, balance_data.member_id];
+    console.log("Executing query:", updateQuery);
+    console.log("With values:", values);
 
-      console.log("Filtered bank orders for member_id:", balance_data.member_id, filteredBankOrders);
+    await db.query(updateQuery, values);
 
-
-
-      const updateQuery = `
-          UPDATE bankorder 
-          SET amount_to_pay = amount_to_pay + $1 - $2,
-              no_of_late_payment = $3,
-              kitty_penalty = $4,
-              kitty_due_date = $5
-          WHERE member_id = $6
-      `;
-      console.log("bankorder penalty ", responseData1.penalty_amount);
-      console.log("bankorder no of late payment ", responseData1.no_of_late_payment);
-
-      const values = [filteredBankOrders[0].kitty_penalty, Math.round(newAmountToPay), responseData1.no_of_late_payment, responseData1.penalty_amount, null, balance_data.member_id];
-      await db.query(updateQuery, values);
-      console.log("Updated amount_to_pay in bankorder for member_id:", balance_data.member_id);
-    }
+    // Fetch updated row for confirmation
+    const updatedBankOrder = await db.query('SELECT * FROM bankorder WHERE member_id = $1', [balance_data.member_id]);
+    console.log("Updated bankorder row:", updatedBankOrder.rows[0]);
+    console.log("=== END BANKORDER UPDATE: Penalty Case ===");
+  }
 
     
         }
@@ -744,7 +757,7 @@ const getSettlementStatus = async (req, res) => {
       );
 
       const settlementData = settlementResponse.data;
-      console.log(settlementData);
+      // console.log(settlementData);
 
       // Extract settlement details
       const {
@@ -806,7 +819,7 @@ const getSettlementStatus = async (req, res) => {
       res.status(200).json({ message: 'Settlement data stored successfully', settlementData });
 
   } catch (error) {
-      console.error('Error fetching settlement status:', error.response ? error.response.data : error.message);
+      // console.error('Error fetching settlement status:', error.response ? error.response.data : error.message);
       res.status(500).json({ error: 'Failed to fetch settlement status' });
   }
 };

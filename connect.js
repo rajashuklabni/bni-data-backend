@@ -40,9 +40,10 @@ const allowedOrigins = [
   "https://54.39.51.161:3000",
   "http://54.39.51.161:3000",
   "backend.bninewdelhi.com/",
-  "http://localhost:5000",
+  "https://backend.bninewdelhi.com",
   "https://backend.bninewdelhi.com/",
-  "https://backend.bninewdelhi.com"
+  "https://backend.bninewdelhi.com",
+  "http://localhost:5000"
 ];
 
 const corsOptions = {
@@ -243,7 +244,7 @@ app.post("/generate-cashfree-session", async (req, res) => {
   try {
     console.log(data);
     const res = await axios.post(
-      "https://sandbox.cashfree.com/pg/orders",
+      "https://production.cashfree.com/pg/orders",
       data,
       { headers }
     );
