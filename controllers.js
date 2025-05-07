@@ -9832,6 +9832,8 @@ const allOtherPayment = async (req, res) => {
     res.status(500).send("Error fetching other payment");
   }
 };
+
+
 const addChapterPayment = async (req, res) => {
   try {
     console.log('Received request body:', req.body);
@@ -9864,17 +9866,6 @@ const addChapterPayment = async (req, res) => {
       });
     }
 
-    // 2. Handle file upload (if any)
-    let payment_img_path = null;
-    if (req.files && req.files.payment_img) {
-      const file = req.files.payment_img;
-      const uploadDir = path.join(__dirname, 'public', 'uploads', 'other_payments');
-      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-      const fileName = `other_payment_${Date.now()}_${file.name}`;
-      const uploadPath = path.join(uploadDir, fileName);
-      await file.mv(uploadPath);
-      payment_img_path = `/uploads/other_payments/${fileName}`;
-    }
 
     // 3. Get region_id for the chapter
     const chapterRes = await con.query('SELECT region_id FROM chapter WHERE chapter_id = $1', [chapter_id]);
@@ -9932,9 +9923,9 @@ const addChapterPayment = async (req, res) => {
       // 7. Insert into other_payment table
       const otherPaymentQuery = `
         INSERT INTO other_payment (
-          payment_description, is_gst, gst_percentage, gst_amount, cgst, sgst, igst, total_amount, added_by, payment_img, date, chapter_id
+          payment_description, is_gst, gst_percentage, gst_amount, cgst, sgst, igst, total_amount, added_by, date, chapter_id
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
         )
       `;
       await con.query(otherPaymentQuery, [
@@ -9947,7 +9938,6 @@ const addChapterPayment = async (req, res) => {
         igst || '0',
         total_amount,
         payment_add_by,
-        payment_img_path,
         payment_date,
         chapter_id
       ]);
