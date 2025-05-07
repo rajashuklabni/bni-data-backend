@@ -2993,6 +2993,18 @@ const allExpenses = async (req, res) => {
   }
 };
 
+const allOtherPayment = async (req, res) => {
+  try {
+    const result = await con.query(
+      "SELECT * FROM other_payment"
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching other payment:", error);
+    res.status(500).send("Error fetching other payment");
+  }
+};
+
 const addExpenseType = async (req, res) => {
   const { expense_name, expense_status } = req.body;
   console.log("Expense Type:", expense_name, expense_status);
@@ -3038,108 +3050,140 @@ const addExpenseType = async (req, res) => {
 
 const addExpense = async (req, res) => {
   try {
-      console.log('\n🚀 Starting Add Expense Process');
-      console.log('📝 Request Body:', req.body);
-      console.log('📎 Files:', req.files);
+    console.log('Received request body:', req.body);
+    console.log('Received files:', req.files);
 
-      // Check if both files exist
-      if (!req.files || !req.files.upload_bill || !req.files.upload_receipt) {
-          console.error('❌ Required files are missing');
-          return res.status(400).json({ message: "Both bill and receipt files are required" });
-      }
+    // 1. Get all data from req.body
+    const {
+      payment_add_by,
+      payment_description,
+      chapter_id,
+      amount,
+      payment_date,
+      payment_mode,
+      is_gst,
+      gst_percentage,
+      gst_amount,
+      cgst,
+      sgst,
+      igst,
+      total_amount,
+      is_igst
+    } = req.body;
 
-      const billFile = req.files.upload_bill[0];
-      const receiptFile = req.files.upload_receipt[0];
-
-      // Parse numeric values
-      const amount = parseFloat(req.body.amount);
-      const gstPercentage = req.body.withGST === 'true' ? parseFloat(req.body.gstPercentage) : null;
-      const gstAmount = req.body.withGST === 'true' ? parseFloat(req.body.gstAmount) : null;
-      const totalAmount = req.body.withGST === 'true' ? parseFloat(req.body.totalAmount) : amount;
-      
-      // Insert expense record
-      const result = await con.query(
-        `INSERT INTO expenses (
-            expense_type, submitted_by, description, amount, 
-            payment_status, bill_date, upload_bill, upload_receipt,
-            transaction_no, bill_no, chapter_id, hotel_id, vendor_id,
-            mode_of_payment, gst_percentage, gst_amount, total_amount
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) 
-        RETURNING *`,
-        [
-            req.body.expense_type,
-            req.body.submitted_by,
-            req.body.description,
-            amount,
-            req.body.payment_status,
-            req.body.bill_date,
-            billFile.filename,
-            receiptFile.filename,
-            req.body.transaction_no,
-            req.body.bill_no,
-            req.body.chapter_id,
-            req.body.hotel_id || null,
-            req.body.vendor_id || null,
-            req.body.payment_mode,
-            gstPercentage,
-            gstAmount,
-            totalAmount
-        ]
-    );
-
-      // Get the expense_id from the inserted record
-      const expense_id = result.rows[0].expense_id;
-
-      // Rename both files to include expense_id
-      const renameBillFile = () => {
-          const fileExt = path.extname(billFile.filename);
-          const newFilename = `expense_bill_${expense_id}${fileExt}`;
-          const oldPath = path.join(__dirname, 'uploads', 'expenses', billFile.filename);
-          const newPath = path.join(__dirname, 'uploads', 'expenses', newFilename);
-          fs.renameSync(oldPath, newPath);
-          return newFilename;
-      };
-
-      const renameReceiptFile = () => {
-          const fileExt = path.extname(receiptFile.filename);
-          const newFilename = `expense_receipt_${expense_id}${fileExt}`;
-          const oldPath = path.join(__dirname, 'uploads', 'expenses', receiptFile.filename);
-          const newPath = path.join(__dirname, 'uploads', 'expenses', newFilename);
-          fs.renameSync(oldPath, newPath);
-          return newFilename;
-      };
-
-      const newBillFilename = renameBillFile();
-      const newReceiptFilename = renameReceiptFile();
-
-      // Update both filenames in database
-      await con.query(
-          'UPDATE expenses SET upload_bill = $1, upload_receipt = $2 WHERE expense_id = $3',
-          [newBillFilename, newReceiptFilename, expense_id]
-      );
-
-      console.log('✅ Expense added successfully:', {
-          id: expense_id,
-          billFile: newBillFilename,
-          receiptFile: newReceiptFilename,
-          is_gst: result.rows[0].is_gst
+    // Validate required fields
+    if (!payment_description || !chapter_id || !amount || !payment_date || !payment_mode || !payment_add_by) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields',
+        receivedData: req.body
       });
+    }
 
-      res.status(201).json({
-          message: "Expense added successfully!",
-          data: {
-              ...result.rows[0], 
-              upload_bill: newBillFilename,
-              upload_receipt: newReceiptFilename
-          }
-      });
+    // 2. Handle file upload (if any)
+    let payment_img_path = null;
+    if (req.files && req.files.payment_img) {
+      const file = req.files.payment_img;
+      const uploadDir = path.join(__dirname, 'public', 'uploads', 'other_payments');
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+      const fileName = `other_payment_${Date.now()}_${file.name}`;
+      const uploadPath = path.join(uploadDir, fileName);
+      await file.mv(uploadPath);
+      payment_img_path = `/uploads/other_payments/${fileName}`;
+    }
 
-  } catch (error) {
-      console.error('❌ Error adding expense:', error);
-      res.status(500).json({ 
-          message: "Error adding expense",
-          error: error.message 
+    // 3. Get region_id for the chapter
+    const chapterRes = await con.query('SELECT region_id FROM chapter WHERE chapter_id = $1', [chapter_id]);
+    if (!chapterRes.rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid chapter ID'
       });
+    }
+    const region_id = chapterRes.rows[0].region_id;
+
+    // 4. Generate IDs
+    const order_id = `OP${Date.now()}`;
+    const cf_payment_id = order_id;
+
+    // Start transaction
+    await con.query('BEGIN');
+
+    try {
+      // 5. Insert into orders table
+      const orderQuery = `
+        INSERT INTO orders (
+          order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id, visitor_id, visitor_name, visitor_email, visitor_mobilenumber, visitor_address, visitor_company, visitor_gstin, visitor_business, visitor_company_address, accolade_id, created_at, updated_at
+        ) VALUES (
+          $1, $2, 'INR', 1, null, $3, $4, null, null, 'ACTIVE', null, 0, 0, $5, null, null, null, null, null, null, null, 'other-payment', null, null, null, null, null, null, null, null, null, null, null, null, null, $6, $6
+        )
+      `;
+      await con.query(orderQuery, [
+        order_id,
+        total_amount,
+        chapter_id,
+        region_id,
+        is_gst === 'true' || is_gst === true ? gst_amount : 0,
+        payment_date
+      ]);
+
+      // 6. Insert into transactions table
+      const transactionQuery = `
+        INSERT INTO transactions (
+          cf_payment_id, order_id, payment_gateway_id, payment_amount, payment_currency, payment_status, payment_message, payment_time, payment_completion_time, bank_reference, auth_id, payment_method, error_details, gateway_order_id, gateway_payment_id, payment_group
+        ) VALUES (
+          $1, $2, null, $3, 'INR', 'SUCCESS', 'other-payment', $4, $4, null, 'other-payment', $5, '{}', null, null, 'other-payment'
+        )
+      `;
+      const paymentMethod = {};
+      paymentMethod[payment_mode] = { payment_note: 'other-payment' };
+      await con.query(transactionQuery, [
+        cf_payment_id,
+        order_id,
+        total_amount,
+        new Date(),
+        JSON.stringify(paymentMethod)
+      ]);
+
+      // 7. Insert into other_payment table
+      const otherPaymentQuery = `
+        INSERT INTO other_payment (
+          payment_description, is_gst, gst_percentage, gst_amount, cgst, sgst, igst, total_amount, added_by, payment_img, date, chapter_id
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+        )
+      `;
+      await con.query(otherPaymentQuery, [
+        payment_description,
+        is_gst === 'true' || is_gst === true,
+        gst_percentage || '0',
+        gst_amount || '0',
+        cgst || '0',
+        sgst || '0',
+        igst || '0',
+        total_amount,
+        payment_add_by,
+        payment_img_path,
+        payment_date,
+        chapter_id
+      ]);
+
+      // Commit transaction
+      await con.query('COMMIT');
+      res.json({ success: true });
+    } catch (err) {
+      // Rollback in case of error
+      await con.query('ROLLBACK');
+      throw err;
+    }
+  } catch (err) {
+    console.error('Error in addChapterPayment:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error', 
+      error: err.message,
+      receivedData: req.body 
+    });
   }
 };
 
@@ -8218,6 +8262,145 @@ const updateInclusionSheet = async (req, res) => {
   }
 };
 
+const addChapterPayment = async (req, res) => {
+  try {
+    console.log('Received request body:', req.body);
+    console.log('Received files:', req.files);
+
+    // 1. Get all data from req.body
+    const {
+      payment_add_by,
+      payment_description,
+      chapter_id,
+      amount,
+      payment_date,
+      payment_mode,
+      is_gst,
+      gst_percentage,
+      gst_amount,
+      cgst,
+      sgst,
+      igst,
+      total_amount,
+      is_igst
+    } = req.body;
+
+    // Validate required fields
+    if (!payment_description || !chapter_id || !amount || !payment_date || !payment_mode || !payment_add_by) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields',
+        receivedData: req.body
+      });
+    }
+
+    // 2. Handle file upload (if any)
+    let payment_img_path = null;
+    if (req.files && req.files.payment_img) {
+      const file = req.files.payment_img;
+      const uploadDir = path.join(__dirname, 'public', 'uploads', 'other_payments');
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+      const fileName = `other_payment_${Date.now()}_${file.name}`;
+      const uploadPath = path.join(uploadDir, fileName);
+      await file.mv(uploadPath);
+      payment_img_path = `/uploads/other_payments/${fileName}`;
+    }
+
+    // 3. Get region_id for the chapter
+    const chapterRes = await con.query('SELECT region_id FROM chapter WHERE chapter_id = $1', [chapter_id]);
+    if (!chapterRes.rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid chapter ID'
+      });
+    }
+    const region_id = chapterRes.rows[0].region_id;
+
+    // 4. Generate IDs
+    const order_id = `OP${Date.now()}`;
+    const cf_payment_id = order_id;
+
+    // Start transaction
+    await con.query('BEGIN');
+
+    try {
+      // 5. Insert into orders table
+      const orderQuery = `
+        INSERT INTO orders (
+          order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id, visitor_id, visitor_name, visitor_email, visitor_mobilenumber, visitor_address, visitor_company, visitor_gstin, visitor_business, visitor_company_address, accolade_id, created_at, updated_at
+        ) VALUES (
+          $1, $2, 'INR', 1, null, $3, $4, null, null, 'ACTIVE', null, 0, 0, $5, null, null, null, null, null, null, null, 'other-payment', null, null, null, null, null, null, null, null, null, null, null, null, null, $6, $6
+        )
+      `;
+      await con.query(orderQuery, [
+        order_id,
+        total_amount,
+        chapter_id,
+        region_id,
+        is_gst === 'true' || is_gst === true ? gst_amount : 0,
+        payment_date
+      ]);
+
+      // 6. Insert into transactions table
+      const transactionQuery = `
+        INSERT INTO transactions (
+          cf_payment_id, order_id, payment_gateway_id, payment_amount, payment_currency, payment_status, payment_message, payment_time, payment_completion_time, bank_reference, auth_id, payment_method, error_details, gateway_order_id, gateway_payment_id, payment_group
+        ) VALUES (
+          $1, $2, null, $3, 'INR', 'SUCCESS', 'other-payment', $4, $4, null, 'other-payment', $5, '{}', null, null, 'other-payment'
+        )
+      `;
+      const paymentMethod = {};
+      paymentMethod[payment_mode] = { payment_note: 'other-payment' };
+      await con.query(transactionQuery, [
+        cf_payment_id,
+        order_id,
+        total_amount,
+        new Date(),
+        JSON.stringify(paymentMethod)
+      ]);
+
+      // 7. Insert into other_payment table
+      const otherPaymentQuery = `
+        INSERT INTO other_payment (
+          payment_description, is_gst, gst_percentage, gst_amount, cgst, sgst, igst, total_amount, added_by, payment_img, date, chapter_id
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+        )
+      `;
+      await con.query(otherPaymentQuery, [
+        payment_description,
+        is_gst === 'true' || is_gst === true,
+        gst_percentage || '0',
+        gst_amount || '0',
+        cgst || '0',
+        sgst || '0',
+        igst || '0',
+        total_amount,
+        payment_add_by,
+        payment_img_path,
+        payment_date,
+        chapter_id
+      ]);
+
+      // Commit transaction
+      await con.query('COMMIT');
+      res.json({ success: true });
+    } catch (err) {
+      // Rollback in case of error
+      await con.query('ROLLBACK');
+      throw err;
+    }
+  } catch (err) {
+    console.error('Error in addChapterPayment:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error', 
+      error: err.message,
+      receivedData: req.body 
+    });
+  }
+};
+
 
 const addVisitorPayment = async (req, res) => {
   const invoiceData = req.body;
@@ -8458,7 +8641,7 @@ const addKittyPaymentManually = async (req, res) => {
       member_gstin,
       payment_type,
       remaining_balance_with_gst,
-      created_at = new Date().toISOString()
+      created_at
     } = req.body;
 
     // Generate order ID in the required format
@@ -8539,8 +8722,8 @@ const addKittyPaymentManually = async (req, res) => {
       ) VALUES (
         $1, $2, 1,
         $3, 'INR', 'SUCCESS',
-        'Kitty Payment Successful', NOW(), NOW(),
-        'KITTY_PAYMENT', $4, '{}', 'cash'
+        'Kitty Payment Successful', $4, $4,
+        'KITTY_PAYMENT', $5, '{}', 'cash'
       ) RETURNING *
     `;
 
@@ -8549,6 +8732,7 @@ const addKittyPaymentManually = async (req, res) => {
       cf_payment_id,
       order_id,
       order_amount || 0,
+      created_at,
       JSON.stringify(paymentMethod)
     ];
 
@@ -8564,22 +8748,22 @@ const addKittyPaymentManually = async (req, res) => {
       // Get both amount_to_pay and current advance_pay
       const currentBankorderQuery = `
           SELECT amount_to_pay, advance_pay 
-          FROM bankorder 
-          WHERE chapter_id = $1 AND member_id = $2
+        FROM bankorder 
+        WHERE chapter_id = $1 AND member_id = $2
       `;
       const currentBankorder = await con.query(currentBankorderQuery, [chapter_id, member_id]);
       const currentAmountToPay = currentBankorder.rows[0]?.amount_to_pay || 0;
       const currentAdvancePay = currentBankorder.rows[0]?.advance_pay || 0;
-  
+
       if (currentAmountToPay === 0) {
           // If amount_to_pay is 0, add order_amount to existing advance_pay
-          updateBankorderQuery = `
-              UPDATE bankorder 
+        updateBankorderQuery = `
+          UPDATE bankorder 
               SET advance_pay = advance_pay + $3
-              WHERE chapter_id = $1 AND member_id = $2
-              RETURNING *
-          `;
-          bankorderValues = [chapter_id, member_id, order_amount];
+          WHERE chapter_id = $1 AND member_id = $2
+          RETURNING *
+        `;
+        bankorderValues = [chapter_id, member_id, order_amount];
       }
       else {
         // If amount_to_pay exists:
@@ -8588,14 +8772,14 @@ const addKittyPaymentManually = async (req, res) => {
         
         // 2. Set amount_to_pay to 0 and add remaining to existing advance_pay
         updateBankorderQuery = `
-            UPDATE bankorder 
-            SET amount_to_pay = 0,
+          UPDATE bankorder 
+          SET amount_to_pay = 0,
                 advance_pay = advance_pay + $3
-            WHERE chapter_id = $1 AND member_id = $2
-            RETURNING *
+          WHERE chapter_id = $1 AND member_id = $2
+          RETURNING *
         `;
         bankorderValues = [chapter_id, member_id, remainingAmount];
-    }
+      }
 
     console.log("💰 Advance Payment Update:", {
         currentAdvancePay,
@@ -9339,55 +9523,55 @@ const addVendor = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    // if (!vendor_name || !vendor_company_name || !vendor_company_address || !vendor_company_gst || 
-    //     !vendor_account || !vendor_bank_name || !vendor_ifsc_code || !vendor_account_type || 
-    //     !vendor_status || !phone_number || !email_id) {
-    //   return res.status(400).json({ message: 'All fields are required' });
-    // }
+    if (!vendor_name || !vendor_company_name || !vendor_company_address || !vendor_company_gst || 
+        !vendor_account || !vendor_bank_name || !vendor_ifsc_code || !vendor_account_type || 
+        !vendor_status || !phone_number || !email_id) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
 
     // Validate GST format
-    // const gstPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-    // if (!gstPattern.test(vendor_company_gst)) {
-    //   return res.status(400).json({ message: 'Invalid GST number format' });
-    // }
+    const gstPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (!gstPattern.test(vendor_company_gst)) {
+      return res.status(400).json({ message: 'Invalid GST number format' });
+    }
 
     // Validate IFSC format
-    // const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-    // if (!ifscPattern.test(vendor_ifsc_code)) {
-    //   return res.status(400).json({ message: 'Invalid IFSC code format' });
-    // }
+    const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    if (!ifscPattern.test(vendor_ifsc_code)) {
+      return res.status(400).json({ message: 'Invalid IFSC code format' });
+    }
 
     // Validate phone number
-    // const phonePattern = /^[0-9]{10}$/;
-    // if (!phonePattern.test(phone_number)) {
-    //   return res.status(400).json({ message: 'Invalid phone number format' });
-    // }
+    const phonePattern = /^[0-9]{10}$/;
+    if (!phonePattern.test(phone_number)) {
+      return res.status(400).json({ message: 'Invalid phone number format' });
+    }
 
     // Validate email
-    // const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    // if (!emailPattern.test(email_id)) {
-    //   return res.status(400).json({ message: 'Invalid email format' });
-    // }
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email_id)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
 
     // Check if vendor with same GST number already exists
-    // const existingVendorGST = await con.query(
-    //   'SELECT * FROM vendors WHERE vendor_company_gst = $1',
-    //   [vendor_company_gst]
-    // );
+    const existingVendorGST = await con.query(
+      'SELECT * FROM vendors WHERE vendor_company_gst = $1',
+      [vendor_company_gst]
+    );
 
-    // if (existingVendorGST.rows.length > 0) {
-    //   return res.status(400).json({ message: 'Vendor with this GST number already exists' });
-    // }
+    if (existingVendorGST.rows.length > 0) {
+      return res.status(400).json({ message: 'Vendor with this GST number already exists' });
+    }
 
     // Check if vendor with same email already exists
-    // const existingVendorEmail = await con.query(
-    //   'SELECT * FROM vendors WHERE email_id = $1',
-    //   [email_id]
-    // );
+    const existingVendorEmail = await con.query(
+      'SELECT * FROM vendors WHERE email_id = $1',
+      [email_id]
+    );
 
-    // if (existingVendorEmail.rows.length > 0) {
-    //   return res.status(400).json({ message: 'Vendor with this email already exists' });
-    // }
+    if (existingVendorEmail.rows.length > 0) {
+      return res.status(400).json({ message: 'Vendor with this email already exists' });
+    }
 
     // Insert new vendor
     const result = await con.query(
@@ -9734,5 +9918,7 @@ module.exports = {
   addVendor,
   getAllDocNumbers,
   sendPaymentLinksEmail,
-  sendAllPaymentLinksEmail
+  sendAllPaymentLinksEmail,
+  allOtherPayment,
+  addChapterPayment
 };

@@ -10,10 +10,22 @@ const cors = require("cors");
 const { request } = require("http");
 const dotEnv = require("dotenv");
 const jwt = require("jsonwebtoken");
+const fileUpload = require('express-fileupload');
 dotEnv.config();
 const app = express();
 const ccavService = require("./ccavenueService.js");
 dotEnv.config();
+
+// Enable CORS
+app.use(cors());
+
+// File upload middleware
+app.use(fileUpload({
+  createParentPath: true,
+  limits: { 
+    fileSize: 50 * 1024 * 1024 // 50MB max file size
+  },
+}));
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const upload = multer({ dest: "uploads/" });

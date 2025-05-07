@@ -157,7 +157,9 @@ const {
   addVendor,
   getAllDocNumbers,
   sendPaymentLinksEmail,
- sendAllPaymentLinksEmail
+ sendAllPaymentLinksEmail,
+ allOtherPayment,
+ addChapterPayment
 } = require("./controllers");
 
 const path = require("path");
@@ -673,6 +675,7 @@ router.get("/getAllDocNumbers", getAllDocNumbers);
 router.post("/expenseType", addExpenseType);
 router.post("/addVendor", addVendor);
 router.get("/allExpenses", allExpenses);
+router.get("/allOtherPayment", allOtherPayment);
 router.get("/expense/:expense_id", getExpenseById);
 router.post("/addExpense", (req, res, next) => {
     console.log('📝 Incoming Request Body:', req.body);
@@ -1072,6 +1075,7 @@ router.put("/updateInterviewSheetAnswers/:visitor_id", updateInterviewSheetAnswe
 router.put("/updateCommitmentSheet/:visitor_id", updateCommitmentSheet);
 router.put("/updateInclusionSheet/:visitor_id", updateInclusionSheet);
 router.post("/addVisitorPayment", addVisitorPayment);
+router.post("/addChapterPayment", addChapterPayment);
 router.post("/addKittyPaymentManually", addKittyPaymentManually);
 router.get('/export-accolades', exportAccoladesToExcel);
 
