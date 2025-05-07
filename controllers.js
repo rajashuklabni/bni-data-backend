@@ -675,71 +675,71 @@ const addMember = async (req, res) => {
       const companyLogoFilename = req.files?.['member_company_logo']?.[0]?.filename || null;
 
       const result = await con.query(
-        `INSERT INTO member (
-            member_first_name, member_last_name, member_date_of_birth, member_phone_number,
-            member_alternate_mobile_number, member_email_address, address_pincode,
-            address_city, address_state, region_id, chapter_id, accolades_id, category_name,
-            member_induction_date, member_current_membership, member_renewal_date, member_gst_number,
-            member_company_name, member_company_address, member_company_state, member_company_city,
-            member_photo, member_website, member_company_logo,
-            member_facebook, member_instagram, member_linkedin, member_youtube, country,
-            street_address_line_1, street_address_line_2, gender, notification_consent,
-            date_of_publishing, member_sponsored_by, member_status, meeting_opening_balance,
-            member_company_pincode
+          `INSERT INTO member (
+              member_first_name, member_last_name, member_date_of_birth, member_phone_number,
+              member_alternate_mobile_number, member_email_address, address_pincode,
+              address_city, address_state, region_id, chapter_id, accolades_id, category_name,
+              member_induction_date, member_current_membership, member_renewal_date, member_gst_number,
+              member_company_name, member_company_address, member_company_state, member_company_city,
+              member_photo, member_website, member_company_logo,
+              member_facebook, member_instagram, member_linkedin, member_youtube, country,
+              street_address_line_1, street_address_line_2, gender, notification_consent,
+              date_of_publishing, member_sponsored_by, member_status, meeting_opening_balance,
+              member_company_pincode
         ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-            $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32,
+                   $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, 
             $33, $34, $35, $36, $37, $38
         )
-        RETURNING *`,
-        [
-            req.body.member_first_name,
-            req.body.member_last_name,
-            req.body.member_date_of_birth,
-            req.body.member_phone_number,
-            req.body.member_alternate_mobile_number,
-            req.body.member_email_address,
-            req.body.address_pincode,
-            req.body.address_city,
-            req.body.address_state,
+          RETURNING *`,
+          [
+              req.body.member_first_name,
+              req.body.member_last_name,
+              req.body.member_date_of_birth,
+              req.body.member_phone_number,
+              req.body.member_alternate_mobile_number,
+              req.body.member_email_address,
+              req.body.address_pincode,
+              req.body.address_city,
+              req.body.address_state,
             parseInt(req.body.region_id) || null,
             parseInt(req.body.chapter_id) || null,
-            parsedAccolades,
+              parsedAccolades,
             req.body.category_name,
-            req.body.member_induction_date,
-            req.body.member_current_membership,
-            req.body.member_renewal_date,
-            req.body.member_gst_number,
-            req.body.member_company_name,
-            req.body.member_company_address,
-            req.body.member_company_state,
-            req.body.member_company_city,
-            memberPhotoFilename,
-            req.body.member_website,
-            companyLogoFilename,
-            req.body.member_facebook,
-            req.body.member_instagram,
-            req.body.member_linkedin,
-            req.body.member_youtube,
-            req.body.country,
-            req.body.street_address_line_1,
-            req.body.street_address_line_2,
-            req.body.gender,
-            req.body.notification_consent,
-            req.body.date_of_publishing,
-            req.body.member_sponsored_by,
-            req.body.member_status,
-            parseFloat(req.body.meeting_opening_balance) || 0,
-            req.body.member_company_pincode
-        ]
-    );
-    
+              req.body.member_induction_date,
+              req.body.member_current_membership,
+              req.body.member_renewal_date,
+              req.body.member_gst_number,
+              req.body.member_company_name,
+              req.body.member_company_address,
+              req.body.member_company_state,
+              req.body.member_company_city,
+              memberPhotoFilename,
+              req.body.member_website,
+              companyLogoFilename,
+              req.body.member_facebook,
+              req.body.member_instagram,
+              req.body.member_linkedin,
+              req.body.member_youtube,
+              req.body.country,
+              req.body.street_address_line_1,
+              req.body.street_address_line_2,
+              req.body.gender,
+              req.body.notification_consent,
+              req.body.date_of_publishing,
+              req.body.member_sponsored_by,
+              req.body.member_status,
+              parseFloat(req.body.meeting_opening_balance) || 0,
+              req.body.member_company_pincode
+          ]
+      );
+
     // ✅ Member inserted
-    const newMember = result.rows[0];
-    const member_id = newMember.member_id;
-    
+      const newMember = result.rows[0];
+      const member_id = newMember.member_id;
+
     // ✅ Declare meeting_opening_balance properly
-    const meeting_opening_balance = parseFloat(req.body.meeting_opening_balance) || 0;
+      const meeting_opening_balance = parseFloat(req.body.meeting_opening_balance) || 0;
     
     // 1. Fetch Kitty Bills
     const chapterId = parseInt(req.body.chapter_id);
@@ -818,8 +818,8 @@ const addMember = async (req, res) => {
     
     // 4. Update bankorder amount_to_pay
     const finalAmountToPay = meeting_opening_balance + totalKittyAmount;
-    
-    await con.query(
+      
+      await con.query(
         `INSERT INTO bankorder (amount_to_pay, member_id, chapter_id, kitty_due_date, kitty_penalty)
          VALUES ($1, $2, $3, $4, $5)`,
         [finalAmountToPay, member_id, chapterId, kittyDueDate, kittyPenalty]
@@ -2993,18 +2993,6 @@ const allExpenses = async (req, res) => {
   }
 };
 
-const allOtherPayment = async (req, res) => {
-  try {
-    const result = await con.query(
-      "SELECT * FROM other_payment"
-    );
-    res.json(result.rows);
-  } catch (error) {
-    console.error("Error fetching other payment:", error);
-    res.status(500).send("Error fetching other payment");
-  }
-};
-
 const addExpenseType = async (req, res) => {
   const { expense_name, expense_status } = req.body;
   console.log("Expense Type:", expense_name, expense_status);
@@ -3050,140 +3038,108 @@ const addExpenseType = async (req, res) => {
 
 const addExpense = async (req, res) => {
   try {
-    console.log('Received request body:', req.body);
-    console.log('Received files:', req.files);
+      console.log('\n🚀 Starting Add Expense Process');
+      console.log('📝 Request Body:', req.body);
+      console.log('📎 Files:', req.files);
 
-    // 1. Get all data from req.body
-    const {
-      payment_add_by,
-      payment_description,
-      chapter_id,
-      amount,
-      payment_date,
-      payment_mode,
-      is_gst,
-      gst_percentage,
-      gst_amount,
-      cgst,
-      sgst,
-      igst,
-      total_amount,
-      is_igst
-    } = req.body;
+      // Check if both files exist
+      if (!req.files || !req.files.upload_bill || !req.files.upload_receipt) {
+          console.error('❌ Required files are missing');
+          return res.status(400).json({ message: "Both bill and receipt files are required" });
+      }
 
-    // Validate required fields
-    if (!payment_description || !chapter_id || !amount || !payment_date || !payment_mode || !payment_add_by) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields',
-        receivedData: req.body
+      const billFile = req.files.upload_bill[0];
+      const receiptFile = req.files.upload_receipt[0];
+
+      // Parse numeric values
+      const amount = parseFloat(req.body.amount);
+      const gstPercentage = req.body.withGST === 'true' ? parseFloat(req.body.gstPercentage) : null;
+      const gstAmount = req.body.withGST === 'true' ? parseFloat(req.body.gstAmount) : null;
+      const totalAmount = req.body.withGST === 'true' ? parseFloat(req.body.totalAmount) : amount;
+      
+      // Insert expense record
+      const result = await con.query(
+          `INSERT INTO expenses (
+              expense_type, submitted_by, description, amount, 
+            payment_status, bill_date, upload_bill, upload_receipt,
+            transaction_no, bill_no, chapter_id, hotel_id, vendor_id,
+            mode_of_payment, gst_percentage, gst_amount, total_amount
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) 
+          RETURNING *`,
+          [
+              req.body.expense_type,
+              req.body.submitted_by,
+              req.body.description,
+            amount,
+              req.body.payment_status,
+              req.body.bill_date,
+            billFile.filename,
+            receiptFile.filename,
+              req.body.transaction_no,
+              req.body.bill_no,
+              req.body.chapter_id,
+            req.body.hotel_id || null,
+            req.body.vendor_id || null,
+            req.body.payment_mode,
+            gstPercentage,
+            gstAmount,
+            totalAmount
+          ]
+      );
+
+      // Get the expense_id from the inserted record
+      const expense_id = result.rows[0].expense_id;
+
+      // Rename both files to include expense_id
+      const renameBillFile = () => {
+          const fileExt = path.extname(billFile.filename);
+          const newFilename = `expense_bill_${expense_id}${fileExt}`;
+          const oldPath = path.join(__dirname, 'uploads', 'expenses', billFile.filename);
+      const newPath = path.join(__dirname, 'uploads', 'expenses', newFilename);
+          fs.renameSync(oldPath, newPath);
+          return newFilename;
+      };
+
+      const renameReceiptFile = () => {
+          const fileExt = path.extname(receiptFile.filename);
+          const newFilename = `expense_receipt_${expense_id}${fileExt}`;
+          const oldPath = path.join(__dirname, 'uploads', 'expenses', receiptFile.filename);
+          const newPath = path.join(__dirname, 'uploads', 'expenses', newFilename);
+      fs.renameSync(oldPath, newPath);
+          return newFilename;
+      };
+
+      const newBillFilename = renameBillFile();
+      const newReceiptFilename = renameReceiptFile();
+
+      // Update both filenames in database
+      await con.query(
+          'UPDATE expenses SET upload_bill = $1, upload_receipt = $2 WHERE expense_id = $3',
+          [newBillFilename, newReceiptFilename, expense_id]
+      );
+
+      console.log('✅ Expense added successfully:', {
+          id: expense_id,
+          billFile: newBillFilename,
+          receiptFile: newReceiptFilename,
+          is_gst: result.rows[0].is_gst
       });
-    }
 
-    // 2. Handle file upload (if any)
-    let payment_img_path = null;
-    if (req.files && req.files.payment_img) {
-      const file = req.files.payment_img;
-      const uploadDir = path.join(__dirname, 'public', 'uploads', 'other_payments');
-      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-      const fileName = `other_payment_${Date.now()}_${file.name}`;
-      const uploadPath = path.join(uploadDir, fileName);
-      await file.mv(uploadPath);
-      payment_img_path = `/uploads/other_payments/${fileName}`;
-    }
-
-    // 3. Get region_id for the chapter
-    const chapterRes = await con.query('SELECT region_id FROM chapter WHERE chapter_id = $1', [chapter_id]);
-    if (!chapterRes.rows.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid chapter ID'
+      res.status(201).json({
+          message: "Expense added successfully!",
+          data: {
+              ...result.rows[0], 
+              upload_bill: newBillFilename,
+              upload_receipt: newReceiptFilename
+          }
       });
-    }
-    const region_id = chapterRes.rows[0].region_id;
 
-    // 4. Generate IDs
-    const order_id = `OP${Date.now()}`;
-    const cf_payment_id = order_id;
-
-    // Start transaction
-    await con.query('BEGIN');
-
-    try {
-      // 5. Insert into orders table
-      const orderQuery = `
-        INSERT INTO orders (
-          order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id, visitor_id, visitor_name, visitor_email, visitor_mobilenumber, visitor_address, visitor_company, visitor_gstin, visitor_business, visitor_company_address, accolade_id, created_at, updated_at
-        ) VALUES (
-          $1, $2, 'INR', 1, null, $3, $4, null, null, 'ACTIVE', null, 0, 0, $5, null, null, null, null, null, null, null, 'other-payment', null, null, null, null, null, null, null, null, null, null, null, null, null, $6, $6
-        )
-      `;
-      await con.query(orderQuery, [
-        order_id,
-        total_amount,
-        chapter_id,
-        region_id,
-        is_gst === 'true' || is_gst === true ? gst_amount : 0,
-        payment_date
-      ]);
-
-      // 6. Insert into transactions table
-      const transactionQuery = `
-        INSERT INTO transactions (
-          cf_payment_id, order_id, payment_gateway_id, payment_amount, payment_currency, payment_status, payment_message, payment_time, payment_completion_time, bank_reference, auth_id, payment_method, error_details, gateway_order_id, gateway_payment_id, payment_group
-        ) VALUES (
-          $1, $2, null, $3, 'INR', 'SUCCESS', 'other-payment', $4, $4, null, 'other-payment', $5, '{}', null, null, 'other-payment'
-        )
-      `;
-      const paymentMethod = {};
-      paymentMethod[payment_mode] = { payment_note: 'other-payment' };
-      await con.query(transactionQuery, [
-        cf_payment_id,
-        order_id,
-        total_amount,
-        new Date(),
-        JSON.stringify(paymentMethod)
-      ]);
-
-      // 7. Insert into other_payment table
-      const otherPaymentQuery = `
-        INSERT INTO other_payment (
-          payment_description, is_gst, gst_percentage, gst_amount, cgst, sgst, igst, total_amount, added_by, payment_img, date, chapter_id
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
-        )
-      `;
-      await con.query(otherPaymentQuery, [
-        payment_description,
-        is_gst === 'true' || is_gst === true,
-        gst_percentage || '0',
-        gst_amount || '0',
-        cgst || '0',
-        sgst || '0',
-        igst || '0',
-        total_amount,
-        payment_add_by,
-        payment_img_path,
-        payment_date,
-        chapter_id
-      ]);
-
-      // Commit transaction
-      await con.query('COMMIT');
-      res.json({ success: true });
-    } catch (err) {
-      // Rollback in case of error
-      await con.query('ROLLBACK');
-      throw err;
-    }
-  } catch (err) {
-    console.error('Error in addChapterPayment:', err);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error', 
-      error: err.message,
-      receivedData: req.body 
-    });
+  } catch (error) {
+      console.error('❌ Error adding expense:', error);
+      res.status(500).json({ 
+          message: "Error adding expense",
+          error: error.message 
+      });
   }
 };
 
@@ -3210,6 +3166,9 @@ const getExpenseById = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+// ... existing code ...
+
+// ... existing code ...
 
 const updateExpense = async (req, res) => {
   const {
@@ -3359,6 +3318,9 @@ const updateExpense = async (req, res) => {
 };
 
 
+// ... existing code ...
+
+// ... existing code ...
 const deleteExpense = async (req, res) => {
   const { expense_id } = req.params; // Get expense_id from URL params
 
@@ -6924,90 +6886,90 @@ const updateChapterRequisition = async (req, res) => {
       await con.query('BEGIN');
 
       try {
-          // First, check if this is a visitor requisition
-          const visitorCheck = await con.query(
-              'SELECT visitor_id FROM chapter_requisition WHERE chapter_requisition_id = $1',
-              [chapter_requisition_id]
-          );
-          
-          const isVisitorRequest = visitorCheck.rows[0]?.visitor_id !== null;
-          console.log('👤 Is Visitor Request:', isVisitorRequest);
+      // First, check if this is a visitor requisition
+      const visitorCheck = await con.query(
+          'SELECT visitor_id FROM chapter_requisition WHERE chapter_requisition_id = $1',
+          [chapter_requisition_id]
+      );
+      
+      const isVisitorRequest = visitorCheck.rows[0]?.visitor_id !== null;
+      console.log('👤 Is Visitor Request:', isVisitorRequest);
 
-          // Keep existing slab wise comment check
-          const isOnlySlabWiseCommentUpdate = slab_wise_comment && 
-              !approve_status && 
-              !ro_comment && 
-              pickup_status === undefined && 
-              !pickup_date && 
-              !given_status;
+      // Keep existing slab wise comment check
+      const isOnlySlabWiseCommentUpdate = slab_wise_comment && 
+          !approve_status && 
+          !ro_comment && 
+          pickup_status === undefined && 
+          !pickup_date && 
+          !given_status;
 
-          if (!chapter_requisition_id) {
-              console.log('❌ Missing chapter_requisition_id in request body');
-              return res.status(400).json({
-                  success: false,
-                  message: "chapter_requisition_id is required in request body"
-              });
+      if (!chapter_requisition_id) {
+          console.log('❌ Missing chapter_requisition_id in request body');
+          return res.status(400).json({
+              success: false,
+              message: "chapter_requisition_id is required in request body"
+          });
+      }
+
+      // Get existing requisition data
+      const existingRequisition = await con.query(
+          'SELECT * FROM chapter_requisition WHERE chapter_requisition_id = $1',
+          [chapter_requisition_id]
+      );
+
+      if (existingRequisition.rows.length === 0) {
+          console.log('❌ No requisition found with ID:', chapter_requisition_id);
+          return res.status(404).json({
+              success: false,
+              message: "Requisition not found"
+          });
+      }
+
+      let finalApproveStatus = {};
+      let finalRoComment = {};
+      let finalGivenStatus = {};
+
+      // Helper function to safely parse JSON
+      const safeJSONParse = (str) => {
+          if (!str) return {};
+          try {
+              return typeof str === 'object' ? str : JSON.parse(str);
+          } catch (e) {
+              console.error('Error parsing JSON:', e);
+              return {};
           }
+      };
 
-          // Get existing requisition data
-          const existingRequisition = await con.query(
-              'SELECT * FROM chapter_requisition WHERE chapter_requisition_id = $1',
-              [chapter_requisition_id]
-          );
+      // Check if this is only a pickup status update
+      const isOnlyPickupUpdate = (pick_up_status_ro !== undefined || pick_up_status_ro_comment !== undefined) && 
+          !approve_status && 
+          !ro_comment && 
+          !given_status && 
+          !slab_wise_comment;
 
-          if (existingRequisition.rows.length === 0) {
-              console.log('❌ No requisition found with ID:', chapter_requisition_id);
-              return res.status(404).json({
-                  success: false,
-                  message: "Requisition not found"
-              });
+      if (isOnlyPickupUpdate) {
+          finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
+          finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
+          finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
+      } else if (isVisitorRequest) {
+          finalApproveStatus = approve_status || existingRequisition.rows[0].approve_status;
+          finalRoComment = ro_comment || existingRequisition.rows[0].ro_comment;
+          finalGivenStatus = given_status || existingRequisition.rows[0].given_status || '{}';
+      } else {
+          finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
+          finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
+          finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
+
+          if (approve_status) {
+              finalApproveStatus = { ...finalApproveStatus, ...safeJSONParse(approve_status) };
           }
-
-          let finalApproveStatus = {};
-          let finalRoComment = {};
-          let finalGivenStatus = {};
-
-          // Helper function to safely parse JSON
-          const safeJSONParse = (str) => {
-              if (!str) return {};
-              try {
-                  return typeof str === 'object' ? str : JSON.parse(str);
-              } catch (e) {
-                  console.error('Error parsing JSON:', e);
-                  return {};
-              }
-          };
-
-          // Check if this is only a pickup status update
-          const isOnlyPickupUpdate = (pick_up_status_ro !== undefined || pick_up_status_ro_comment !== undefined) && 
-              !approve_status && 
-              !ro_comment && 
-              !given_status && 
-              !slab_wise_comment;
-
-          if (isOnlyPickupUpdate) {
-              finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
-              finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
-              finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
-          } else if (isVisitorRequest) {
-              finalApproveStatus = approve_status || existingRequisition.rows[0].approve_status;
-              finalRoComment = ro_comment || existingRequisition.rows[0].ro_comment;
-              finalGivenStatus = given_status || existingRequisition.rows[0].given_status || '{}';
-          } else {
-              finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
-              finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
-              finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
-
-              if (approve_status) {
-                  finalApproveStatus = { ...finalApproveStatus, ...safeJSONParse(approve_status) };
-              }
-              if (ro_comment) {
-                  finalRoComment = { ...finalRoComment, ...safeJSONParse(ro_comment) };
-              }
-              if (given_status) {
-                  finalGivenStatus = { ...finalGivenStatus, ...safeJSONParse(given_status) };
-              }
+          if (ro_comment) {
+              finalRoComment = { ...finalRoComment, ...safeJSONParse(ro_comment) };
           }
+          if (given_status) {
+              finalGivenStatus = { ...finalGivenStatus, ...safeJSONParse(given_status) };
+          }
+      }
 
           // Handle member_accolades insertion for approved statuses
           if (!isVisitorRequest && approve_status) {
@@ -7046,13 +7008,13 @@ const updateChapterRequisition = async (req, res) => {
 
           // Handle given status updates - Only update member_accolades table
           if (given_status) {
-              console.log('📝 Processing member accolade updates for given status:', given_status);
-              
-              const givenStatusObj = safeJSONParse(given_status);
-              
-              for (const [key, value] of Object.entries(givenStatusObj)) {
-                  if (value && value.date) {
-                      const [memberId, accoladeId] = key.split('_').map(Number);
+          console.log('📝 Processing member accolade updates for given status:', given_status);
+          
+          const givenStatusObj = safeJSONParse(given_status);
+          
+          for (const [key, value] of Object.entries(givenStatusObj)) {
+              if (value && value.date) {
+                  const [memberId, accoladeId] = key.split('_').map(Number);
                       console.log(`🎯 Processing given status for member ${memberId}, accolade ${accoladeId}`);
 
                       // Update member_accolades table
@@ -7075,67 +7037,67 @@ const updateChapterRequisition = async (req, res) => {
                           console.log('✅ Updated member_accolades:', accoladeResult.rows[0]);
                       } else {
                           console.log(`ℹ️ No eligible record found to update given_date for member ${memberId}, accolade ${accoladeId}`);
-                      }
                   }
               }
           }
+      }
 
-          const finalPickupDate = pickup_date && pickup_date.trim() !== '' ? pickup_date : existingRequisition.rows[0].pickup_date;
+      const finalPickupDate = pickup_date && pickup_date.trim() !== '' ? pickup_date : existingRequisition.rows[0].pickup_date;
 
-          const query = `
-              UPDATE chapter_requisition 
-              SET 
-                  approve_status = $1,
-                  ro_comment = $2,
-                  pickup_status = $3,
-                  pickup_date = $4,
-                  given_status = $5,
-                  slab_wise_comment = $6,
-                  pick_up_status_ro = $7,
-                  pick_up_status_ro_comment = $8
-              WHERE chapter_requisition_id = $9
-              RETURNING *
-          `;
+      const query = `
+          UPDATE chapter_requisition 
+          SET 
+              approve_status = $1,
+              ro_comment = $2,
+              pickup_status = $3,
+              pickup_date = $4,
+              given_status = $5,
+              slab_wise_comment = $6,
+              pick_up_status_ro = $7,
+              pick_up_status_ro_comment = $8
+          WHERE chapter_requisition_id = $9
+          RETURNING *
+      `;
 
-          const prepareValue = (value) => {
-              if (!value) return '{}';
-              
-              if (typeof value === 'string') {
-                  try {
-                      const parsed = JSON.parse(value);
-                      return JSON.stringify(parsed);
-                  } catch (e) {
-                      return value;
-                  }
+      const prepareValue = (value) => {
+          if (!value) return '{}';
+          
+          if (typeof value === 'string') {
+              try {
+                  const parsed = JSON.parse(value);
+                  return JSON.stringify(parsed);
+              } catch (e) {
+                  return value;
               }
-              
-              return JSON.stringify(value);
-          };
+          }
+          
+          return JSON.stringify(value);
+      };
 
-          const values = [
-              prepareValue(finalApproveStatus),
-              prepareValue(finalRoComment),
-              isOnlySlabWiseCommentUpdate ? existingRequisition.rows[0].pickup_status : 
-                  (pickup_status !== undefined ? pickup_status : existingRequisition.rows[0].pickup_status),
-              finalPickupDate,
-              prepareValue(finalGivenStatus),
-              slab_wise_comment || existingRequisition.rows[0].slab_wise_comment,
-              pick_up_status_ro !== undefined ? pick_up_status_ro : existingRequisition.rows[0].pick_up_status_ro,
-              pick_up_status_ro_comment !== undefined ? pick_up_status_ro_comment : existingRequisition.rows[0].pick_up_status_ro_comment,
-              chapter_requisition_id
-          ];
+      const values = [
+          prepareValue(finalApproveStatus),
+          prepareValue(finalRoComment),
+          isOnlySlabWiseCommentUpdate ? existingRequisition.rows[0].pickup_status : 
+              (pickup_status !== undefined ? pickup_status : existingRequisition.rows[0].pickup_status),
+          finalPickupDate,
+          prepareValue(finalGivenStatus),
+          slab_wise_comment || existingRequisition.rows[0].slab_wise_comment,
+          pick_up_status_ro !== undefined ? pick_up_status_ro : existingRequisition.rows[0].pick_up_status_ro,
+          pick_up_status_ro_comment !== undefined ? pick_up_status_ro_comment : existingRequisition.rows[0].pick_up_status_ro_comment,
+          chapter_requisition_id
+      ];
 
-          const result = await con.query(query, values);
-          const updatedRequisition = result.rows[0];
+      const result = await con.query(query, values);
+      const updatedRequisition = result.rows[0];
 
           await con.query('COMMIT');
-          console.log('✅ Chapter Requisition updated successfully:', updatedRequisition);
+      console.log('✅ Chapter Requisition updated successfully:', updatedRequisition);
 
-          res.json({
-              success: true,
-              message: "Chapter requisition updated successfully",
-              data: updatedRequisition
-          });
+      res.json({
+          success: true,
+          message: "Chapter requisition updated successfully",
+          data: updatedRequisition
+      });
 
       } catch (error) {
           await con.query('ROLLBACK');
@@ -7206,34 +7168,34 @@ const updateMemberRequisition = async (req, res) => {
               await client.query('BEGIN');
 
               // Update member_requisition_request
-              query = `
-                  UPDATE member_requisition_request 
-                  SET 
-                      approve_status = CAST($1 AS VARCHAR),
-                      response_comment = $2,
-                      approved_date = CASE 
-                          WHEN CAST($1 AS VARCHAR) = 'approved' THEN CURRENT_TIMESTAMP 
-                          ELSE approved_date 
-                      END
-                  WHERE 
-                      member_request_id = $3 
-                      AND member_id = $4 
-                      AND chapter_id = $5 
-                      AND accolade_id = $6
-                      AND given_status = false
-                      AND request_status = 'open'
-                      AND given_date IS NULL
-                  RETURNING *
-              `;
+          query = `
+              UPDATE member_requisition_request 
+              SET 
+                  approve_status = CAST($1 AS VARCHAR),
+                  response_comment = $2,
+                  approved_date = CASE 
+                      WHEN CAST($1 AS VARCHAR) = 'approved' THEN CURRENT_TIMESTAMP 
+                      ELSE approved_date 
+                  END
+              WHERE 
+                  member_request_id = $3 
+                  AND member_id = $4 
+                  AND chapter_id = $5 
+                  AND accolade_id = $6
+                  AND given_status = false
+                  AND request_status = 'open'
+                  AND given_date IS NULL
+              RETURNING *
+          `;
 
-              values = [
-                  approve_status || 'pending',
-                  response_comment || '',
-                  member_request_id,
-                  member_id,
-                  chapter_id,
-                  accolade_id
-              ];
+          values = [
+              approve_status || 'pending',
+              response_comment || '',
+              member_request_id,
+              member_id,
+              chapter_id,
+              accolade_id
+          ];
 
               const result = await client.query(query, values);
 
@@ -7281,41 +7243,41 @@ const updateMemberRequisition = async (req, res) => {
               await client.query('BEGIN');
 
               // First update member_requisition_request
-              query = `
-                  UPDATE member_requisition_request 
-                  SET 
-                      given_status = $1,
-                      given_date = $2,
-                      request_status = $3
-                  WHERE 
-                      member_id = $4 
-                      AND chapter_id = $5 
-                      AND accolade_id = $6
-                      AND given_status = false
-                      AND request_status = 'open'
-                      AND given_date IS NULL
-                  RETURNING *
-              `;
+          query = `
+              UPDATE member_requisition_request 
+              SET 
+                  given_status = $1,
+                  given_date = $2,
+                  request_status = $3
+              WHERE 
+                  member_id = $4 
+                  AND chapter_id = $5 
+                  AND accolade_id = $6
+                  AND given_status = false
+                  AND request_status = 'open'
+                  AND given_date IS NULL
+              RETURNING *
+          `;
 
-              values = [
-                  given_status,
-                  given_date,
-                  request_status,
-                  member_id,
-                  chapter_id,
-                  accolade_id
-              ];
+          values = [
+              given_status,
+              given_date,
+              request_status,
+              member_id,
+              chapter_id,
+              accolade_id
+          ];
 
               const result = await client.query(query, values);
 
-              if (result.rows.length === 0) {
+      if (result.rows.length === 0) {
                   await client.query('ROLLBACK');
-                  console.log('❌ No matching requisition found or conditions not met');
-                  return res.status(404).json({
-                      success: false,
-                      message: "No matching requisition found or conditions not met"
-                  });
-              }
+          console.log('❌ No matching requisition found or conditions not met');
+          return res.status(404).json({
+              success: false,
+              message: "No matching requisition found or conditions not met"
+          });
+      }
 
               // Update member_accolades if record exists
               const updateAccoladeQuery = `
@@ -7340,13 +7302,13 @@ const updateMemberRequisition = async (req, res) => {
 
               await client.query('COMMIT');
 
-              console.log('✅ Member Requisition updated successfully:', result.rows[0]);
+      console.log('✅ Member Requisition updated successfully:', result.rows[0]);
 
-              res.json({
-                  success: true,
-                  message: "Member requisition updated successfully",
-                  data: result.rows[0]
-              });
+      res.json({
+          success: true,
+          message: "Member requisition updated successfully",
+          data: result.rows[0]
+      });
 
           } catch (error) {
               await client.query('ROLLBACK');
@@ -8262,145 +8224,6 @@ const updateInclusionSheet = async (req, res) => {
   }
 };
 
-const addChapterPayment = async (req, res) => {
-  try {
-    console.log('Received request body:', req.body);
-    console.log('Received files:', req.files);
-
-    // 1. Get all data from req.body
-    const {
-      payment_add_by,
-      payment_description,
-      chapter_id,
-      amount,
-      payment_date,
-      payment_mode,
-      is_gst,
-      gst_percentage,
-      gst_amount,
-      cgst,
-      sgst,
-      igst,
-      total_amount,
-      is_igst
-    } = req.body;
-
-    // Validate required fields
-    if (!payment_description || !chapter_id || !amount || !payment_date || !payment_mode || !payment_add_by) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields',
-        receivedData: req.body
-      });
-    }
-
-    // 2. Handle file upload (if any)
-    let payment_img_path = null;
-    if (req.files && req.files.payment_img) {
-      const file = req.files.payment_img;
-      const uploadDir = path.join(__dirname, 'public', 'uploads', 'other_payments');
-      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-      const fileName = `other_payment_${Date.now()}_${file.name}`;
-      const uploadPath = path.join(uploadDir, fileName);
-      await file.mv(uploadPath);
-      payment_img_path = `/uploads/other_payments/${fileName}`;
-    }
-
-    // 3. Get region_id for the chapter
-    const chapterRes = await con.query('SELECT region_id FROM chapter WHERE chapter_id = $1', [chapter_id]);
-    if (!chapterRes.rows.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid chapter ID'
-      });
-    }
-    const region_id = chapterRes.rows[0].region_id;
-
-    // 4. Generate IDs
-    const order_id = `OP${Date.now()}`;
-    const cf_payment_id = order_id;
-
-    // Start transaction
-    await con.query('BEGIN');
-
-    try {
-      // 5. Insert into orders table
-      const orderQuery = `
-        INSERT INTO orders (
-          order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id, visitor_id, visitor_name, visitor_email, visitor_mobilenumber, visitor_address, visitor_company, visitor_gstin, visitor_business, visitor_company_address, accolade_id, created_at, updated_at
-        ) VALUES (
-          $1, $2, 'INR', 1, null, $3, $4, null, null, 'ACTIVE', null, 0, 0, $5, null, null, null, null, null, null, null, 'other-payment', null, null, null, null, null, null, null, null, null, null, null, null, null, $6, $6
-        )
-      `;
-      await con.query(orderQuery, [
-        order_id,
-        total_amount,
-        chapter_id,
-        region_id,
-        is_gst === 'true' || is_gst === true ? gst_amount : 0,
-        payment_date
-      ]);
-
-      // 6. Insert into transactions table
-      const transactionQuery = `
-        INSERT INTO transactions (
-          cf_payment_id, order_id, payment_gateway_id, payment_amount, payment_currency, payment_status, payment_message, payment_time, payment_completion_time, bank_reference, auth_id, payment_method, error_details, gateway_order_id, gateway_payment_id, payment_group
-        ) VALUES (
-          $1, $2, null, $3, 'INR', 'SUCCESS', 'other-payment', $4, $4, null, 'other-payment', $5, '{}', null, null, 'other-payment'
-        )
-      `;
-      const paymentMethod = {};
-      paymentMethod[payment_mode] = { payment_note: 'other-payment' };
-      await con.query(transactionQuery, [
-        cf_payment_id,
-        order_id,
-        total_amount,
-        new Date(),
-        JSON.stringify(paymentMethod)
-      ]);
-
-      // 7. Insert into other_payment table
-      const otherPaymentQuery = `
-        INSERT INTO other_payment (
-          payment_description, is_gst, gst_percentage, gst_amount, cgst, sgst, igst, total_amount, added_by, payment_img, date, chapter_id
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
-        )
-      `;
-      await con.query(otherPaymentQuery, [
-        payment_description,
-        is_gst === 'true' || is_gst === true,
-        gst_percentage || '0',
-        gst_amount || '0',
-        cgst || '0',
-        sgst || '0',
-        igst || '0',
-        total_amount,
-        payment_add_by,
-        payment_img_path,
-        payment_date,
-        chapter_id
-      ]);
-
-      // Commit transaction
-      await con.query('COMMIT');
-      res.json({ success: true });
-    } catch (err) {
-      // Rollback in case of error
-      await con.query('ROLLBACK');
-      throw err;
-    }
-  } catch (err) {
-    console.error('Error in addChapterPayment:', err);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error', 
-      error: err.message,
-      receivedData: req.body 
-    });
-  }
-};
-
 
 const addVisitorPayment = async (req, res) => {
   const invoiceData = req.body;
@@ -8931,32 +8754,32 @@ const getAllMemberAccolades = async (req, res) => {
 };
 
 const sendFormSubmissionEmail = async (req, res) => {
-  try {
-      const { 
-          email,
-          name,
-          formType,
-          chapter_name,
+    try {
+        const { 
+            email,
+            name,
+            formType,
+            chapter_name,
           formData  // All form data
-      } = req.body;
+        } = req.body;
 
-      console.log('📧 Preparing form submission email:', {
-          to: email,
-          name: name,
-          formType: formType,
-          chapter: chapter_name
-      });
+        console.log('📧 Preparing form submission email:', {
+            to: email,
+            name: name,
+            formType: formType,
+            chapter: chapter_name
+        });
 
-      const currentDate = new Date().toLocaleString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: 'numeric',
-          second: 'numeric',
-          hour12: true
-      });
+        const currentDate = new Date().toLocaleString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            second: 'numeric',
+            hour12: true
+        });
 
       // Helper function to create member application table
       const createMemberApplicationTable = (data) => {
@@ -9077,63 +8900,63 @@ const sendFormSubmissionEmail = async (req, res) => {
           `;
       };
 
-      // Format EOI form data in a table
+        // Format EOI form data in a table
       const createEOITable = (data) => {
-          return `
-              <table style="width: 100%; border-collapse: collapse; margin-top: 20px; margin-bottom: 20px;">
-                  <tr style="background-color: #f8f9fa;">
-                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Region</strong></td>
+            return `
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px; margin-bottom: 20px;">
+                    <tr style="background-color: #f8f9fa;">
+                        <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Region</strong></td>
                       <td style="padding: 12px; border: 1px solid #dee2e6;">West</td>
-                  </tr>
-                  <tr>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Chapter</strong></td>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.chapter || 'N/A'}</td>
-                  </tr>
-                  <tr style="background-color: #f8f9fa;">
-                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Full Name</strong></td>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.firstName} ${data.lastName}</td>
-                  </tr>
-                  <tr>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Email</strong></td>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.email}</td>
-                  </tr>
-                  <tr style="background-color: #f8f9fa;">
-                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Mobile</strong></td>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.mobile}</td>
-                  </tr>
-                  <tr>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Company Name</strong></td>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.companyName}</td>
-                  </tr>
-                  <tr style="background-color: #f8f9fa;">
-                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Professional Classification</strong></td>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.professionalClassification}</td>
-                  </tr>
-                  <tr>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Industry</strong></td>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.industry}</td>
-                  </tr>
-                  <tr style="background-color: #f8f9fa;">
-                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>GSTIN</strong></td>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.gstin || 'N/A'}</td>
-                  </tr>
-                  <tr>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Company Address</strong></td>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.companyAddress}</td>
-                  </tr>
-                  <tr style="background-color: #f8f9fa;">
-                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Visit Date</strong></td>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.visitDate}</td>
-                  </tr>
-                  <tr>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>How did you hear about us?</strong></td>
-                      <td style="padding: 12px; border: 1px solid #dee2e6;">${data.howHeard}</td>
-                  </tr>
-              </table>
-          `;
-      };
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Chapter</strong></td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;">${data.chapter || 'N/A'}</td>
+                    </tr>
+                    <tr style="background-color: #f8f9fa;">
+                        <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Full Name</strong></td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;">${data.firstName} ${data.lastName}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Email</strong></td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;">${data.email}</td>
+                    </tr>
+                    <tr style="background-color: #f8f9fa;">
+                        <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Mobile</strong></td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;">${data.mobile}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Company Name</strong></td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;">${data.companyName}</td>
+                    </tr>
+                    <tr style="background-color: #f8f9fa;">
+                        <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Professional Classification</strong></td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;">${data.professionalClassification}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Industry</strong></td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;">${data.industry}</td>
+                    </tr>
+                    <tr style="background-color: #f8f9fa;">
+                        <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>GSTIN</strong></td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;">${data.gstin || 'N/A'}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Company Address</strong></td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;">${data.companyAddress}</td>
+                    </tr>
+                    <tr style="background-color: #f8f9fa;">
+                        <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>Visit Date</strong></td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;">${data.visitDate}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>How did you hear about us?</strong></td>
+                        <td style="padding: 12px; border: 1px solid #dee2e6;">${data.howHeard}</td>
+                    </tr>
+                </table>
+            `;
+        };
 
-      let emailSubject, emailContent;
+        let emailSubject, emailContent;
       if (formType === 'member_application') {
           emailSubject = `Member Application Form Submission - BNI ${chapter_name}`;
           emailContent = `
@@ -9162,33 +8985,33 @@ const sendFormSubmissionEmail = async (req, res) => {
               </div>
           `;
       } else {
-          emailSubject = `Expression of Interest Form Submission - BNI ${chapter_name}`;
-          emailContent = `
-              <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
-                  <div style="background-color: #dc2626; padding: 20px; text-align: center; margin-bottom: 20px;">
-                      <h1 style="color: white; margin: 0;">BNI Expression of Interest</h1>
-                  </div>
-                  
-                  <p style="font-size: 16px;">Dear ${name},</p>
-                  
-                  <p style="font-size: 16px;">Thank you for submitting your Expression of Interest form for BNI ${chapter_name} Chapter. 
-                  We have successfully received your submission on ${currentDate}.</p>
-                  
-                  <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                      <h2 style="color: #dc2626; margin-top: 0;">Form Details</h2>
+            emailSubject = `Expression of Interest Form Submission - BNI ${chapter_name}`;
+            emailContent = `
+                <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+                    <div style="background-color: #dc2626; padding: 20px; text-align: center; margin-bottom: 20px;">
+                        <h1 style="color: white; margin: 0;">BNI Expression of Interest</h1>
+                    </div>
+                    
+                    <p style="font-size: 16px;">Dear ${name},</p>
+                    
+                    <p style="font-size: 16px;">Thank you for submitting your Expression of Interest form for BNI ${chapter_name} Chapter. 
+                    We have successfully received your submission on ${currentDate}.</p>
+                    
+                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h2 style="color: #dc2626; margin-top: 0;">Form Details</h2>
                       ${createEOITable(formData)}
-                  </div>
+                    </div>
 
-                  <p style="font-size: 16px;">Our team will review your application and contact you shortly with the next steps. 
-                  Meanwhile, if you have any questions, please feel free to reach out to us.</p>
-                  
-                  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
-                      <p style="margin: 0;">Best Regards,<br>
-                      <strong>BNI ${chapter_name} Chapter</strong></p>
-                  </div>
-              </div>
-          `;
-      }
+                    <p style="font-size: 16px;">Our team will review your application and contact you shortly with the next steps. 
+                    Meanwhile, if you have any questions, please feel free to reach out to us.</p>
+                    
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+                        <p style="margin: 0;">Best Regards,<br>
+                        <strong>BNI ${chapter_name} Chapter</strong></p>
+                    </div>
+                </div>
+            `;
+        }
 
       // Generate PDF content using the same table creation functions
       const pdfContent = `
@@ -9238,7 +9061,7 @@ const sendFormSubmissionEmail = async (req, res) => {
       // Generate PDF using puppeteer
       const browser = await puppeteer.launch({
           headless: 'new',
-          args: ['--no-sandbox', '--disable-setuid-sandbox']
+          args: ['--no-production', '--disable-setuid-production']
       });
       const page = await browser.newPage();
       await page.setContent(pdfContent, { waitUntil: 'networkidle0' });
@@ -9255,9 +9078,9 @@ const sendFormSubmissionEmail = async (req, res) => {
       await browser.close();
 
       // Create mail options with PDF attachment
-      const mailOptions = {
-          from: 'BNI N E W Delhi <info@bninewdelhi.in>',
-          to: `${name} <${email}>`,
+        const mailOptions = {
+            from: 'BNI N E W Delhi <info@bninewdelhi.in>',
+            to: `${name} <${email}>`,
           // cc: [
           //     'SUNIL K. BNI DIRECTOR <sunilk@bni-india.in>',
           //     'Shini Sunil <shini.sunil@adico.in>',
@@ -9419,7 +9242,7 @@ const sendInterviewSheetEmail = async (req, res) => {
       // Generate PDF
       const browser = await puppeteer.launch({
           headless: 'new',
-          args: ['--no-sandbox', '--disable-setuid-sandbox']
+          args: ['--no-production', '--disable-setuid-production']
       });
       const page = await browser.newPage();
       await page.setContent(pdfContent, { waitUntil: 'networkidle0' });
@@ -9450,11 +9273,11 @@ const sendInterviewSheetEmail = async (req, res) => {
       const mailOptions = {
           from: 'BNI N E W Delhi <info@bninewdelhi.in>',
           to: `${visitorName} <${visitor_email}>`,
-          cc: [
-              'SUNIL K. BNI DIRECTOR <sunilk@bni-india.in>',
-              'Shini Sunil <shini.sunil@adico.in>',
-              'Raja Shukla | Digital Marketing | Prolific Shukla <rajashukla@outlook.com>',
-              'admin.bnidw@adico.in',
+            cc: [
+                'SUNIL K. BNI DIRECTOR <sunilk@bni-india.in>',
+                'Shini Sunil <shini.sunil@adico.in>',
+                'Raja Shukla | Digital Marketing | Prolific Shukla <rajashukla@outlook.com>',
+                'admin.bnidw@adico.in',
               'BNI N E W Delhi Admin <admin@bninewdelhi.com>'
           ],
           subject: `Interview Sheet - BNI ${chapter_name}`,
@@ -9479,9 +9302,9 @@ const sendInterviewSheetEmail = async (req, res) => {
               filename: 'interview-sheet.pdf',
               path: pdfFilePath
           }]
-      };
+        };
 
-      await transporter.sendMail(mailOptions);
+        await transporter.sendMail(mailOptions);
       console.log('✅ Interview sheet email sent successfully to:', visitor_email);
 
       // Clean up - delete temporary PDF file
@@ -9490,19 +9313,19 @@ const sendInterviewSheetEmail = async (req, res) => {
           else console.log('✅ Temporary PDF file deleted successfully');
       });
 
-      res.status(200).json({
-          success: true,
+        res.status(200).json({
+            success: true,
           message: `Interview sheet sent successfully to ${visitor_email}`
-      });
+        });
 
-  } catch (error) {
+    } catch (error) {
       console.error('❌ Error sending interview sheet:', error);
-      res.status(500).json({
-          success: false,
+        res.status(500).json({
+            success: false,
           message: 'Failed to send interview sheet',
-          error: error.message
-      });
-  }
+            error: error.message
+        });
+    }
 };
 
 const addVendor = async (req, res) => {
@@ -9523,55 +9346,55 @@ const addVendor = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!vendor_name || !vendor_company_name || !vendor_company_address || !vendor_company_gst || 
-        !vendor_account || !vendor_bank_name || !vendor_ifsc_code || !vendor_account_type || 
-        !vendor_status || !phone_number || !email_id) {
-      return res.status(400).json({ message: 'All fields are required' });
-    }
+    // if (!vendor_name || !vendor_company_name || !vendor_company_address || !vendor_company_gst || 
+    //     !vendor_account || !vendor_bank_name || !vendor_ifsc_code || !vendor_account_type || 
+    //     !vendor_status || !phone_number || !email_id) {
+    //   return res.status(400).json({ message: 'All fields are required' });
+    // }
 
     // Validate GST format
-    const gstPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-    if (!gstPattern.test(vendor_company_gst)) {
-      return res.status(400).json({ message: 'Invalid GST number format' });
-    }
+    // const gstPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    // if (!gstPattern.test(vendor_company_gst)) {
+    //   return res.status(400).json({ message: 'Invalid GST number format' });
+    // }
 
     // Validate IFSC format
-    const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-    if (!ifscPattern.test(vendor_ifsc_code)) {
-      return res.status(400).json({ message: 'Invalid IFSC code format' });
-    }
+    // const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    // if (!ifscPattern.test(vendor_ifsc_code)) {
+    //   return res.status(400).json({ message: 'Invalid IFSC code format' });
+    // }
 
     // Validate phone number
-    const phonePattern = /^[0-9]{10}$/;
-    if (!phonePattern.test(phone_number)) {
-      return res.status(400).json({ message: 'Invalid phone number format' });
-    }
+    // const phonePattern = /^[0-9]{10}$/;
+    // if (!phonePattern.test(phone_number)) {
+    //   return res.status(400).json({ message: 'Invalid phone number format' });
+    // }
 
     // Validate email
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(email_id)) {
-      return res.status(400).json({ message: 'Invalid email format' });
-    }
+    // const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // if (!emailPattern.test(email_id)) {
+    //   return res.status(400).json({ message: 'Invalid email format' });
+    // }
 
     // Check if vendor with same GST number already exists
-    const existingVendorGST = await con.query(
-      'SELECT * FROM vendors WHERE vendor_company_gst = $1',
-      [vendor_company_gst]
-    );
+    // const existingVendorGST = await con.query(
+    //   'SELECT * FROM vendors WHERE vendor_company_gst = $1',
+    //   [vendor_company_gst]
+    // );
 
-    if (existingVendorGST.rows.length > 0) {
-      return res.status(400).json({ message: 'Vendor with this GST number already exists' });
-    }
+    // if (existingVendorGST.rows.length > 0) {
+    //   return res.status(400).json({ message: 'Vendor with this GST number already exists' });
+    // }
 
     // Check if vendor with same email already exists
-    const existingVendorEmail = await con.query(
-      'SELECT * FROM vendors WHERE email_id = $1',
-      [email_id]
-    );
+    // const existingVendorEmail = await con.query(
+    //   'SELECT * FROM vendors WHERE email_id = $1',
+    //   [email_id]
+    // );
 
-    if (existingVendorEmail.rows.length > 0) {
-      return res.status(400).json({ message: 'Vendor with this email already exists' });
-    }
+    // if (existingVendorEmail.rows.length > 0) {
+    //   return res.status(400).json({ message: 'Vendor with this email already exists' });
+    // }
 
     // Insert new vendor
     const result = await con.query(
@@ -9763,6 +9586,392 @@ const sendAllPaymentLinksEmail = async (req, res) => {
   }
 };
 
+// bni-data-backend/allControllers/paymentControllers/newMemberManualPaymentController.js
+
+const addNewMemberPaymentManually = async (req, res) => {
+  try {
+    // 1. Get data from frontend
+    const {
+      payment_status,
+      payment_note,
+      order_amount,
+      tax_amount,
+      one_time_registration_fee,
+      membership_fee,
+      renewal_year,
+      region_id,
+      chapter_id,
+      visitor_name,
+      visitor_email,
+      visitor_phone,
+      visitor_company_name,
+      visitor_company_address,
+      visitor_address,
+      visitor_gst,
+      visitor_business,
+      visitor_category,
+      visited_date,
+      company
+    } = req.body;
+
+    console.log('📥 Received request body:', req.body);
+
+    // 3. Generate order_id and payment_session_id
+    const order_id = `order_${Date.now()}${Math.random().toString(36).substring(2, 10)}`;
+    const payment_session_id = `session_${Date.now()}${Math.random().toString(36).substring(2, 10)}`;
+    console.log('🆕 Generated Order ID:', order_id);
+    console.log('🆕 Generated Payment Session ID:', payment_session_id);
+
+    // 4. Insert order
+    const orderQuery = `
+      INSERT INTO Orders (
+        order_id, order_amount, order_currency, payment_gateway_id,
+        chapter_id, region_id, universal_link_id, order_status, payment_session_id,
+        one_time_registration_fee, membership_fee, tax, member_name, customer_email,
+        customer_phone, gstin, company, renewal_year, payment_note, visitor_name,
+        visitor_email, visitor_mobilenumber, visitor_address, visitor_company,
+        visitor_gstin, visitor_business, visitor_company_address, created_at
+      ) VALUES (
+        $1, $2, 'INR', 1,
+        $3, $4, 1, 'ACTIVE', $5,
+        $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15, $16,
+        $17, $18, $19, $20,
+        $21, $22, $23, NOW()
+      ) RETURNING *
+    `;
+    const orderValues = [
+      order_id, order_amount, chapter_id, region_id, payment_session_id,
+      one_time_registration_fee, membership_fee, tax_amount, visitor_name, visitor_email,
+      visitor_phone, visitor_gst, company, renewal_year, payment_note, visitor_name,
+      visitor_email, visitor_phone, visitor_address, visitor_company_name,
+      visitor_gst, visitor_business, visitor_company_address
+    ];
+    const orderResult = await con.query(orderQuery, orderValues);
+    console.log('✅ Order inserted:', orderResult.rows[0]);
+
+    // 5. Insert transaction
+    const cf_payment_id = `TRX_${Date.now()}${Math.random().toString(36).substring(2, 8)}`;
+    const transactionQuery = `
+      INSERT INTO Transactions (
+        cf_payment_id, order_id, payment_gateway_id,
+        payment_amount, payment_currency, payment_status,
+        payment_message, payment_time, payment_completion_time,
+        auth_id, payment_method, error_details, payment_group
+      ) VALUES (
+        $1, $2, 1,
+        $3, 'INR', 'SUCCESS',
+        'New Member Payment Successful', NOW(), NOW(),
+        'NEW_MEMBER_PAYMENT', $4, '{}', 'cash'
+      ) RETURNING *
+    `;
+    const paymentMethod = {
+      cash: { payment_note: payment_note || "New Member Payment" }
+    };
+    const transactionValues = [
+      cf_payment_id, order_id, order_amount, JSON.stringify(paymentMethod)
+    ];
+    const transactionResult = await con.query(transactionQuery, transactionValues);
+    console.log('💳 Transaction inserted:', transactionResult.rows[0]);
+
+    // 6. Visitor Verification
+    let visitor_id;
+    let matchedVisitor = null;
+
+    if (visitor_email) {
+      const visitorRes = await con.query(
+        'SELECT * FROM Visitors WHERE visitor_email = $1',
+        [visitor_email]
+      );
+      if (visitorRes.rows.length > 0) {
+        matchedVisitor = visitorRes.rows[0];
+        console.log('📧 Matched visitor by email:', matchedVisitor.visitor_id);
+      }
+    }
+
+    if (!matchedVisitor && visitor_phone) {
+      const visitorRes = await con.query(
+        'SELECT * FROM Visitors WHERE visitor_phone = $1',
+        [visitor_phone]
+      );
+      if (visitorRes.rows.length > 0) {
+        matchedVisitor = visitorRes.rows[0];
+        console.log('📱 Matched visitor by phone:', matchedVisitor.visitor_id);
+      }
+    }
+
+    if (matchedVisitor) {
+      // 7. Existing Visitor
+      visitor_id = matchedVisitor.visitor_id;
+      console.log('🧾 Existing visitor detected. Updating visitor & membership.');
+
+      await con.query(
+        'UPDATE Visitors SET new_member_form = $1 WHERE visitor_id = $2',
+        [true, visitor_id]
+      );
+      console.log('🛠️ Visitor record updated for new_member_form = true');
+
+      const membershipRes = await con.query(
+        'SELECT * FROM new_member_membership WHERE visitor_id = $1',
+        [visitor_id]
+      );
+      const existingMembership = membershipRes.rows[0];
+
+      const payingGst = (parseFloat(order_amount) * 18) / 118;
+      const payingAmountWithoutGST = parseFloat(order_amount) - payingGst;
+
+      if (existingMembership) {
+        const currpaid = parseFloat(existingMembership.paid_amount) + payingAmountWithoutGST;
+        const pending = parseFloat(existingMembership.due_balance) - payingAmountWithoutGST;
+        await con.query(
+          `UPDATE new_member_membership 
+           SET paid_amount = $1, order_id = $2, due_balance = $3
+           WHERE visitor_id = $4`,
+          [currpaid, order_id, pending, visitor_id]
+        );
+        console.log('📦 Updated existing membership record.');
+      } else {
+        const totalAmount = parseFloat(one_time_registration_fee || 0) + parseFloat(membership_fee || 0);
+        const pending = totalAmount - payingAmountWithoutGST;
+        const myear = renewal_year === "2Year" ? 2 : 1;
+        await con.query(
+          `INSERT INTO new_member_membership (
+            visitor_id, total_amount, paid_amount, membership_yr,
+            date_of_purchase, order_id, due_balance
+          ) VALUES ($1, $2, $3, $4, NOW(), $5, $6)`,
+          [
+            visitor_id,
+            totalAmount,
+            payingAmountWithoutGST,
+            myear,
+            order_id,
+            pending,
+          ]
+        );
+        console.log('🆕 Inserted new membership record for existing visitor.');
+      }
+    } else {
+      // 8. New Visitor
+      console.log('👤 No existing visitor found. Creating new visitor and membership.');
+      const subtotal = parseFloat(order_amount) - parseFloat(tax_amount || 0);
+      const insertVisitorQuery = `
+        INSERT INTO Visitors (
+          region_id, chapter_id, visitor_name, visitor_email, visitor_phone,
+          visitor_company_name, visitor_company_address, visitor_address, visitor_gst,
+          visitor_business, visitor_category, visited_date, total_amount, sub_total, tax,
+          delete_status, active_status, order_id, new_member_form
+        ) VALUES (
+          $1, $2, $3, $4, $5,
+          $6, $7, $8, $9,
+          $10, $11, $12, $13, $14, $15,
+          false, 'active', $16, true
+        ) RETURNING visitor_id
+      `;
+      const visitorValues = [
+        region_id, chapter_id, visitor_name, visitor_email, visitor_phone,
+        visitor_company_name, visitor_company_address, visitor_address, visitor_gst,
+        visitor_business, visitor_category, visited_date, order_amount, subtotal, tax_amount,
+        order_id
+      ];
+      const visitorResult = await con.query(insertVisitorQuery, visitorValues);
+      visitor_id = visitorResult.rows[0].visitor_id;
+      console.log('✅ New visitor inserted with ID:', visitor_id);
+
+      const totalAmount = parseFloat(one_time_registration_fee || 0) + parseFloat(membership_fee || 0) + parseFloat(tax_amount || 0);
+      const payingGst = (parseFloat(order_amount) * 18) / 118;
+      const payingAmountWithoutGST = parseFloat(order_amount) - payingGst;
+      const pending = totalAmount - payingAmountWithoutGST;
+      const myear = renewal_year === "2Year" ? 2 : 1;
+
+      await con.query(
+        `INSERT INTO new_member_membership (
+          visitor_id, total_amount, paid_amount, membership_yr,
+          date_of_purchase, order_id, due_balance
+        ) VALUES ($1, $2, $3, $4, NOW(), $5, $6)`,
+        [
+          visitor_id,
+          totalAmount,
+          payingAmountWithoutGST,
+          myear,
+          order_id,
+          pending,
+        ]
+      );
+      console.log('🆕 New membership record inserted for new visitor.');
+    }
+
+    // 9. Respond
+    console.log('🎉 All operations completed successfully.');
+    res.status(201).json({
+      success: true,
+      message: 'New member payment processed successfully',
+      data: {
+        order: orderResult.rows[0],
+        transaction: transactionResult.rows[0]
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error processing new member payment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process new member payment',
+      error: error.message
+    });
+  }
+};
+
+const allOtherPayment = async (req, res) => {
+  try {
+    const result = await con.query(
+      "SELECT * FROM other_payment"
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching other payment:", error);
+    res.status(500).send("Error fetching other payment");
+  }
+};
+const addChapterPayment = async (req, res) => {
+  try {
+    console.log('Received request body:', req.body);
+    console.log('Received files:', req.files);
+
+    // 1. Get all data from req.body
+    const {
+      payment_add_by,
+      payment_description,
+      chapter_id,
+      amount,
+      payment_date,
+      payment_mode,
+      is_gst,
+      gst_percentage,
+      gst_amount,
+      cgst,
+      sgst,
+      igst,
+      total_amount,
+      is_igst
+    } = req.body;
+
+    // Validate required fields
+    if (!payment_description || !chapter_id || !amount || !payment_date || !payment_mode || !payment_add_by) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields',
+        receivedData: req.body
+      });
+    }
+
+    // 2. Handle file upload (if any)
+    let payment_img_path = null;
+    if (req.files && req.files.payment_img) {
+      const file = req.files.payment_img;
+      const uploadDir = path.join(__dirname, 'public', 'uploads', 'other_payments');
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+      const fileName = `other_payment_${Date.now()}_${file.name}`;
+      const uploadPath = path.join(uploadDir, fileName);
+      await file.mv(uploadPath);
+      payment_img_path = `/uploads/other_payments/${fileName}`;
+    }
+
+    // 3. Get region_id for the chapter
+    const chapterRes = await con.query('SELECT region_id FROM chapter WHERE chapter_id = $1', [chapter_id]);
+    if (!chapterRes.rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid chapter ID'
+      });
+    }
+    const region_id = chapterRes.rows[0].region_id;
+
+    // 4. Generate IDs
+    const order_id = `OP${Date.now()}`;
+    const cf_payment_id = order_id;
+
+    // Start transaction
+    await con.query('BEGIN');
+
+    try {
+      // 5. Insert into orders table
+      const orderQuery = `
+        INSERT INTO orders (
+          order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id, visitor_id, visitor_name, visitor_email, visitor_mobilenumber, visitor_address, visitor_company, visitor_gstin, visitor_business, visitor_company_address, accolade_id, created_at, updated_at
+        ) VALUES (
+          $1, $2, 'INR', 1, null, $3, $4, null, null, 'ACTIVE', null, 0, 0, $5, null, null, null, null, null, null, null, 'other-payment', null, null, null, null, null, null, null, null, null, null, null, null, null, $6, $6
+        )
+      `;
+      await con.query(orderQuery, [
+        order_id,
+        total_amount,
+        chapter_id,
+        region_id,
+        is_gst === 'true' || is_gst === true ? gst_amount : 0,
+        payment_date
+      ]);
+
+      // 6. Insert into transactions table
+      const transactionQuery = `
+        INSERT INTO transactions (
+          cf_payment_id, order_id, payment_gateway_id, payment_amount, payment_currency, payment_status, payment_message, payment_time, payment_completion_time, bank_reference, auth_id, payment_method, error_details, gateway_order_id, gateway_payment_id, payment_group
+        ) VALUES (
+          $1, $2, null, $3, 'INR', 'SUCCESS', 'other-payment', $4, $4, null, 'other-payment', $5, '{}', null, null, 'other-payment'
+        )
+      `;
+      const paymentMethod = {};
+      paymentMethod[payment_mode] = { payment_note: 'other-payment' };
+      await con.query(transactionQuery, [
+        cf_payment_id,
+        order_id,
+        total_amount,
+        new Date(),
+        JSON.stringify(paymentMethod)
+      ]);
+
+      // 7. Insert into other_payment table
+      const otherPaymentQuery = `
+        INSERT INTO other_payment (
+          payment_description, is_gst, gst_percentage, gst_amount, cgst, sgst, igst, total_amount, added_by, payment_img, date, chapter_id
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+        )
+      `;
+      await con.query(otherPaymentQuery, [
+        payment_description,
+        is_gst === 'true' || is_gst === true,
+        gst_percentage || '0',
+        gst_amount || '0',
+        cgst || '0',
+        sgst || '0',
+        igst || '0',
+        total_amount,
+        payment_add_by,
+        payment_img_path,
+        payment_date,
+        chapter_id
+      ]);
+
+      // Commit transaction
+      await con.query('COMMIT');
+      res.json({ success: true });
+    } catch (err) {
+      // Rollback in case of error
+      await con.query('ROLLBACK');
+      throw err;
+    }
+  } catch (err) {
+    console.error('Error in addChapterPayment:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error', 
+      error: err.message,
+      receivedData: req.body 
+    });
+  }
+};
+
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -9919,6 +10128,7 @@ module.exports = {
   getAllDocNumbers,
   sendPaymentLinksEmail,
   sendAllPaymentLinksEmail,
+  addNewMemberPaymentManually,
   allOtherPayment,
   addChapterPayment
 };
