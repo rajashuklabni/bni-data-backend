@@ -9864,17 +9864,6 @@ const addChapterPayment = async (req, res) => {
       });
     }
 
-    // 2. Handle file upload (if any)
-    let payment_img_path = null;
-    if (req.files && req.files.payment_img) {
-      const file = req.files.payment_img;
-      const uploadDir = path.join(__dirname, 'public', 'uploads', 'other_payments');
-      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-      const fileName = `other_payment_${Date.now()}_${file.name}`;
-      const uploadPath = path.join(uploadDir, fileName);
-      await file.mv(uploadPath);
-      payment_img_path = `/uploads/other_payments/${fileName}`;
-    }
 
     // 3. Get region_id for the chapter
     const chapterRes = await con.query('SELECT region_id FROM chapter WHERE chapter_id = $1', [chapter_id]);
