@@ -674,6 +674,13 @@ router.get("/expenseType", expenseType);
 router.get("/getAllVendors", getAllVendors);
 router.get("/getAllDocNumbers", getAllDocNumbers);
 router.post("/expenseType", addExpenseType);
+router.post("/addExpense", (req, res, next) => {
+    console.log('📝 Incoming Request Body:', req.body);
+    next();
+}, expenseUpload.fields([
+    { name: 'upload_bill', maxCount: 1 },
+    { name: 'upload_receipt', maxCount: 1 }
+]), addExpense);
 router.post("/addVendor", addVendor);
 router.get("/allExpenses", allExpenses);
 router.get("/expense/:expense_id", getExpenseById);
