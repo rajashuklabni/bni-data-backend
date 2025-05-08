@@ -10,28 +10,35 @@ const cors = require("cors");
 const { request } = require("http");
 const dotEnv = require("dotenv");
 const jwt = require("jsonwebtoken");
-const fileUpload = require('express-fileupload');
 dotEnv.config();
+
 const app = express();
 const ccavService = require("./ccavenueService.js");
-dotEnv.config();
 
 // Enable CORS
 app.use(cors());
 
-// File upload middleware
-app.use(fileUpload({
-  createParentPath: true,
-  limits: { 
-    fileSize: 50 * 1024 * 1024 // 50MB max file size
-  },
-}));
-
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-const upload = multer({ dest: "uploads/" });
-
+// Body parser middleware - must be before multer
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.raw({ type: "application/json" }));
+
+// Serve static files from uploads directory
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Basic multer configuration for temporary use
+const upload = multer({ 
+  dest: "uploads/",
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB max file size
+  }
+});
 
 const allowedOrigins = [
   "https://bni-data-backend.onrender.com", // Your front-end URL
@@ -53,7 +60,7 @@ const allowedOrigins = [
   "http://54.39.51.161:3000",
   "backend.bninewdelhi.com/",
   "https://backend.bninewdelhi.com",
-  "https://backend.bninewdelhi.com/",
+  "http://backend.bninewdelhi.com/",
   "https://backend.bninewdelhi.com",
   "http://localhost:5000"
 ];
@@ -74,8 +81,7 @@ const corsOptions = {
 
 // Use CORS with options
 app.use(cors(corsOptions));
-app.use(express.json()); // For parsing application/json
-app.use(express.urlencoded({ extended: true }));
+
 // Replace with your Render database credentials
 const con = new Client({
   host: process.env.DB_HOST,
@@ -372,6 +378,23 @@ app.use("/api", verifyToken, paymentRoutes);
 app.use("/api", verifyToken, ccavenueRoutes);
 app.use("/api", verifyToken, routes);
 
-app.listen(5000, () => {
-  console.log("Server is running on port 5000");
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({
+      message: `Upload error: ${err.message}`,
+      code: err.code,
+      field: err.field
+    });
+  }
+  res.status(500).json({
+    message: 'Internal server error',
+    error: err.message
+  });
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });

@@ -133,10 +133,10 @@ const getMember = async (req, res) => {
           ...member,
           // Add image URLs if images exist
           member_photo_url: member.member_photo 
-              ? `http://localhost:5000/api/uploads/memberLogos/${member.member_photo}`
+              ? `http://backend.bninewdelhi.com/api/uploads/memberLogos/${member.member_photo}`
               : null,
           member_company_logo_url: member.member_company_logo 
-              ? `http://localhost:5000/api/uploads/memberCompanyLogos/${member.member_company_logo}`
+              ? `http://backend.bninewdelhi.com/api/uploads/memberCompanyLogos/${member.member_company_logo}`
               : null,
           // Parse arrays that might be stored as strings
           accolades_id: Array.isArray(member.accolades_id)
@@ -183,7 +183,7 @@ const getChapter = async (req, res) => {
         // Add image URL to response
         const chapterData = result.rows[0];
         if (chapterData.chapter_logo) {
-            chapterData.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+            chapterData.chapter_logo_url = `http://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
             console.log('🖼️ Added logo URL:', chapterData.chapter_logo_url);
         }
 
@@ -242,7 +242,7 @@ const getRegion = async (req, res) => {
         // Transform the logo data
         let logoUrl = null;
         if (region.region_logo && region.region_logo !== '{}' && region.region_logo !== 'null') {
-            logoUrl = `http://localhost:5000/api/uploads/regionLogos/${region.region_logo}`;
+            logoUrl = `http://backend.bninewdelhi.com/api/uploads/regionLogos/${region.region_logo}`;
             console.log('🖼️ Constructed logo URL:', logoUrl);
         }
 
@@ -454,7 +454,7 @@ const addRegion = async (req, res) => {
       message: "Region added successfully!", 
       data: {
         ...result.rows[0],
-        region_logo_url: region_logo ? `http://localhost:5000/uploads/regionLogos/${region_logo}` : null
+        region_logo_url: region_logo ? `http://backend.bninewdelhi.com/uploads/regionLogos/${region_logo}` : null
       }
     });
   } catch (error) {
@@ -602,7 +602,7 @@ const addChapter = async (req, res) => {
       // Rest of your code remains the same...
       const chapterData = result.rows[0];
       if (chapterData.chapter_logo) {
-          chapterData.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+          chapterData.chapter_logo_url = `http://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Creation Success:');
@@ -745,13 +745,13 @@ const addMember = async (req, res) => {
     const chapterId = parseInt(req.body.chapter_id);
     const dateOfPublishing = new Date(req.body.date_of_publishing);
     
-    const kittyBillsResponse = await axios.get('http://localhost:5000/api/getAllKittyPayments');
+    const kittyBillsResponse = await axios.get('http://backend.bninewdelhi.com/api/getAllKittyPayments');
     const allKittyBills = kittyBillsResponse.data;
     
     const chapterKittyBills = allKittyBills.filter(bill => bill.chapter_id === chapterId && bill.delete_status === 0);
     
     // 2. Fetch chapter meeting day
-    const chaptersResponse = await axios.get('http://localhost:5000/api/chapters');
+    const chaptersResponse = await axios.get('http://backend.bninewdelhi.com/api/chapters');
     const chapterInfo = chaptersResponse.data.find(ch => ch.chapter_id === chapterId);
     
     if (!chapterInfo) {
@@ -1404,7 +1404,7 @@ const updateChapter = async (req, res) => {
 
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `http://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Update Success:');
@@ -2787,7 +2787,7 @@ const addKittyPayment = async (req, res) => {
       const membersResult = await con.query(fetchMembersQuery, [chapter_id]);
       const membersToEmail = membersResult.rows;
       // Fetch chapters to get chapter_name from chapter_id
-const chapterResponse = await fetch('http://localhost:5000/api/chapters');
+const chapterResponse = await fetch('http://backend.bninewdelhi.com/api/chapters');
 const chapterData = await chapterResponse.json();
 const chapter = chapterData.find(c => c.chapter_id === Number(chapter_id));
 const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; // fallback if not found
@@ -2824,7 +2824,7 @@ const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; /
   
     
 
-    const response = await fetch('http://localhost:5000/api/getbankOrder');
+    const response = await fetch('http://backend.bninewdelhi.com/api/getbankOrder');
     const bankOrders = await response.json();
 
     // Filter the bank orders based on chapter_id
@@ -3038,108 +3038,102 @@ const addExpenseType = async (req, res) => {
 
 const addExpense = async (req, res) => {
   try {
-      console.log('\n🚀 Starting Add Expense Process');
-      console.log('📝 Request Body:', req.body);
-      console.log('📎 Files:', req.files);
+    console.log('\n🚀 Starting Add Expense Process');
+    console.log('📝 Request Body:', req.body);
+    console.log('📎 Files:', req.files);
 
-      // Check if both files exist
-      if (!req.files || !req.files.upload_bill || !req.files.upload_receipt) {
-          console.error('❌ Required files are missing');
-          return res.status(400).json({ message: "Both bill and receipt files are required" });
-      }
+    const billFile = req.files?.upload_bill?.[0] || null;
+    const receiptFile = req.files?.upload_receipt?.[0] || null;
 
-      const billFile = req.files.upload_bill[0];
-      const receiptFile = req.files.upload_receipt[0];
+    const amount = parseFloat(req.body.amount);
+    const gstPercentage = req.body.withGST === 'true' ? parseFloat(req.body.gstPercentage) : null;
+    const gstAmount = req.body.withGST === 'true' ? parseFloat(req.body.gstAmount) : null;
+    const totalAmount = req.body.withGST === 'true' ? parseFloat(req.body.totalAmount) : amount;
 
-      // Parse numeric values
-      const amount = parseFloat(req.body.amount);
-      const gstPercentage = req.body.withGST === 'true' ? parseFloat(req.body.gstPercentage) : null;
-      const gstAmount = req.body.withGST === 'true' ? parseFloat(req.body.gstAmount) : null;
-      const totalAmount = req.body.withGST === 'true' ? parseFloat(req.body.totalAmount) : amount;
-      
-      // Insert expense record
-      const result = await con.query(
-          `INSERT INTO expenses (
-              expense_type, submitted_by, description, amount, 
-            payment_status, bill_date, upload_bill, upload_receipt,
-            transaction_no, bill_no, chapter_id, hotel_id, vendor_id,
-            mode_of_payment, gst_percentage, gst_amount, total_amount
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) 
-          RETURNING *`,
-          [
-              req.body.expense_type,
-              req.body.submitted_by,
-              req.body.description,
-            amount,
-              req.body.payment_status,
-              req.body.bill_date,
-            billFile.filename,
-            receiptFile.filename,
-              req.body.transaction_no,
-              req.body.bill_no,
-              req.body.chapter_id,
-            req.body.hotel_id || null,
-            req.body.vendor_id || null,
-            req.body.payment_mode,
-            gstPercentage,
-            gstAmount,
-            totalAmount
-          ]
-      );
+    // Insert initial expense record
+    const result = await con.query(
+      `INSERT INTO expenses (
+        expense_type, submitted_by, description, amount,
+        payment_status, bill_date, upload_bill, upload_receipt,
+        transaction_no, bill_no, chapter_id, hotel_id, vendor_id,
+        mode_of_payment, gst_percentage, gst_amount, total_amount
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8,
+        $9, $10, $11, $12, $13, $14, $15, $16, $17
+      ) RETURNING *`,
+      [
+        req.body.expense_type,
+        req.body.submitted_by,
+        req.body.description,
+        amount,
+        req.body.payment_status,
+        req.body.bill_date,
+        billFile?.filename || null,
+        receiptFile?.filename || null,
+        req.body.transaction_no,
+        req.body.bill_no,
+        req.body.chapter_id,
+        req.body.hotel_id || null,
+        req.body.vendor_id || null,
+        req.body.payment_mode,
+        gstPercentage,
+        gstAmount,
+        totalAmount
+      ]
+    );
 
-      // Get the expense_id from the inserted record
-      const expense_id = result.rows[0].expense_id;
+    const expense_id = result.rows[0].expense_id;
+    let newBillFilename = null;
+    let newReceiptFilename = null;
 
-      // Rename both files to include expense_id
-      const renameBillFile = () => {
-          const fileExt = path.extname(billFile.filename);
-          const newFilename = `expense_bill_${expense_id}${fileExt}`;
-          const oldPath = path.join(__dirname, 'uploads', 'expenses', billFile.filename);
-      const newPath = path.join(__dirname, 'uploads', 'expenses', newFilename);
-          fs.renameSync(oldPath, newPath);
-          return newFilename;
-      };
-
-      const renameReceiptFile = () => {
-          const fileExt = path.extname(receiptFile.filename);
-          const newFilename = `expense_receipt_${expense_id}${fileExt}`;
-          const oldPath = path.join(__dirname, 'uploads', 'expenses', receiptFile.filename);
-          const newPath = path.join(__dirname, 'uploads', 'expenses', newFilename);
+    // Rename and update files if they exist
+    if (billFile) {
+      const fileExt = path.extname(billFile.filename);
+      newBillFilename = `expense_bill_${expense_id}${fileExt}`;
+      const oldPath = path.join(__dirname, 'uploads', 'expenses', billFile.filename);
+      const newPath = path.join(__dirname, 'uploads', 'expenses', newBillFilename);
       fs.renameSync(oldPath, newPath);
-          return newFilename;
-      };
+    }
 
-      const newBillFilename = renameBillFile();
-      const newReceiptFilename = renameReceiptFile();
+    if (receiptFile) {
+      const fileExt = path.extname(receiptFile.filename);
+      newReceiptFilename = `expense_receipt_${expense_id}${fileExt}`;
+      const oldPath = path.join(__dirname, 'uploads', 'expenses', receiptFile.filename);
+      const newPath = path.join(__dirname, 'uploads', 'expenses', newReceiptFilename);
+      fs.renameSync(oldPath, newPath);
+    }
 
-      // Update both filenames in database
+    if (newBillFilename || newReceiptFilename) {
       await con.query(
-          'UPDATE expenses SET upload_bill = $1, upload_receipt = $2 WHERE expense_id = $3',
-          [newBillFilename, newReceiptFilename, expense_id]
+        `UPDATE expenses 
+         SET upload_bill = COALESCE($1, upload_bill), 
+             upload_receipt = COALESCE($2, upload_receipt)
+         WHERE expense_id = $3`,
+        [newBillFilename, newReceiptFilename, expense_id]
       );
+    }
 
-      console.log('✅ Expense added successfully:', {
-          id: expense_id,
-          billFile: newBillFilename,
-          receiptFile: newReceiptFilename,
-          is_gst: result.rows[0].is_gst
-      });
+    console.log('✅ Expense added successfully:', {
+      id: expense_id,
+      billFile: newBillFilename,
+      receiptFile: newReceiptFilename
+    });
 
-      res.status(201).json({
-          message: "Expense added successfully!",
-          data: {
-              ...result.rows[0], 
-              upload_bill: newBillFilename,
-              upload_receipt: newReceiptFilename
-          }
-      });
+    res.status(201).json({
+      message: 'Expense added successfully!',
+      data: {
+        ...result.rows[0],
+        upload_bill: newBillFilename || result.rows[0].upload_bill,
+        upload_receipt: newReceiptFilename || result.rows[0].upload_receipt
+      }
+    });
 
   } catch (error) {
-      console.error('❌ Error adding expense:', error);
-      res.status(500).json({ 
-          message: "Error adding expense",
-          error: error.message 
-      });
+    console.error('❌ Error adding expense:', error);
+    res.status(500).json({
+      message: 'Error adding expense',
+      error: error.message
+    });
   }
 };
 
@@ -3826,7 +3820,7 @@ const sendQrCodeByEmail = async (req, res) => {
   try {
     // Fetch order details to get customer email
     const orderResponse = await fetch(
-      `http://localhost:5000/api/allOrders`
+      `http://backend.bninewdelhi.com/api/allOrders`
     );
     const orders = await orderResponse.json();
 
@@ -4405,7 +4399,7 @@ const updateChapterSettings = async (req, res) => {
       // Add the logo URL to the response
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `http://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('Chapter updated successfully:', updatedChapter);
@@ -4584,7 +4578,7 @@ const addMemberCredit = async (req, res) => {
 
     let insertedRecords = [];
 
-    const response = await fetch("http://localhost:5000/api/getbankOrder");
+    const response = await fetch("http://backend.bninewdelhi.com/api/getbankOrder");
     const bankOrders = await response.json();
 
     
@@ -5237,7 +5231,7 @@ const getZone = async (req, res) => {
 
         // Add base URL to zone logo
         if (result.rows[0].zone_logo) {
-            result.rows[0].zone_logo = `http://localhost:5000/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
+            result.rows[0].zone_logo = `http://backend.bninewdelhi.com/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
         }
 
         res.json({
@@ -6511,7 +6505,7 @@ const updateOnboardingCall = async (req, res) => {
       const updatedVisitor = result.rows[0];
       
       // Add the full URL for the uploaded image
-      const imageUrl = `http://localhost:5000/api/uploads/onboardingCalls/${filename}`;
+      const imageUrl = `http://backend.bninewdelhi.com/api/uploads/onboardingCalls/${filename}`;
       
       console.log('✅ Onboarding call updated successfully:', {
           visitor_id: updatedVisitor.visitor_id,

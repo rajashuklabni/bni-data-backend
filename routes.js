@@ -167,6 +167,7 @@ const path = require("path");
 const multer = require("multer");
 const fs = require("fs");
 
+// Configure multer storage for member documents
 const memberDocsStorage = multer.diskStorage({
     destination: function (req, file, cb) {
         let uploadDir;
@@ -184,7 +185,6 @@ const memberDocsStorage = multer.diskStorage({
             case 'member_gst_cert':
                 uploadDir = './uploads/gstCertificates';
                 break;
-            
             case 'aadhar_card_img':
                 uploadDir = './uploads/aadharCards';
                 break;
@@ -214,6 +214,9 @@ const memberDocsStorage = multer.diskStorage({
 
 const uploadMemberDocs = multer({
     storage: memberDocsStorage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    },
     fileFilter: function (req, file, cb) {
         const allowedTypes = /jpeg|jpg|png|pdf/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -234,13 +237,11 @@ const uploadMemberDocs = multer({
     }
 });
 
-
 // Helper function for determining content type
 function getContentType(filePath) {
     const ext = path.extname(filePath).toLowerCase();
     return ext === '.pdf' ? 'application/pdf' : 'image/jpeg';
 }
-
 
 const con = new Client({
   host: process.env.DB_HOST,
@@ -559,19 +560,30 @@ router.post("/uploadLogo", (req, res) => {
   uploadLogo.single("logo")(req, res, async function (err) {
     if (err instanceof multer.MulterError) {
       console.log("Multer error uploading logo:", err);
-      return res.status(400).json({ message: err.message });
+      return res.status(400).json({ 
+        message: err.message,
+        code: err.code,
+        field: err.field
+      });
     } else if (err) {
       console.log("Error uploading logo:", err);
-      return res.status(400).json({ message: err.message });
+      return res.status(400).json({ 
+        message: err.message,
+        error: err
+      });
     }
 
     if (!req.file) {
       console.log("No file uploaded");
-      return res.status(400).json({ message: "No file uploaded" });
+      return res.status(400).json({ 
+        message: "No file uploaded",
+        receivedFiles: req.files,
+        receivedBody: req.body
+      });
     }
 
     try {
-      console.log("File uploaded successfully:", req.file.filename);
+      console.log("File uploaded successfully:", req.file);
 
       // First deactivate all existing logos
       await con.query(
@@ -592,10 +604,14 @@ router.post("/uploadLogo", (req, res) => {
       res.json({
         message: "Logo uploaded successfully",
         imageName: req.file.filename,
+        fileDetails: req.file
       });
     } catch (error) {
       console.error("Error saving logo to database:", error);
-      res.status(500).json({ message: "Error saving logo information" });
+      res.status(500).json({ 
+        message: "Error saving logo information",
+        error: error.message
+      });
     }
   });
 });

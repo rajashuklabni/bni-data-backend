@@ -509,12 +509,12 @@
         <script>
             // Fetch logo on page load
             document.addEventListener('DOMContentLoaded', function() {
-                fetch("https://backend.bninewdelhi.com/api/getDisplayLogo")
+                fetch("http://backend.bninewdelhi.com/api/getDisplayLogo")
                     .then(response => response.json())
                     .then(data => {
                         if (data.length > 0 && data[0].display_image_name) {
                             const displayImageName = data[0].display_image_name;
-                            const imagePath = `https://backend.bninewdelhi.com/uploads/dynamicLogo/${displayImageName}`;
+                            const imagePath = `http://backend.bninewdelhi.com/uploads/dynamicLogo/${displayImageName}`;
                             
                             // Update both logo images
                             document.getElementById("dynamic-logo").src = imagePath;
