@@ -9956,6 +9956,101 @@ const addChapterPayment = async (req, res) => {
   }
 };
 
+const updateVisitorDocs = async (req, res) => {
+  try {
+      console.log("\n📄 Updating Visitor Documents");
+      console.log("=====================================");
+      
+      const { visitor_id } = req.body;
+
+      console.log("📝 Request Data:", {
+          visitor_id,
+          files: req.files
+      });
+
+      // First check if visitor exists in member_application_form_new_member table
+      const visitorCheck = await con.query(
+          "SELECT * FROM member_application_form_new_member WHERE visitor_id = $1",
+          [visitor_id]
+      );
+
+      if (visitorCheck.rows.length === 0) {
+          console.log("❌ No visitor found with ID:", visitor_id);
+          return res.status(404).json({
+              success: false,
+              message: "Visitor not found in member application form"
+          });
+      }
+
+      // Initialize file paths
+      let aadharPath = null;
+      let panPath = null;
+      let gstPath = null;
+
+      // Handle file uploads
+      if (req.files) {
+          if (req.files.aadhar_card_img) {
+              aadharPath = req.files.aadhar_card_img[0].filename;
+              console.log("📄 Aadhar card uploaded:", aadharPath);
+          }
+          
+          if (req.files.pan_card_img) {
+              panPath = req.files.pan_card_img[0].filename;
+              console.log("📄 PAN card uploaded:", panPath);
+          }
+          
+          if (req.files.gst_certificate) {
+              gstPath = req.files.gst_certificate[0].filename;
+              console.log("📄 GST certificate uploaded:", gstPath);
+          }
+      }
+
+      // Update query - updating member_application_form_new_member table
+      const query = `
+          UPDATE member_application_form_new_member 
+          SET 
+              aadhar_card_img = COALESCE($1, aadhar_card_img),
+              pan_card_img = COALESCE($2, pan_card_img),
+              gst_certificate = COALESCE($3, gst_certificate)
+          WHERE visitor_id = $4
+          RETURNING *;
+      `;
+
+      const values = [
+          aadharPath,
+          panPath,
+          gstPath,
+          visitor_id
+      ];
+
+      console.log("�� Executing database update");
+      const result = await con.query(query, values);
+
+      if (result.rows.length === 0) {
+          console.log("❌ Failed to update visitor documents");
+          return res.status(500).json({
+              success: false,
+              message: "Failed to update visitor documents"
+          });
+      }
+
+      console.log("✅ Documents updated successfully");
+      res.status(200).json({
+          success: true,
+          message: "Documents uploaded successfully",
+          data: result.rows[0]
+      });
+
+  } catch (error) {
+      console.error("❌ Error updating documents:", error);
+      res.status(500).json({
+          success: false,
+          message: "Error updating documents",
+          error: error.message
+      });
+  }
+};
+
 
 module.exports = {
   addInvoiceManually,
@@ -10115,5 +10210,6 @@ module.exports = {
   sendAllPaymentLinksEmail,
   addNewMemberPaymentManually,
   allOtherPayment,
-  addChapterPayment
+  addChapterPayment,
+  updateVisitorDocs
 };

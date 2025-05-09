@@ -160,7 +160,8 @@ const {
  sendAllPaymentLinksEmail,
  addNewMemberPaymentManually,
  allOtherPayment,
-addChapterPayment
+addChapterPayment,
+updateVisitorDocs
 } = require("./controllers");
 
 const path = require("path");
@@ -1108,6 +1109,16 @@ router.post('/send-all-payment-links', sendAllPaymentLinksEmail);
 router.post("/addNewMemberPaymentManually", addNewMemberPaymentManually);
 router.get("/allOtherPayment", allOtherPayment);
 router.post("/addChapterPayment", addChapterPayment);
+
+// Add this with your other routes in routes.js
+router.put("/updateVisitorDocs", 
+    uploadMemberDocs.fields([
+        { name: 'aadhar_card_img', maxCount: 1 },
+        { name: 'pan_card_img', maxCount: 1 },
+        { name: 'gst_certificate', maxCount: 1 }
+    ]), 
+    updateVisitorDocs
+);
 
 
 module.exports = router;
