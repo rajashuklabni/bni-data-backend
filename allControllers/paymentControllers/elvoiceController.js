@@ -384,7 +384,7 @@ async function generateIRN(req, res) {
         "TranDtls": {
           "TaxSch": "GST",
           "SupTyp": "B2B",
-          "RegRev": "Y",
+          "RegRev": "N",
           "EcmGstin": null,
           "IgstOnIntra": "N"
         },
