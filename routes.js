@@ -161,7 +161,12 @@ const {
  addNewMemberPaymentManually,
  allOtherPayment,
 addChapterPayment,
-updateVisitorDocs
+updateVisitorDocs,
+updateExpenseType,
+deleteExpenseType,
+getVendor,
+updateVendor,
+deleteVendor
 } = require("./controllers");
 
 const path = require("path");
@@ -1109,6 +1114,16 @@ router.post('/send-all-payment-links', sendAllPaymentLinksEmail);
 router.post("/addNewMemberPaymentManually", addNewMemberPaymentManually);
 router.get("/allOtherPayment", allOtherPayment);
 router.post("/addChapterPayment", addChapterPayment);
+
+// Update expense type route
+router.put('/updateExpenseType', updateExpenseType);
+
+// Delete expense type route
+router.delete('/deleteExpenseType', deleteExpenseType);
+
+router.get("/getVendor/:vendor_id", getVendor);
+router.put("/updateVendor/:vendor_id", updateVendor);
+router.delete("/deleteVendor", deleteVendor);
 
 // Add this with your other routes in routes.js
 router.put("/updateVisitorDocs", 

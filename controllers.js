@@ -9847,8 +9847,7 @@ const addChapterPayment = async (req, res) => {
       cgst,
       sgst,
       igst,
-      total_amount,
-      is_igst
+      total_amount
     } = req.body;
 
     // Validate required fields
@@ -9860,8 +9859,7 @@ const addChapterPayment = async (req, res) => {
       });
     }
 
-
-    // 3. Get region_id for the chapter
+    // 2. Get region_id for the chapter (optional now, but keeping in case needed later)
     const chapterRes = await con.query('SELECT region_id FROM chapter WHERE chapter_id = $1', [chapter_id]);
     if (!chapterRes.rows.length) {
       return res.status(400).json({
@@ -9869,52 +9867,12 @@ const addChapterPayment = async (req, res) => {
         message: 'Invalid chapter ID'
       });
     }
-    const region_id = chapterRes.rows[0].region_id;
-
-    // 4. Generate IDs
-    const order_id = `OP${Date.now()}`;
-    const cf_payment_id = order_id;
 
     // Start transaction
     await con.query('BEGIN');
 
     try {
-      // 5. Insert into orders table
-      const orderQuery = `
-        INSERT INTO orders (
-          order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id, visitor_id, visitor_name, visitor_email, visitor_mobilenumber, visitor_address, visitor_company, visitor_gstin, visitor_business, visitor_company_address, accolade_id, created_at, updated_at
-        ) VALUES (
-          $1, $2, 'INR', 1, null, $3, $4, null, null, 'ACTIVE', null, 0, 0, $5, null, null, null, null, null, null, null, 'other-payment', null, null, null, null, null, null, null, null, null, null, null, null, null, $6, $6
-        )
-      `;
-      await con.query(orderQuery, [
-        order_id,
-        total_amount,
-        chapter_id,
-        region_id,
-        is_gst === 'true' || is_gst === true ? gst_amount : 0,
-        payment_date
-      ]);
-
-      // 6. Insert into transactions table
-      const transactionQuery = `
-        INSERT INTO transactions (
-          cf_payment_id, order_id, payment_gateway_id, payment_amount, payment_currency, payment_status, payment_message, payment_time, payment_completion_time, bank_reference, auth_id, payment_method, error_details, gateway_order_id, gateway_payment_id, payment_group
-        ) VALUES (
-          $1, $2, null, $3, 'INR', 'SUCCESS', 'other-payment', $4, $4, null, 'other-payment', $5, '{}', null, null, 'other-payment'
-        )
-      `;
-      const paymentMethod = {};
-      paymentMethod[payment_mode] = { payment_note: 'other-payment' };
-      await con.query(transactionQuery, [
-        cf_payment_id,
-        order_id,
-        total_amount,
-        new Date(),
-        JSON.stringify(paymentMethod)
-      ]);
-
-      // 7. Insert into other_payment table
+      // Insert into other_payment table
       const otherPaymentQuery = `
         INSERT INTO other_payment (
           payment_description, is_gst, gst_percentage, gst_amount, cgst, sgst, igst, total_amount, added_by, date, chapter_id, mode_of_payment
@@ -9947,14 +9905,15 @@ const addChapterPayment = async (req, res) => {
     }
   } catch (err) {
     console.error('Error in addChapterPayment:', err);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error', 
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
       error: err.message,
-      receivedData: req.body 
+      receivedData: req.body
     });
   }
 };
+
 
 const updateVisitorDocs = async (req, res) => {
   try {
@@ -10048,6 +10007,269 @@ const updateVisitorDocs = async (req, res) => {
           message: "Error updating documents",
           error: error.message
       });
+  }
+};
+
+const getVendor = async (req, res) => {
+  try {
+    const { vendor_id } = req.params;
+    
+    if (!vendor_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Vendor ID is required"
+      });
+    }
+
+    const result = await con.query(
+      `SELECT * FROM vendors WHERE vendor_id = $1`,
+      [vendor_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Vendor not found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Error fetching vendor:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+const updateVendor = async (req, res) => {
+  try {
+    const { vendor_id } = req.params;
+    const {
+      vendor_name,
+      vendor_company_name,
+      vendor_company_address,
+      vendor_company_gst,
+      vendor_account,
+      vendor_bank_name,
+      vendor_ifsc_code,
+      vendor_account_type,
+      vendor_status,
+      phone_number,
+      email_id,
+      chapter_id
+    } = req.body;
+
+    // Validate required fields
+    if (!vendor_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Vendor ID is required"
+      });
+    }
+
+    // Check if vendor exists
+    const checkVendor = await con.query(
+      `SELECT * FROM vendors WHERE vendor_id = $1`,
+      [vendor_id]
+    );
+
+    if (checkVendor.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found"
+      });
+    }
+
+    // Update vendor details
+    const result = await con.query(
+      `UPDATE vendors 
+       SET 
+        vendor_name = $1,
+        vendor_company_name = $2,
+        vendor_company_address = $3,
+        vendor_company_gst = $4,
+        vendor_account = $5,
+        vendor_bank_name = $6,
+        vendor_ifsc_code = $7,
+        vendor_account_type = $8,
+        vendor_status = $9,
+        phone_number = $10,
+        email_id = $11,
+        chapter_id = $12
+       WHERE vendor_id = $13
+       RETURNING *`,
+      [
+        vendor_name,
+        vendor_company_name,
+        vendor_company_address,
+        vendor_company_gst,
+        vendor_account,
+        vendor_bank_name,
+        vendor_ifsc_code,
+        vendor_account_type,
+        vendor_status,
+        phone_number,
+        email_id,
+        chapter_id,
+        vendor_id
+      ]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Vendor updated successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Error updating vendor:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+const deleteVendor = async (req, res) => {
+  try {
+    const { vendor_id } = req.body;
+    
+    if (!vendor_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Vendor ID is required"
+      });
+    }
+
+    // Check if vendor exists
+    const checkVendor = await con.query(
+      `SELECT * FROM vendors WHERE vendor_id = $1`,
+      [vendor_id]
+    );
+
+    if (checkVendor.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found"
+      });
+    }
+
+    // Delete the vendor
+    await con.query(
+      `DELETE FROM vendors WHERE vendor_id = $1`,
+      [vendor_id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Vendor deleted successfully"
+    });
+
+  } catch (error) {
+    console.error("Error deleting vendor:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+
+const updateExpenseType = async (req, res) => {
+  try {
+    const { expense_id, expense_name, expense_status } = req.body;
+
+    // Validate required fields
+    if (!expense_id || !expense_name || !expense_status) {
+      return res.status(400).json({
+        success: false,
+        message: "Expense ID, name and status are required"
+      });
+    }
+
+    // Validate expense status
+    if (!['active', 'inactive'].includes(expense_status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid expense status. Must be 'active' or 'inactive'"
+      });
+    }
+
+    // Update expense type in database
+    const result = await con.query(
+      `UPDATE expense_type 
+       SET expense_name = $1, expense_status = $2 
+       WHERE expense_id = $3 AND delete_status = 0
+       RETURNING *`,
+      [expense_name, expense_status, expense_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Expense type not found or already deleted"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Expense type updated successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Error updating expense type:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while updating expense type"
+    });
+  }
+};
+
+const deleteExpenseType = async (req, res) => {
+  try {
+    const { expense_id } = req.body;
+
+    if (!expense_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Expense ID is required"
+      });
+    }
+
+    // Soft delete by updating delete_status
+    const result = await con.query(
+      `UPDATE expense_type 
+       SET delete_status = 1 
+       WHERE expense_id = $1 AND delete_status = 0
+       RETURNING *`,
+      [expense_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Expense type not found or already deleted"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Expense type deleted successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Error deleting expense type:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while deleting expense type"
+    });
   }
 };
 
@@ -10211,5 +10433,10 @@ module.exports = {
   addNewMemberPaymentManually,
   allOtherPayment,
   addChapterPayment,
-  updateVisitorDocs
+  updateVisitorDocs,
+  updateExpenseType,
+  deleteExpenseType,
+  getVendor,
+  updateVendor,
+  deleteVendor
 };
