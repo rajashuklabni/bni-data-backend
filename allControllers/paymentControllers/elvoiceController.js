@@ -242,7 +242,7 @@ async function generateIRN(req, res) {
       console.log("Fetching chapter with ID:", chapter_id);
       
       try {
-        const chapterResponse = await axios.get(`https://backend.bninewdelhi.com/api/chapters`);
+        const chapterResponse = await axios.get(`http://localhost:5000/api/chapters`);
         const chapters = chapterResponse.data;
         console.log("Chapters fetched:", chapters.length);
         
@@ -314,7 +314,7 @@ async function generateIRN(req, res) {
     const { authtoken, sek } = result.rows[0];  // Fetch the most recent token
     const member_id = req.body.orderId.customer_id;
     console.log("member id", member_id);
-    const memberResponse = await axios.get(`https://backend.bninewdelhi.com/api/getMember/${member_id}`);
+    const memberResponse = await axios.get(`http://localhost:5000/api/getMember/${member_id}`);
     const memberData = memberResponse.data;
     const gstin = memberData.member_gst_number;
 
@@ -697,6 +697,7 @@ async function sendEInvoiceEmail(email, orderId, amount, irn, pdfPath) {
 }
 
 // Function to process email sending in the background
+// Function to process email sending in the background
 async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, companyName, req) {
   try {
     // Read the HTML template
@@ -737,7 +738,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     // Get chapter details
     let chapterName = 'Unknown Chapter';
     try {
-      const chapterResponse = await axios.get(`https://backend.bninewdelhi.com/api/chapters`);
+      const chapterResponse = await axios.get(`http://localhost:5000/api/chapters`);
       const chapters = chapterResponse.data;
       const chapter = chapters.find(ch => ch.chapter_id === orderData.chapter_id);
       if (chapter) {
@@ -811,6 +812,8 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
       .replace('class="ack_no">', `class="ack_no">${irnData?.ack_no || ''}`)
       .replace('class="ack_date">', `class="ack_date">${irnData?.ack_dt ? new Date(irnData.ack_dt).toLocaleDateString('en-GB') : currentDate}`)
       .replace('class="invoice_date">', `class="invoice_date">${currentDate}`)
+      .replace('class="payment_time">', `class="payment_time">${irnData?.ack_dt ? new Date(irnData.ack_dt).toLocaleDateString('en-GB') : currentDate}`)
+      .replace('class="chapter_name">', `class="chapter_name">${chapterName}`)
       .replace('class="doc_number">', `class="doc_number">${docNo}`)
       .replace('class="payment_mode">', `class="payment_mode">${paymentMethod}`)
       .replace('class="bill_to_name"><strong>', `class="bill_to_name"><strong>${orderData.full_name}`)
@@ -950,6 +953,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     throw error;
   }
 }
+
 
 // ******************************* cancel irn *************************************
 

@@ -133,10 +133,10 @@ const getMember = async (req, res) => {
           ...member,
           // Add image URLs if images exist
           member_photo_url: member.member_photo 
-              ? `https://backend.bninewdelhi.com/api/uploads/memberLogos/${member.member_photo}`
+              ? `http://localhost:5000/api/uploads/memberLogos/${member.member_photo}`
               : null,
           member_company_logo_url: member.member_company_logo 
-              ? `https://backend.bninewdelhi.com/api/uploads/memberCompanyLogos/${member.member_company_logo}`
+              ? `http://localhost:5000/api/uploads/memberCompanyLogos/${member.member_company_logo}`
               : null,
           // Parse arrays that might be stored as strings
           accolades_id: Array.isArray(member.accolades_id)
@@ -183,7 +183,7 @@ const getChapter = async (req, res) => {
         // Add image URL to response
         const chapterData = result.rows[0];
         if (chapterData.chapter_logo) {
-            chapterData.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+            chapterData.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
             console.log('🖼️ Added logo URL:', chapterData.chapter_logo_url);
         }
 
@@ -242,7 +242,7 @@ const getRegion = async (req, res) => {
         // Transform the logo data
         let logoUrl = null;
         if (region.region_logo && region.region_logo !== '{}' && region.region_logo !== 'null') {
-            logoUrl = `https://backend.bninewdelhi.com/api/uploads/regionLogos/${region.region_logo}`;
+            logoUrl = `http://localhost:5000/api/uploads/regionLogos/${region.region_logo}`;
             console.log('🖼️ Constructed logo URL:', logoUrl);
         }
 
@@ -454,7 +454,7 @@ const addRegion = async (req, res) => {
       message: "Region added successfully!", 
       data: {
         ...result.rows[0],
-        region_logo_url: region_logo ? `https://backend.bninewdelhi.com/uploads/regionLogos/${region_logo}` : null
+        region_logo_url: region_logo ? `http://localhost:5000/uploads/regionLogos/${region_logo}` : null
       }
     });
   } catch (error) {
@@ -602,7 +602,7 @@ const addChapter = async (req, res) => {
       // Rest of your code remains the same...
       const chapterData = result.rows[0];
       if (chapterData.chapter_logo) {
-          chapterData.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+          chapterData.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Creation Success:');
@@ -745,13 +745,13 @@ const addMember = async (req, res) => {
     const chapterId = parseInt(req.body.chapter_id);
     const dateOfPublishing = new Date(req.body.date_of_publishing);
     
-    const kittyBillsResponse = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
+    const kittyBillsResponse = await axios.get('http://localhost:5000/api/getAllKittyPayments');
     const allKittyBills = kittyBillsResponse.data;
     
     const chapterKittyBills = allKittyBills.filter(bill => bill.chapter_id === chapterId && bill.delete_status === 0);
     
     // 2. Fetch chapter meeting day
-    const chaptersResponse = await axios.get('https://backend.bninewdelhi.com/api/chapters');
+    const chaptersResponse = await axios.get('http://localhost:5000/api/chapters');
     const chapterInfo = chaptersResponse.data.find(ch => ch.chapter_id === chapterId);
     
     if (!chapterInfo) {
@@ -1404,7 +1404,7 @@ const updateChapter = async (req, res) => {
 
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Update Success:');
@@ -2773,106 +2773,88 @@ const addKittyPayment = async (req, res) => {
           WHERE chapter_id = $2 AND writeoff_status = FALSE;
       `;
 
-      
-
     await con.query(updateMemberQuery, [total_bill_amount, chapter_id]);
     console.log(updateMemberQuery);
 
-        // Fetch updated members to email them
-        const fetchMembersQuery = `
-        SELECT member_id, member_first_name, member_email_address, meeting_payable_amount 
-        FROM member 
-        WHERE chapter_id = $1 AND writeoff_status = FALSE AND member_email_address IS NOT NULL
-      `;
-      const membersResult = await con.query(fetchMembersQuery, [chapter_id]);
-      const membersToEmail = membersResult.rows;
-      // Fetch chapters to get chapter_name from chapter_id
-const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
-const chapterData = await chapterResponse.json();
-const chapter = chapterData.find(c => c.chapter_id === Number(chapter_id));
-const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; // fallback if not found
+    // Fetch updated members to email them
+    const fetchMembersQuery = `
+      SELECT member_id, member_first_name, member_email_address, meeting_payable_amount 
+      FROM member 
+      WHERE chapter_id = $1 AND writeoff_status = FALSE AND member_email_address IS NOT NULL
+    `;
+    const membersResult = await con.query(fetchMembersQuery, [chapter_id]);
+    const membersToEmail = membersResult.rows;
 
-  
-      for (const member of membersToEmail) {
-        const mailOptions = {
-          from: '"BNI New Delhi" <info@bninewdelhi.in>',
-          to: member.member_email_address,
-          subject: "New Bill Raised - Payment Reminder",
-          html: `
-            <p>Dear ${member.member_first_name},</p>
-            <p>A new bill has been raised under your chapter <b>${chapterName}</b>.</p>
-            <p><strong>Bill Type:</strong> ${bill_type}</p>
-            <p><strong>Description:</strong> ${description}</p>
-            <p><strong>Total Amount:</strong> ₹${total_bill_amount}</p>
-            <p><strong>Due Date:</strong> ${due_date}</p>
-            <p>We request you to pay the bill amount before due date, as penalty fee of <b>₹${penalty_amount}</b> will be applied.</b>.</p>
-            <br/>
-            <p>Thank you,<br/><b>BNI NEW Delhi</b></p>
-            <a href="https://bninewdelhi.com/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1" style="text-decoration: none; color: white; background-color: red; padding: 10px 20px; border-radius: 5px;"><button>Pay Now</button></a>
+    // Fetch chapters to get chapter_name and region_id from chapter_id
+    const chapterResponse = await fetch('http://localhost:5000/api/chapters');
+    const chapterData = await chapterResponse.json();
+    const chapter = chapterData.find(c => c.chapter_id === Number(chapter_id));
+    const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; // fallback if not found
+    const region_id = chapter ? chapter.region_id : ''; // --- GET REGION_ID ---
 
-            
-          `,
-        };
-  
-        try {
-          await transporter.sendMail(mailOptions);
-          console.log(`Email sent to ${member.member_email_address}`);
-        } catch (mailErr) {
-          console.error(`Error sending email to ${member.member_email_address}:`, mailErr);
-        }
+    for (const member of membersToEmail) {
+      // --- DYNAMIC PAY NOW URL LOGIC ---
+      // Use region_id, chapter_id, and member_id in the URL
+      const payNowUrl = `http://localhost:5173/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1?region_id=${region_id}&chapter_id=${chapter_id}&member_id=${member.member_id}`;
+
+      const mailOptions = {
+        from: '"BNI New Delhi" <info@bninewdelhi.in>',
+        to: member.member_email_address,
+        subject: "New Bill Raised - Payment Reminder",
+        html: `
+          <p>Dear ${member.member_first_name},</p>
+          <p>A new bill has been raised under your chapter <b>${chapterName}</b>.</p>
+          <p><strong>Bill Type:</strong> ${bill_type}</p>
+          <p><strong>Description:</strong> ${description}</p>
+          <p><strong>Total Amount:</strong> ₹${total_bill_amount}</p>
+          <p><strong>Due Date:</strong> ${due_date}</p>
+          <p>We request you to pay the bill amount before due date, as penalty fee of <b>₹${penalty_amount}</b> will be applied.</b>.</p>
+          <br/>
+          <p>Thank you,<br/><b>BNI NEW Delhi</b></p>
+          <a href="${payNowUrl}" style="text-decoration: none; color: white; background-color: red; padding: 10px 20px; border-radius: 5px;"><button>Pay Now</button></a>
+        `,
+      };
+
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Email sent to ${member.member_email_address}`);
+      } catch (mailErr) {
+        console.error(`Error sending email to ${member.member_email_address}:`, mailErr);
       }
-  
-    
+    }
 
-    const response = await fetch('https://backend.bninewdelhi.com/api/getbankOrder');
+    const response = await fetch('http://localhost:5000/api/getbankOrder');
     const bankOrders = await response.json();
 
     // Filter the bank orders based on chapter_id
-    // const filteredBankOrders = bankOrders.filter(order => order.chapter_id === chapter_id);
-    console.log("bankOrders",bankOrders);
-    console.log("chapter_id",chapter_id);
     const filteredBankOrders = bankOrders.filter(order => {
-      console.log("Order Chapter ID:", order.chapter_id);
-      console.log("Chapter ID:", chapter_id);
       return order.chapter_id === Number(chapter_id);
     });
-    // const fiterdata = bankOrders.filter(order => order.chapter_id === chapter_id);
     console.log('Filtered Bank Orders:', filteredBankOrders);
 
     if (filteredBankOrders.length > 0) {
-      // const totalAmountToPay = filteredBankOrders.reduce((acc, order) => acc + order.amount_to_pay, 0);
-      
-    
       for (const order of filteredBankOrders) {
         let currentAmountToPay = order.amount_to_pay;
         let noOfLatePayment = order.no_of_late_payment;
-        
+
         if (currentAmountToPay > 0) {
-          // Code to handle positive amount_to_pay
-          console.log(`Processing payment for order ID: ${order.id} with amount: ${currentAmountToPay}`);
           let currentDate = new Date();
           let dueDate = order.kitty_due_date ? new Date(order.kitty_due_date) : null;
           if (dueDate === null) {
-            // Code to handle the case where dueDate is null
             console.log(`Order ID: ${order.id} has due date === null.`);
           }
           else if (currentDate > dueDate) {
-            // Code to handle the case where the current date is greater than the due date
             currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(order.kitty_penalty);
             noOfLatePayment = parseFloat(noOfLatePayment) + 1;
             console.log(`Order ID: ${order.id} is overdue. Processing overdue actions. added penalty ${order.kitty_penalty} and no of late payment ${noOfLatePayment}`);
           } else {
-            // Code to handle the case where the current date is less than or equal to the due date
             console.log(`Order ID: ${order.id} is not overdue. No action needed to add penalty.`);
           }
           currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(total_bill_amount);
         } else {
-          // Code to handle zero or negative amount_to_pay
           console.log(`for order ID: ${order.id}. Amount to pay is ${order.amount_to_pay}`);
           currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(total_bill_amount);
         }
-        
-        // const currentPenalty = parseFloat(penalty_amount);
 
         const updateQuery = `
           UPDATE bankorder 
@@ -2883,7 +2865,7 @@ const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; /
             kitty_penalty = $4 
           WHERE member_id = $5
         `;
-        
+
         const values = [
           currentAmountToPay, 
           due_date, 
@@ -2891,7 +2873,7 @@ const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; /
           penalty_amount, 
           order.member_id
         ];
-        
+
         try {
           await con.query(updateQuery, values);
           console.log(`Updated bank order for member ID: ${order.member_id}`);
@@ -2899,8 +2881,6 @@ const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; /
           console.error(`Error updating bank order for member ID: ${order.member_id}`, dbError);
         }
       }
-    
-    
     } else {
       console.log(`No member found for chapter in bank orders ${chapter_id}.`);
     }
@@ -2911,6 +2891,7 @@ const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; /
     res.status(500).json({ message: "Internal server error." });
   }
 };
+
 
 // Fetch all active members
 const getKittyPayments = async (req, res) => {
@@ -3820,7 +3801,7 @@ const sendQrCodeByEmail = async (req, res) => {
   try {
     // Fetch order details to get customer email
     const orderResponse = await fetch(
-      `https://backend.bninewdelhi.com/api/allOrders`
+      `http://localhost:5000/api/allOrders`
     );
     const orders = await orderResponse.json();
 
@@ -4399,7 +4380,7 @@ const updateChapterSettings = async (req, res) => {
       // Add the logo URL to the response
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('Chapter updated successfully:', updatedChapter);
@@ -4578,7 +4559,7 @@ const addMemberCredit = async (req, res) => {
 
     let insertedRecords = [];
 
-    const response = await fetch("https://backend.bninewdelhi.com/api/getbankOrder");
+    const response = await fetch("http://localhost:5000/api/getbankOrder");
     const bankOrders = await response.json();
 
     
@@ -5231,7 +5212,7 @@ const getZone = async (req, res) => {
 
         // Add base URL to zone logo
         if (result.rows[0].zone_logo) {
-            result.rows[0].zone_logo = `https://backend.bninewdelhi.com/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
+            result.rows[0].zone_logo = `http://localhost:5000/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
         }
 
         res.json({
@@ -6505,7 +6486,7 @@ const updateOnboardingCall = async (req, res) => {
       const updatedVisitor = result.rows[0];
       
       // Add the full URL for the uploaded image
-      const imageUrl = `https://backend.bninewdelhi.com/api/uploads/onboardingCalls/${filename}`;
+      const imageUrl = `http://localhost:5000/api/uploads/onboardingCalls/${filename}`;
       
       console.log('✅ Onboarding call updated successfully:', {
           visitor_id: updatedVisitor.visitor_id,
@@ -7666,12 +7647,13 @@ const sendTrainingMails = async (req, res) => {
           training_id
       });
 
-      // Updated query to use correct column name: member_email_address
+      // Updated query to use correct column name: member_email_address and include chapter_id and region_id
       const memberQuery = `
-          SELECT member_email_address, member_first_name, member_last_name 
-          FROM member 
-          WHERE member_id = ANY($1::int[])
-      `;
+      SELECT m.member_id, m.member_email_address, m.member_first_name, m.member_last_name, m.chapter_id, c.region_id
+      FROM member m
+      LEFT JOIN chapter c ON m.chapter_id = c.chapter_id
+      WHERE m.member_id = ANY($1::int[])
+  `;
       const memberResult = await con.query(memberQuery, [member_ids]);
       console.log('👥 Found members:', memberResult.rows);
 
@@ -7703,6 +7685,11 @@ const sendTrainingMails = async (req, res) => {
       const emailPromises = memberResult.rows.map(async (member) => {
           console.log(`📤 Preparing email for ${member.member_first_name} ${member.member_last_name}`);
 
+          // Generate dynamic payment link with all required parameters
+          const constantPath = "https://bninewdelhi.com/training-payments/3/bdbe4592-738e-42b1-ad02-beea957a3f9dhttp/1";
+          const paymentLink = `${constantPath}?region_id=${member.region_id}&chapter_id=${member.chapter_id}&member_id=${member.member_id}&training_id=${training_id}`;
+          console.log('🔗 Generated payment link:', paymentLink);
+
           const mailOptions = {
               from: "info@bninewdelhi.in",
               to: `${member.member_first_name} ${member.member_last_name} <${member.member_email_address}>`,
@@ -7726,7 +7713,7 @@ const sendTrainingMails = async (req, res) => {
 
                       <!-- Payment Button -->
             <div style="text-align: center; margin-top: 30px; margin-bottom: 20px;">
-                <a href="https://bninewdelhi.com/training-payments/3/bdbe4592-738e-42b1-ad02-beea957a3f9d/1" 
+                <a href="${paymentLink}" 
                    style="
                        background-color: red;
                        color: white;
@@ -10274,6 +10261,150 @@ const deleteExpenseType = async (req, res) => {
 };
 
 
+const addVisitor = async (req, res) => {
+  try {
+    const {
+      member_name, // invited_by_name from frontend
+      visitor_name,
+      visitor_email,
+      visitor_phone,
+      visitor_company_name,
+      visitor_address,
+      visitor_gst,
+      visitor_business,
+      visitor_category,
+      visited_date
+    } = req.body;
+
+    // Get member_id, chapter_id, and region_id from the request
+    const { member_id, chapter_id, region_id } = req.body;
+
+    // Prepare visitor data array for insertion
+    const visitorData = [
+      region_id,
+      chapter_id,
+      member_id, // invited_by
+      member_name, // invited_by_name
+      visitor_name,
+      visitor_email,
+      visitor_phone,
+      visitor_company_name || '',
+      visitor_address || '',
+      visitor_gst || '',
+      visitor_business || '',
+      visitor_category || '',
+      visited_date,
+      null, // total_amount
+      null, // sub_total
+      null, // tax
+      false, // delete_status
+      'active', // active_status
+      null, // order_id
+      false, // visitor_form
+      false, // eoi_form
+      false, // new_member_form
+      '', // visitor_company_address
+      false, // interview_sheet
+      false, // commitment_sheet
+      false, // inclusion_exclusion_sheet
+      false, // member_application_form
+      null, // onboarding_call
+      false, // vp_mail
+      false, // welcome_mail
+      null, // chapter_apply_kit
+      false, // visitor_entry_excel
+      false, // google_updation_sheet
+      false, // approve_induction_kit
+      false, // induction_status
+      null // verification
+    ];
+
+    // Insert visitor data into the database
+    const visitorResult = await con.query(
+      `INSERT INTO visitors (
+        region_id, chapter_id, invited_by, invited_by_name, 
+        visitor_name, visitor_email, visitor_phone, visitor_company_name,
+        visitor_address, visitor_gst, visitor_business, visitor_category,
+        visited_date, total_amount, sub_total, tax, delete_status,
+        active_status, order_id, visitor_form, eoi_form, new_member_form,
+        visitor_company_address, interview_sheet, commitment_sheet,
+        inclusion_exclusion_sheet, member_application_form, onboarding_call,
+        vp_mail, welcome_mail, chapter_apply_kit, visitor_entry_excel,
+        google_updation_sheet, approve_induction_kit, induction_status, verification
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28,
+        $29, $30, $31, $32, $33, $34, $35, $36
+      ) RETURNING *`,
+      visitorData
+    );
+
+    console.log("✅ Visitor Created:", visitorResult.rows[0]);
+
+    // Prepare email content
+    const paymentLink = `https://bninewdelhi.com/visitors-payment/5/726f7bf6-fa74-4883-b1bb-15acaf64dfb1/1?type=refer&region_id=${region_id}&chapter_id=${chapter_id}&visitor_id=${visitorResult.rows[0].visitor_id}`;
+    
+    const mailOptions = {
+      from: 'info@bninewdelhi.in',
+      to: visitor_email,
+      subject: 'Welcome to BNI - Visitor Registration Confirmation',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="https://bninewdelhi.com/assets/images/logo.png" alt="BNI Logo" style="max-width: 200px;">
+          </div>
+          
+          <h2 style="color: #2c3e50; margin-bottom: 20px;">Welcome to BNI!</h2>
+          
+          <p style="color: #34495e; line-height: 1.6;">Dear ${visitor_name},</p>
+          
+          <p style="color: #34495e; line-height: 1.6;">Thank you for registering as a visitor with BNI. Here are your registration details:</p>
+          
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>Name:</strong> ${visitor_name}</p>
+            <p style="margin: 5px 0;"><strong>Email:</strong> ${visitor_email}</p>
+            <p style="margin: 5px 0;"><strong>Phone:</strong> ${visitor_phone}</p>
+            <p style="margin: 5px 0;"><strong>Company:</strong> ${visitor_company_name}</p>
+            <p style="margin: 5px 0;"><strong>Category:</strong> ${visitor_category}</p>
+            <p style="margin: 5px 0;"><strong>Visit Date:</strong> ${visited_date}</p>
+          </div>
+          
+          <p style="color: #34495e; line-height: 1.6;">To complete your registration and proceed with payment, please click the button below:</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${paymentLink}" style="background-color: #3498db; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Pay Now</a>
+          </div>
+          
+          <p style="color: #7f8c8d; font-size: 14px; line-height: 1.6;">If you have any questions, please don't hesitate to contact us.</p>
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center; color: #7f8c8d; font-size: 12px;">
+            <p>This is an automated message, please do not reply to this email.</p>
+          </div>
+        </div>
+      `
+    };
+
+    // Send email
+    await transporter.sendMail(mailOptions);
+    console.log("✅ Welcome email sent to visitor:", visitor_email);
+
+    res.status(201).json({
+      success: true,
+      message: "Visitor created successfully",
+      data: visitorResult.rows[0]
+    });
+
+  } catch (error) {
+    console.error("❌ Error creating visitor:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error creating visitor",
+      error: error.message
+    });
+  }
+};
+
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -10438,5 +10569,6 @@ module.exports = {
   deleteExpenseType,
   getVendor,
   updateVendor,
-  deleteVendor
+  deleteVendor,
+  addVisitor
 };

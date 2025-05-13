@@ -49,6 +49,23 @@
   --bs-body-font-family: Poppins, sans-serif;
 }
 
+
+@media print {
+  body, html {
+    margin: 0 !important;
+    padding: 0 !important;
+    zoom: 0.85; /* Try 0.85, 0.8, or lower if needed */
+  }
+  .invoice-container, .table, table, tr, td, th {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  /* Hide buttons or elements not needed in PDF */
+  .d-print-none, .btn, #loader {
+    display: none !important;
+  }
+}
+
 /* =================================== */
 /*  Basic Style 
 /* =================================== */
@@ -629,7 +646,7 @@ hr {
 		<header>
 			<div class="row align-items-center gy-3">
 				<div class="col-sm-4 text-center text-sm-start">
-					<img src="https://backend.bninewdelhi.com/uploads/dynamicLogo/1746695986750-87659972.jpg" width="200px">
+					<img src="http://localhost:5000/uploads/dynamicLogo/1746695986750-87659972.jpg" width="200px">
 				</div>
 				<div class="col-sm-4 text-center text-sm-start">
 					<h2 style="font-family: Arial, Helvetica, sans-serif; font-weight: 500;">Tax Invoice</h2>
@@ -745,7 +762,8 @@ hr {
 				<div class="col-sm-4 text-center text-sm-start">
 					<span><b>Transaction ID :</b></span> <span class="transaction_id"></span> <br>
 					<span><b>Order ID :</b></span> <span class="order_id"></span> <br>
-					<span><b>Payment Time :</b></span> <span class="">16:30:27sss</span> <br>
+					<span><b>Payment date :</b></span> <span class="payment_time">16:30:27sss</span> <br>
+					<span><b>Chapter Name :</b></span> <span class="chapter_name"></span> <br>
 					<span><b>Buyer Email :</b></span> <span class="buyer_email"></span> <br>
 					<span><b>Buyer Phone :</b></span> <span class="buyer_phone"></span> <br>
 				</div>
@@ -772,12 +790,12 @@ hr {
             // QR Code handling
             document.addEventListener('DOMContentLoaded', function() {
                 // Logo fetching
-                fetch("https://backend.bninewdelhi.com/api/getDisplayLogo")
+                fetch("http://localhost:5000/api/getDisplayLogo")
                     .then(response => response.json())
                     .then(data => {
                         if (data.length > 0 && data[0].display_image_name) {
                             const displayImageName = data[0].display_image_name;
-                            const imagePath = `https://backend.bninewdelhi.com/uploads/dynamicLogo/${displayImageName}`;
+                            const imagePath = `http://localhost:5000/uploads/dynamicLogo/${displayImageName}`;
                             document.getElementById("dynamic-logo").src = imagePath;
                         }
                     })

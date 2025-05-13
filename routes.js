@@ -166,7 +166,8 @@ updateExpenseType,
 deleteExpenseType,
 getVendor,
 updateVendor,
-deleteVendor
+deleteVendor,
+addVisitor
 } = require("./controllers");
 
 const path = require("path");
@@ -1134,6 +1135,8 @@ router.put("/updateVisitorDocs",
     ]), 
     updateVisitorDocs
 );
+
+router.post("/addVisitor", addVisitor);
 
 
 module.exports = router;
