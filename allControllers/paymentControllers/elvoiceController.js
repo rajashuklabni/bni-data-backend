@@ -242,7 +242,7 @@ async function generateIRN(req, res) {
       console.log("Fetching chapter with ID:", chapter_id);
       
       try {
-        const chapterResponse = await axios.get(`http://localhost:5000/api/chapters`);
+        const chapterResponse = await axios.get(`https://backend.bninewdelhi.com/api/chapters`);
         const chapters = chapterResponse.data;
         console.log("Chapters fetched:", chapters.length);
         
@@ -314,7 +314,7 @@ async function generateIRN(req, res) {
     const { authtoken, sek } = result.rows[0];  // Fetch the most recent token
     const member_id = req.body.orderId.customer_id;
     console.log("member id", member_id);
-    const memberResponse = await axios.get(`http://localhost:5000/api/getMember/${member_id}`);
+    const memberResponse = await axios.get(`https://backend.bninewdelhi.com/api/getMember/${member_id}`);
     const memberData = memberResponse.data;
     const gstin = memberData.member_gst_number;
 
@@ -738,7 +738,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     // Get chapter details
     let chapterName = 'Unknown Chapter';
     try {
-      const chapterResponse = await axios.get(`http://localhost:5000/api/chapters`);
+      const chapterResponse = await axios.get(`https://backend.bninewdelhi.com/api/chapters`);
       const chapters = chapterResponse.data;
       const chapter = chapters.find(ch => ch.chapter_id === orderData.chapter_id);
       if (chapter) {

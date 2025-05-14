@@ -167,7 +167,9 @@ deleteExpenseType,
 getVendor,
 updateVendor,
 deleteVendor,
-addVisitor
+addVisitor,
+sendKittyReminder,
+sendKittyReminderToAll
 } = require("./controllers");
 
 const path = require("path");
@@ -1137,6 +1139,8 @@ router.put("/updateVisitorDocs",
 );
 
 router.post("/addVisitor", addVisitor);
+router.post("/sendKittyReminder", sendKittyReminder);
+router.post("/sendKittyReminderToAll", sendKittyReminderToAll);
 
 
 module.exports = router;
