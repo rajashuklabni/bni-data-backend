@@ -49,23 +49,6 @@
   --bs-body-font-family: Poppins, sans-serif;
 }
 
-
-@media print {
-  body, html {
-    margin: 0 !important;
-    padding: 0 !important;
-    zoom: 0.85; /* Try 0.85, 0.8, or lower if needed */
-  }
-  .invoice-container, .table, table, tr, td, th {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-  /* Hide buttons or elements not needed in PDF */
-  .d-print-none, .btn, #loader {
-    display: none !important;
-  }
-}
-
 /* =================================== */
 /*  Basic Style 
 /* =================================== */
@@ -656,12 +639,14 @@ hr {
 				</div>
 			</div>
 			<div class="row align-items-center gy-3">
-				<div class="col-sm-4 text-center text-sm-start">
-					<span><b>IRN :</b></span> <span class="irn_number"></span> <br>
-					<span><b>Ack No. :</b></span> <span class="ack_no"></span> <br>
-					<span><b>Ack Date :</b></span> <span class="ack_date"></span> <br>
-				</div>
-			</div>
+        <div class="col-sm-4 text-center text-sm-start">
+          <div class="irn_block">
+            <span><b>IRN :</b></span> <span class="irn_number"></span> <br>
+            <span><b>Ack No. :</b></span> <span class="ack_no"></span> <br>
+            <span><b>Ack Date :</b></span> <span class="ack_date"></span> <br>
+          </div>
+        </div>
+      </div>
 			<hr>
 		</header>
 
@@ -762,8 +747,7 @@ hr {
 				<div class="col-sm-4 text-center text-sm-start">
 					<span><b>Transaction ID :</b></span> <span class="transaction_id"></span> <br>
 					<span><b>Order ID :</b></span> <span class="order_id"></span> <br>
-					<span><b>Payment date :</b></span> <span class="payment_time">16:30:27sss</span> <br>
-					<span><b>Chapter Name :</b></span> <span class="chapter_name"></span> <br>
+					<span><b>Payment Time :</b></span> <span class="">16:30:27sss</span> <br>
 					<span><b>Buyer Email :</b></span> <span class="buyer_email"></span> <br>
 					<span><b>Buyer Phone :</b></span> <span class="buyer_phone"></span> <br>
 				</div>

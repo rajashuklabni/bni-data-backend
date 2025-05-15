@@ -322,6 +322,43 @@ async function generateIRN(req, res) {
       throw new Error("GST and address details not found.");
     }
 
+    // If GSTIN is 'N/A', skip IRN generation and send email without IRN/QR/AckNo
+    if (gstin === 'N/A') {
+      // Generate document number as usual (already done above)
+      // Insert a record into einvoice table with null IRN fields
+      const transaction_id = req.body.transactionId.transaction_id;
+      await db.query(
+        `INSERT INTO einvoice (order_id, transaction_id, member_id, ack_no, ack_dt, irn, qrcode)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [order_id, transaction_id, member_id, null, null, null, null]
+      );
+      // Send email without IRN/QR/AckNo
+      await processEmailSending(
+        req.body.orderId.customer_email,
+        req.body.orderId.order_id,
+        req.body.amount,
+        null, // irn
+        null, // qrCode
+        docNo,
+        req.body.orderId.company,
+        req,
+        true // noIrn flag
+      ).catch(err => {
+        console.error("Error in background email processing (no IRN):", err);
+      });
+      // Respond to frontend
+      return res.status(200).json({
+        message: "Document generated successfully (no IRN, GSTIN is N/A)",
+        data: {
+          ackNo: null,
+          ackDate: null,
+          irn: null,
+          qrCode: null,
+          documentNumber: docNo
+        }
+      });
+    }
+
     const stateCode = gstin.substring(0, 2);
 
     // Populate address fields from member data
@@ -657,8 +694,12 @@ async function sendEInvoiceEmail(email, orderId, amount, irn, pdfPath) {
     to: email,
     cc: [
       "scriptforprince@gmail.com",
-      "rajashukla@outlook.com",
-      "rajashuklabni@gmail.com"
+        "shini.sunil@adico.in",
+        "sunil.k@adico.in",
+        "singhi_bikash@yahoo.co.in",
+        "support@bninewdelhi.com",
+        "info@bninewdelhi.in",
+        "rajashuklabni@gmail.com"
     ],
     subject: `E-Invoice for Order #${orderId}`,
     html: `
@@ -697,8 +738,7 @@ async function sendEInvoiceEmail(email, orderId, amount, irn, pdfPath) {
 }
 
 // Function to process email sending in the background
-// Function to process email sending in the background
-async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, companyName, req) {
+async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, companyName, req, noIrn = false) {
   try {
     // Read the HTML template
     const templatePath = path.join(__dirname, '../../einvoice-handler/temp.html');
@@ -799,21 +839,22 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     console.log('Amount in Words:', amountInWords);
 
     // Generate QR code
-    const qrCodeDataUrl = await QRCode.toDataURL(qrCode, {
-      errorCorrectionLevel: 'H',
-      margin: 1,
-      width: 150
-    });
+    let qrCodeDataUrl = '';
+    if (!noIrn && qrCode) {
+      qrCodeDataUrl = await QRCode.toDataURL(qrCode, {
+        errorCorrectionLevel: 'H',
+        margin: 1,
+        width: 150
+      });
+    }
 
     // Create a copy of the template and replace placeholders
-    const updatedTemplate = htmlTemplate
+    let updatedTemplate = htmlTemplate
       .replace('class="qr_code" src=""', `class="qr_code" src="${qrCodeDataUrl}"`)
-      .replace('class="irn_number">', `class="irn_number">${irn}`)
+      .replace('class="irn_number">', `class="irn_number">${irn || ''}`)
       .replace('class="ack_no">', `class="ack_no">${irnData?.ack_no || ''}`)
       .replace('class="ack_date">', `class="ack_date">${irnData?.ack_dt ? new Date(irnData.ack_dt).toLocaleDateString('en-GB') : currentDate}`)
       .replace('class="invoice_date">', `class="invoice_date">${currentDate}`)
-      .replace('class="payment_time">', `class="payment_time">${irnData?.ack_dt ? new Date(irnData.ack_dt).toLocaleDateString('en-GB') : currentDate}`)
-      .replace('class="chapter_name">', `class="chapter_name">${chapterName}`)
       .replace('class="doc_number">', `class="doc_number">${docNo}`)
       .replace('class="payment_mode">', `class="payment_mode">${paymentMethod}`)
       .replace('class="bill_to_name"><strong>', `class="bill_to_name"><strong>${orderData.full_name}`)
@@ -830,7 +871,48 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
       .replace('class="buyer_email">', `class="buyer_email">${orderData.customer_email || email}`)
       .replace('class="buyer_phone">', `class="buyer_phone">${orderData.customer_phone}`);
 
+    // If noIrn is true, hide IRN, QR code, and Ack No sections using display:none
+    if (noIrn) {
+      // Hide QR code image
+      updatedTemplate = updatedTemplate.replace(/(<img[^>]*class=\"qr_code\"[^>]*)(>)/g, '$1 style="display:none;"$2');
+      // Hide IRN, Ack No, and Ack Date fields (span/divs with class irn_number, ack_no, ack_date)
+      updatedTemplate = updatedTemplate.replace(/(<[^>]*class=\"irn_number\"[^>]*)(>)/g, '$1 style="display:none;"$2');
+      updatedTemplate = updatedTemplate.replace(/(<[^>]*class=\"ack_no\"[^>]*)(>)/g, '$1 style="display:none;"$2');
+      updatedTemplate = updatedTemplate.replace(/(<[^>]*class=\"ack_date\"[^>]*)(>)/g, '$1 style="display:none;"$2');
+      updatedTemplate = updatedTemplate.replace(/(<div[^>]*class="[^"]*irn_block[^"]*"[^>]*)(>)/g, '$1 style="display:none;"$2');
+    }
+
     // Add CSS and JavaScript
+    let particularsText = req.body.universalLinkName || 'BNI Payment';
+    console.log('req.body.universalLinkName', req.body.universalLinkName);
+    if (req.body.universalLinkName === 'Meeting Payments' && req.body.orderId?.chapter_id && req.body.orderId?.kitty_bill_id) {
+      try {
+        // Fetch all kitty bills
+        const kittyRes = await axios.get('https://backend.bninewdelhi.com/api/getKittyPayments');
+        console.log('Fetched kitty bills:', kittyRes.data);
+        if (kittyRes.data && kittyRes.data.length > 0) {
+          // Force both to numbers and log for debugging
+          const chapterId = Number(req.body.orderId.chapter_id);
+          const kittyBillId = Number(req.body.orderId.kitty_bill_id);
+          console.log('Looking for chapter_id:', chapterId, 'kitty_bill_id:', kittyBillId);
+          const kitty = kittyRes.data.find(
+            k => Number(k.chapter_id) === chapterId && Number(k.kitty_bill_id) === kittyBillId
+          );
+          console.log('Matched kitty bill:', kitty);
+          if (kitty) {
+            particularsText = `<b>Meeting Payment</b><br><b>Bill Type:</b> ${kitty.bill_type || ''}<br><b>Month:</b> ${kitty.description || ''}<br><b>Total Weeks:</b> ${kitty.total_weeks || ''}`;
+          } else {
+            console.error('No matching kitty bill found!');
+            particularsText = 'Meeting Payment';
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching kitty bill details:', err.message);
+        particularsText = 'Meeting Payment';
+      }
+    }
+    // Escape for JS string literal
+    const safeParticularsText = particularsText.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
     const updatedTemplateWithStyles = updatedTemplate.replace('</head>', 
       `<style>
         ${isDelhiPincode ? '.igst-row { display: none; }' : '.cgst-row, .sgst-row { display: none; }'}
@@ -842,7 +924,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
       </style>
       <script>
         window.onload = function() {
-          document.getElementById('particulars').textContent = '${req.body.universalLinkName || 'BNI Payment'}';
+          document.getElementById('particulars').innerHTML = "${safeParticularsText}";
           document.getElementById('rate').textContent = '₹${baseAmount}';
           document.getElementById('amount').textContent = '₹${baseAmount}';
           document.getElementById('taxable_value').textContent = '₹${baseAmount}';
@@ -859,14 +941,13 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     const browser = await puppeteer.launch({
       headless: 'new',
       args: [
-        '--no-production',
-        '--disable-setuid-production',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-accelerated-2d-canvas',
         '--disable-gpu',
         '--disable-extensions'
-      ],
-      executablePath: '/usr/bin/chromium-browser' // Use the installed Chromium browser
+      ]
     });
     const page = await browser.newPage();
     
@@ -953,7 +1034,6 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     throw error;
   }
 }
-
 
 // ******************************* cancel irn *************************************
 
