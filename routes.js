@@ -169,7 +169,10 @@ updateVendor,
 deleteVendor,
 addVisitor,
 sendKittyReminder,
-sendKittyReminderToAll
+sendKittyReminderToAll,
+einvoiceData,
+einvoicePdf,
+tdsUpdateexpense
 } = require("./controllers");
 
 const path = require("path");
@@ -699,6 +702,9 @@ router.get("/expenseType", expenseType);
 router.get("/getAllVendors", getAllVendors);
 router.get("/getAllDocNumbers", getAllDocNumbers);
 router.post("/expenseType", addExpenseType);
+router.get("/einvoiceData", einvoiceData);
+router.get("/v/einvoice/pdf", einvoicePdf);
+router.put("/tdsUpdateexpense", tdsUpdateexpense);
 router.post("/addExpense", (req, res, next) => {
     console.log('📝 Incoming Request Body:', req.body);
     next();

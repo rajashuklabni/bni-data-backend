@@ -888,7 +888,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     if (req.body.universalLinkName === 'Meeting Payments' && req.body.orderId?.chapter_id && req.body.orderId?.kitty_bill_id) {
       try {
         // Fetch all kitty bills
-        const kittyRes = await axios.get('https://backend.bninewdelhi.com/api/getKittyPayments');
+        const kittyRes = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
         console.log('Fetched kitty bills:', kittyRes.data);
         if (kittyRes.data && kittyRes.data.length > 0) {
           // Force both to numbers and log for debugging

@@ -2949,6 +2949,33 @@ const getAllVendors = async (req, res) => {
   }
 };
 
+const einvoiceData = async (req, res) => {
+  try {
+    const query = "SELECT * FROM einvoice"; // Default query (non-deleted regions)
+    const result = await con.query(query); // Execute the query
+    res.json(result.rows); // Return filtered data
+  } catch (error) {
+    console.error("Error fetching einvoice data:", error);
+    res.status(500).send("Error fetching einvoice data");
+  }
+};
+
+const einvoicePdf = async (req, res) => {
+  const { invoiceData, einvoiceData } = req.query;
+  const url = `http://localhost:3000/v/einvoice?invoiceData=${encodeURIComponent(invoiceData)}&einvoiceData=${encodeURIComponent(einvoiceData)}`;
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto(url, { waitUntil: 'networkidle0' });
+  const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
+  await browser.close();
+  res.set({
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': 'attachment; filename=einvoice.pdf',
+  });
+  res.send(pdfBuffer);
+
+};
+
 const getAllDocNumbers = async (req, res) => {
   try {
     const query = "SELECT * FROM documentnumbers"; // Default query (non-deleted regions)
@@ -10653,6 +10680,88 @@ const sendKittyReminderToAll = async (req, res) => {
 };
 
 
+const tdsUpdateexpense = async (req, res) => {
+  try {
+    const { 
+      expense_id, 
+      tds_percentage, 
+      tds_amount, 
+      tds_process, 
+      ca_comment, 
+      final_amount,
+      tds_section_list,
+      tds_type 
+    } = req.body;
+
+    // Validate required fields
+    if (!expense_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Expense ID is required"
+      });
+    }
+
+    // Update the expense with TDS details
+    const updateQuery = `
+      UPDATE expenses 
+      SET 
+        tds_percentage = $1,
+        tds_amount = $2,
+        tds_process = $3,
+        ca_comment = $4,
+        final_amount = $5,
+        tds_section_list = $6,
+        tds_type = $7
+      WHERE expense_id = $8
+    `;
+
+    const values = [
+      tds_percentage,
+      tds_amount,
+      tds_process,
+      ca_comment,
+      final_amount,
+      tds_section_list,
+      tds_type,
+      expense_id
+    ];
+
+    // Execute the query using the client
+    const result = await con.query(updateQuery, values);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Expense not found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "TDS details updated successfully",
+      data: {
+        expense_id,
+        tds_percentage,
+        tds_amount,
+        tds_process,
+        ca_comment,
+        final_amount,
+        tds_section_list,
+        tds_type
+      }
+    });
+
+  } catch (error) {
+    console.error("Error updating TDS details:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
+
 
 module.exports = {
   addInvoiceManually,
@@ -10821,5 +10930,8 @@ module.exports = {
   deleteVendor,
   addVisitor,
   sendKittyReminder,
-  sendKittyReminderToAll
+  sendKittyReminderToAll,
+  einvoiceData,
+  einvoicePdf,
+  tdsUpdateexpense
 };
