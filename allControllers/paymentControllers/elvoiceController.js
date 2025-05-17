@@ -471,7 +471,7 @@ async function generateIRN(req, res) {
         ],
         "ValDtls": {
           "AssVal": basePrice,
-          "IgstVal":0,
+          "IgstVal":igstAmount,
           "CgstVal": cgstAmount,
           "SgstVal": sgstAmount,
           "TotInvVal": parseFloat(req.body.orderId.order_amount)
