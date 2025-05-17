@@ -997,11 +997,11 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
         "info@bninewdelhi.in",
         "rajashuklabni@gmail.com"
       ],
-      subject: `E-Invoice for ${req.body.universalLinkName || 'BNI Payment'} - #${req.body.transactionId?.cf_payment_id || 'N/A'}`,
+      subject: `Invoice for ${req.body.universalLinkName || 'BNI Payment'}(${chapterName}) - ${docNo}`,
       html: `
-        <h2>Your E-Invoice is Ready</h2>
+        <h2>Your Invoice is Ready</h2>
         <p>Dear <b>${memberName}</b>,</p>
-        <p>Your e-invoice for transaction id <b>${req.body.transactionId?.cf_payment_id || 'N/A'}</b>  has been generated successfully.</p>
+        <p>Your invoice for the following transaction has been generated successfully.</p>
         <p><strong>Invoice Details:</strong></p>
         <ul>
           <li><b>Chapter Name:</b> ${chapterName}</li>
@@ -1009,10 +1009,12 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
           <li><b>Order ID:</b> ${orderId}</li>
           <li><b>Amount:</b> ₹${orderAmount}</li>
           <li><b>IRN:</b> ${irn}</li>
+          <li><b>Invoice Date:</b> ${irnData?.ack_dt ? new Date(irnData.ack_dt).toLocaleDateString('en-GB') : currentDate}</li>
+          <li><b>Payment Method:</b> ${paymentMethod}</li>
         </ul>
-        <p>Please find the attached e-invoice PDF for your records.</p>
+        <p>Please find the attached invoice PDF for your records.</p>
         <p>Thank you for your business!</p>
-        <p>Best regards,<br>BNI N E W Delhi Team</p>
+        <p>Best Regards,<br>BNI N E W Delhi</p>
       `,
       attachments: [
         {
