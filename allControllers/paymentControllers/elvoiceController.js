@@ -328,10 +328,12 @@ async function generateIRN(req, res) {
       // Insert a record into einvoice table with null IRN fields
       const transaction_id = req.body.transactionId.transaction_id;
       await db.query(
-        `INSERT INTO einvoice (order_id, transaction_id, member_id, ack_no, ack_dt, irn, qrcode)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [order_id, transaction_id, member_id, null, null, null, null]
+        `INSERT INTO einvoice (
+           order_id, transaction_id, member_id, ack_no, ack_dt, irn, qrcode, invoice_dt
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [order_id, transaction_id, member_id, null, null, null, null, new Date()]
       );
+      
       // Send email without IRN/QR/AckNo
       await processEmailSending(
         req.body.orderId.customer_email,

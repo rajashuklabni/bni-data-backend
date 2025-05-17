@@ -3709,7 +3709,7 @@ const updateUserPassword = async (req, res) => {
 
     // Get the current password hash for the specific user
     const userResult = await con.query(
-      "SELECT password_hash FROM users WHERE email = $1 AND is_active = true",
+      "SELECT password_hash FROM users WHERE email = $1 AND is_active = 'true'",
       [email]
     );
 
@@ -3750,7 +3750,7 @@ const updateUserPassword = async (req, res) => {
     // Update the password for the specific user
     console.log("Updating password in database");
     await con.query(
-      "UPDATE users SET password_hash = $1 WHERE email = $2 AND is_active = true",
+      "UPDATE users SET password_hash = $1 WHERE email = $2 AND is_active = 'true'",
       [newPasswordHash, email]
     );
 
@@ -10504,49 +10504,87 @@ const sendKittyReminder = async (req, res) => {
     const payNowUrl = `https://bninewdelhi.com/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1?region_id=${member.region_id}&chapter_id=${member.chapter_id}&member_id=${member.member_id}`;
 
     const mailOptions = {
-      from: '"BNI New Delhi" <info@bninewdelhi.in>',
+      from: `"LT ${chapterName}" <info@bninewdelhi.in>`,
       to: member.member_email_address,
-      subject: "Payment Reminder - BNI New Delhi",
+      subject: "Payment Reminder - Meeting Fee",
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #333;">Payment Reminder</h2>
-          
-          <p>Dear ${member.member_first_name},</p>
-          
-          <p>This is a friendly reminder that you have a pending payment for your chapter <b>${chapterName}</b>.</p>
-          
-          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <p style="margin: 5px 0;"><strong>Pending Amount:</strong> ₹${bankOrder?.amount_to_pay || 0}</p>
-            <p style="margin: 5px 0;"><strong>Due Date:</strong> ${bankOrder?.kitty_due_date || 'Not specified'}</p>
-            ${bankOrder?.kitty_penalty ? `<p style="margin: 5px 0; color: #dc3545;"><strong>Penalty Amount:</strong> ₹${bankOrder.kitty_penalty}</p>` : ''}
-          </div>
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+  <!-- Header with Logo -->
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1 style="color: #1a237e; font-size: 28px; margin: 0; padding-bottom: 10px; border-bottom: 3px solid #1a237e; display: inline-block;">Payment Reminder- Meeting Fee</h1>
+  </div>
 
-          <p>Please make the payment at your earliest convenience to avoid any additional penalties.</p>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${payNowUrl}" 
-               style="background-color: #dc3545; 
-                      color: white; 
-                      padding: 12px 30px; 
-                      text-decoration: none; 
-                      border-radius: 5px; 
-                      font-weight: bold;
-                      display: inline-block;">
-              Pay Now
-            </a>
-          </div>
+  <!-- Greeting -->
+  <p style="color: #333; font-size: 18px; line-height: 1.6; margin-bottom: 20px;">
+    Dear <span style="color: #1a237e; font-weight: 600;">${member.member_first_name}</span>,
+  </p>
 
-          <p style="color: #666; font-size: 0.9em;">
-            If you have already made the payment, please ignore this reminder.
-          </p>
+  <!-- Main Message -->
+  <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+    This is a friendly reminder that your meeting fee for the chapter 
+    <span style="color: #1a237e; font-weight: 600; font-size: 18px;">${chapterName}</span> 
+    is pending.
+  </p>
 
-          <hr style="border: 1px solid #eee; margin: 20px 0;">
-          
-          <p style="color: #666; font-size: 0.9em;">
-            Thank you,<br>
-            <strong>BNI New Delhi</strong>
-          </p>
-        </div>
+  <!-- Payment Details Box -->
+  <div style="background: linear-gradient(145deg, #f8f9fa, #ffffff); padding: 25px; border-radius: 8px; margin: 25px 0; border: 1px solid #e0e0e0; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+    <h3 style="color: #1a237e; margin-top: 0; margin-bottom: 20px; font-size: 20px;">Payment Details</h3>
+    
+    <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
+      <span style="color: #666; font-weight: 500;">Pending Amount:</span>
+      <span style="color: #1a237e; font-weight: 600; font-size: 18px;">₹${bankOrder?.amount_to_pay || 0}</span>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
+      <span style="color: #666; font-weight: 500;">Due Date:</span>
+      <span style="color: #1a237e; font-weight: 600;">${bankOrder?.kitty_due_date || 'Not specified'}</span>
+    </div>
+
+    ${bankOrder?.kitty_penalty ? `
+    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+      <span style="color: #d32f2f; font-weight: 500;">Penalty Amount:</span>
+      <span style="color: #d32f2f; font-weight: 600; font-size: 18px;">₹${bankOrder.kitty_penalty}</span>
+    </div>
+    ` : ''}
+  </div>
+
+  <!-- Warning Message -->
+  <p style="color: #d32f2f; font-size: 15px; line-height: 1.6; margin: 25px 0; padding: 15px; background-color: #ffebee; border-radius: 5px; border-left: 4px solid #d32f2f;">
+    ⚠️ Please make the payment at your earliest convenience to avoid any additional penalties.
+  </p>
+
+  <!-- Pay Now Button -->
+   <div style="text-align: center; margin: 30px 0;">
+                <a href="${payNowUrl}" 
+                   style="background-color: #dc3545; 
+                          color: white; 
+                          padding: 12px 30px; 
+                          text-decoration: none; 
+                          border-radius: 5px; 
+                          font-weight: bold;
+                          display: inline-block;">
+                  Pay Now
+                </a>
+              </div>
+  <!-- Disclaimer -->
+  <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 25px 0; padding: 15px; background-color: #f5f5f5; border-radius: 5px;">
+    ℹ️ If you have already made the payment, please ignore this reminder.
+  </p>
+
+  <!-- Footer -->
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+    <p style="color: #666; font-size: 15px; line-height: 1.6; margin: 0;">
+      Thank you,<br>
+      <span style="color: #1a237e; font-weight: 600; font-size: 16px;">LT ${chapterName}</span>
+    </p>
+  </div>
+
+  <!-- Additional Info -->
+  <div style="margin-top: 20px; text-align: center; color: #999; font-size: 12px;">
+    <p style="margin: 5px 0;">This is an automated message, please do not reply directly to this email.</p>
+    <p style="margin: 5px 0;">For any queries, please contact your chapter administrator.</p>
+  </div>
+</div>
       `
     };
 
@@ -10623,16 +10661,16 @@ const sendKittyReminderToAll = async (req, res) => {
         const payNowUrl = `https://bninewdelhi.com/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1?region_id=${member.region_id}&chapter_id=${member.chapter_id}&member_id=${member.member_id}`;
 
         const mailOptions = {
-          from: '"BNI New Delhi" <info@bninewdelhi.in>',
+          from: `"LT ${chapterName}" <info@bninewdelhi.in>`,
           to: member.member_email_address,
-          subject: "Payment Reminder - BNI New Delhi",
+          subject: "Payment Reminder - Meeting Fee",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <h2 style="color: #333;">Payment Reminder</h2>
               
               <p>Dear ${member.member_first_name},</p>
               
-              <p>This is a friendly reminder that you have a pending payment for your chapter <b>${chapterName}</b>.</p>
+             <p>This is a friendly reminder that your meeting fee for the chapter <b>${chapterName}</b> is pending.</p>
               
               <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
                 <p style="margin: 5px 0;"><strong>Pending Amount:</strong> ₹${bankOrder?.amount_to_pay || 0}</p>
@@ -10663,7 +10701,7 @@ const sendKittyReminderToAll = async (req, res) => {
               
               <p style="color: #666; font-size: 0.9em;">
                 Thank you,<br>
-                <strong>BNI New Delhi</strong>
+                 <strong>LT ${chapterName}</strong>
               </p>
             </div>
           `
@@ -10720,7 +10758,9 @@ const tdsUpdateexpense = async (req, res) => {
       ca_comment, 
       final_amount,
       tds_section_list,
-      tds_type 
+      tds_type,
+      verification,
+      ro_comment
     } = req.body;
 
     // Validate required fields
@@ -10731,32 +10771,71 @@ const tdsUpdateexpense = async (req, res) => {
       });
     }
 
-    // Update the expense with TDS details
+    // Build the update query dynamically based on provided fields
+    let updateFields = [];
+    let values = [];
+    let paramCount = 1;
+
+    // Add TDS fields if they exist
+    if (tds_percentage !== undefined) {
+      updateFields.push(`tds_percentage = $${paramCount}`);
+      values.push(tds_percentage);
+      paramCount++;
+    }
+    if (tds_amount !== undefined) {
+      updateFields.push(`tds_amount = $${paramCount}`);
+      values.push(tds_amount);
+      paramCount++;
+    }
+    if (tds_process !== undefined) {
+      updateFields.push(`tds_process = $${paramCount}`);
+      values.push(tds_process);
+      paramCount++;
+    }
+    if (ca_comment !== undefined) {
+      updateFields.push(`ca_comment = $${paramCount}`);
+      values.push(ca_comment);
+      paramCount++;
+    }
+    if (final_amount !== undefined) {
+      updateFields.push(`final_amount = $${paramCount}`);
+      values.push(final_amount);
+      paramCount++;
+    }
+    if (tds_section_list !== undefined) {
+      updateFields.push(`tds_section_list = $${paramCount}`);
+      values.push(tds_section_list);
+      paramCount++;
+    }
+    if (tds_type !== undefined) {
+      updateFields.push(`tds_type = $${paramCount}`);
+      values.push(tds_type);
+      paramCount++;
+    }
+
+    // Add verification fields if they exist
+    if (verification !== undefined) {
+      updateFields.push(`verification = $${paramCount}`);
+      values.push(verification);
+      paramCount++;
+    }
+    if (ro_comment !== undefined) {
+      updateFields.push(`ro_comment = $${paramCount}`);
+      values.push(ro_comment);
+      paramCount++;
+    }
+
+    // Add expense_id as the last parameter
+    values.push(expense_id);
+
+    // Construct the final query
     const updateQuery = `
       UPDATE expenses 
-      SET 
-        tds_percentage = $1,
-        tds_amount = $2,
-        tds_process = $3,
-        ca_comment = $4,
-        final_amount = $5,
-        tds_section_list = $6,
-        tds_type = $7
-      WHERE expense_id = $8
+      SET ${updateFields.join(', ')}
+      WHERE expense_id = $${paramCount}
     `;
 
-    const values = [
-      tds_percentage,
-      tds_amount,
-      tds_process,
-      ca_comment,
-      final_amount,
-      tds_section_list,
-      tds_type,
-      expense_id
-    ];
-
-    // Execute the query using the client
+    // Execute the query
     const result = await con.query(updateQuery, values);
 
     if (result.rowCount === 0) {
@@ -10768,21 +10847,23 @@ const tdsUpdateexpense = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "TDS details updated successfully",
+      message: "Expense updated successfully",
       data: {
         expense_id,
-        tds_percentage,
-        tds_amount,
-        tds_process,
-        ca_comment,
-        final_amount,
-        tds_section_list,
-        tds_type
+        ...(tds_percentage !== undefined && { tds_percentage }),
+        ...(tds_amount !== undefined && { tds_amount }),
+        ...(tds_process !== undefined && { tds_process }),
+        ...(ca_comment !== undefined && { ca_comment }),
+        ...(final_amount !== undefined && { final_amount }),
+        ...(tds_section_list !== undefined && { tds_section_list }),
+        ...(tds_type !== undefined && { tds_type }),
+        ...(verification !== undefined && { verification }),
+        ...(ro_comment !== undefined && { ro_comment })
       }
     });
 
   } catch (error) {
-    console.error("Error updating TDS details:", error);
+    console.error("Error updating expense:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
