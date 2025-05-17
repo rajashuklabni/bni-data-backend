@@ -133,10 +133,10 @@ const getMember = async (req, res) => {
           ...member,
           // Add image URLs if images exist
           member_photo_url: member.member_photo 
-              ? `https://backend.bninewdelhi.com/api/uploads/memberLogos/${member.member_photo}`
+              ? `http://localhost:5000/api/uploads/memberLogos/${member.member_photo}`
               : null,
           member_company_logo_url: member.member_company_logo 
-              ? `https://backend.bninewdelhi.com/api/uploads/memberCompanyLogos/${member.member_company_logo}`
+              ? `http://localhost:5000/api/uploads/memberCompanyLogos/${member.member_company_logo}`
               : null,
           // Parse arrays that might be stored as strings
           accolades_id: Array.isArray(member.accolades_id)
@@ -183,7 +183,7 @@ const getChapter = async (req, res) => {
         // Add image URL to response
         const chapterData = result.rows[0];
         if (chapterData.chapter_logo) {
-            chapterData.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+            chapterData.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
             console.log('🖼️ Added logo URL:', chapterData.chapter_logo_url);
         }
 
@@ -242,7 +242,7 @@ const getRegion = async (req, res) => {
         // Transform the logo data
         let logoUrl = null;
         if (region.region_logo && region.region_logo !== '{}' && region.region_logo !== 'null') {
-            logoUrl = `https://backend.bninewdelhi.com/api/uploads/regionLogos/${region.region_logo}`;
+            logoUrl = `http://localhost:5000/api/uploads/regionLogos/${region.region_logo}`;
             console.log('🖼️ Constructed logo URL:', logoUrl);
         }
 
@@ -454,7 +454,7 @@ const addRegion = async (req, res) => {
       message: "Region added successfully!", 
       data: {
         ...result.rows[0],
-        region_logo_url: region_logo ? `https://backend.bninewdelhi.com/uploads/regionLogos/${region_logo}` : null
+        region_logo_url: region_logo ? `http://localhost:5000/uploads/regionLogos/${region_logo}` : null
       }
     });
   } catch (error) {
@@ -602,7 +602,7 @@ const addChapter = async (req, res) => {
       // Rest of your code remains the same...
       const chapterData = result.rows[0];
       if (chapterData.chapter_logo) {
-          chapterData.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+          chapterData.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Creation Success:');
@@ -745,13 +745,13 @@ const addMember = async (req, res) => {
     const chapterId = parseInt(req.body.chapter_id);
     const dateOfPublishing = new Date(req.body.date_of_publishing);
     
-    const kittyBillsResponse = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
+    const kittyBillsResponse = await axios.get('http://localhost:5000/api/getAllKittyPayments');
     const allKittyBills = kittyBillsResponse.data;
     
     const chapterKittyBills = allKittyBills.filter(bill => bill.chapter_id === chapterId && bill.delete_status === 0);
     
     // 2. Fetch chapter meeting day
-    const chaptersResponse = await axios.get('https://backend.bninewdelhi.com/api/chapters');
+    const chaptersResponse = await axios.get('http://localhost:5000/api/chapters');
     const chapterInfo = chaptersResponse.data.find(ch => ch.chapter_id === chapterId);
     
     if (!chapterInfo) {
@@ -1404,7 +1404,7 @@ const updateChapter = async (req, res) => {
 
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Update Success:');
@@ -1598,6 +1598,36 @@ const updateUniversalLink = async (req, res) => {
   } catch (error) {
     console.error("Error updating Universal Link:", error);
     res.status(500).json({ message: "Error updating Universal Link" });
+  }
+};
+
+const updateKittyBillStatus = async (req, res) => {
+  const { kitty_bill_id } = req.params; // Get id from URL parameter
+
+  console.log("Updating Kitty Bill Id:", kitty_bill_id);
+
+  try {
+    // Update the delete_status to 1 (inactive)
+    const query = `
+      UPDATE kittypaymentchapter 
+      SET delete_status = 1 
+      WHERE kitty_bill_id = $1
+    `;
+
+    await con.query(query, [kitty_bill_id]);
+
+    res.json({
+      success: true,
+      message: 'Bill status updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error updating kitty bill status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update bill status',
+      error: error.message
+    });
   }
 };
 
@@ -2786,7 +2816,7 @@ const addKittyPayment = async (req, res) => {
     const membersToEmail = membersResult.rows;
 
     // Fetch chapters to get chapter_name and region_id from chapter_id
-    const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
+    const chapterResponse = await fetch('http://localhost:5000/api/chapters');
     const chapterData = await chapterResponse.json();
     const chapter = chapterData.find(c => c.chapter_id === Number(chapter_id));
     const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; // fallback if not found
@@ -2823,7 +2853,7 @@ const addKittyPayment = async (req, res) => {
       }
     }
 
-    const response = await fetch('https://backend.bninewdelhi.com/api/getbankOrder');
+    const response = await fetch('http://localhost:5000/api/getbankOrder');
     const bankOrders = await response.json();
 
     // Filter the bank orders based on chapter_id
@@ -3828,7 +3858,7 @@ const sendQrCodeByEmail = async (req, res) => {
   try {
     // Fetch order details to get customer email
     const orderResponse = await fetch(
-      `https://backend.bninewdelhi.com/api/allOrders`
+      `http://localhost:5000/api/allOrders`
     );
     const orders = await orderResponse.json();
 
@@ -4407,7 +4437,7 @@ const updateChapterSettings = async (req, res) => {
       // Add the logo URL to the response
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('Chapter updated successfully:', updatedChapter);
@@ -4586,7 +4616,7 @@ const addMemberCredit = async (req, res) => {
 
     let insertedRecords = [];
 
-    const response = await fetch("https://backend.bninewdelhi.com/api/getbankOrder");
+    const response = await fetch("http://localhost:5000/api/getbankOrder");
     const bankOrders = await response.json();
 
     
@@ -5239,7 +5269,7 @@ const getZone = async (req, res) => {
 
         // Add base URL to zone logo
         if (result.rows[0].zone_logo) {
-            result.rows[0].zone_logo = `https://backend.bninewdelhi.com/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
+            result.rows[0].zone_logo = `http://localhost:5000/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
         }
 
         res.json({
@@ -6513,7 +6543,7 @@ const updateOnboardingCall = async (req, res) => {
       const updatedVisitor = result.rows[0];
       
       // Add the full URL for the uploaded image
-      const imageUrl = `https://backend.bninewdelhi.com/api/uploads/onboardingCalls/${filename}`;
+      const imageUrl = `http://localhost:5000/api/uploads/onboardingCalls/${filename}`;
       
       console.log('✅ Onboarding call updated successfully:', {
           visitor_id: updatedVisitor.visitor_id,
@@ -10456,7 +10486,7 @@ const sendKittyReminder = async (req, res) => {
     const member = memberResult.rows[0];
 
     // Get chapter name
-    const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
+    const chapterResponse = await fetch('http://localhost:5000/api/chapters');
     const chapterData = await chapterResponse.json();
     const chapter = chapterData.find(c => c.chapter_id === member.chapter_id);
     const chapterName = chapter ? chapter.chapter_name : `Chapter #${member.chapter_id}`;
@@ -10550,7 +10580,7 @@ const sendKittyReminderToAll = async (req, res) => {
     }
 
     // Get chapter data once for all members
-    const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
+    const chapterResponse = await fetch('http://localhost:5000/api/chapters');
     const chapterData = await chapterResponse.json();
 
     // Process each member
@@ -10933,5 +10963,6 @@ module.exports = {
   sendKittyReminderToAll,
   einvoiceData,
   einvoicePdf,
-  tdsUpdateexpense
+  tdsUpdateexpense,
+  updateKittyBillStatus
 };

@@ -172,7 +172,8 @@ sendKittyReminder,
 sendKittyReminderToAll,
 einvoiceData,
 einvoicePdf,
-tdsUpdateexpense
+tdsUpdateexpense,
+updateKittyBillStatus
 } = require("./controllers");
 
 const path = require("path");
@@ -658,6 +659,7 @@ router.get("/getChapter/:chapter_id", getChapter);
 router.get("/getRegion/:region_id", getRegion);
 router.get("/getUniversalLink/:id", getUniversalLink);
 router.put("/updateRegion/:region_id", uploadRegionLogo.single('region_logo'), updateRegion);
+router.put("/updateKittyBillStatus/:kitty_bill_id", updateKittyBillStatus);
 router.put("/deleteRegion/:region_id", deleteRegion);
 router.get("/getUsers", getUsers);
 router.get("/getAccolade/:accolade_id", getAccolade);
