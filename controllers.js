@@ -10471,7 +10471,7 @@ const sendKittyReminder = async (req, res) => {
       SELECT m.member_id, m.member_first_name, m.member_email_address, m.chapter_id, c.region_id 
       FROM member m
       LEFT JOIN chapter c ON m.chapter_id = c.chapter_id
-      WHERE m.member_id = $1 AND m.writeoff_status = FALSE
+      WHERE m.member_id = $1 AND (m.writeoff_status IS NULL OR m.writeoff_status = FALSE)
     `;
     
     const memberResult = await con.query(memberQuery, [member_id]);
