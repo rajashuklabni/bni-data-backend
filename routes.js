@@ -173,7 +173,11 @@ sendKittyReminderToAll,
 einvoiceData,
 einvoicePdf,
 tdsUpdateexpense,
-updateKittyBillStatus
+updateKittyBillStatus,
+getAllVisitorDocuments,
+uploadVisitorDocument,
+getVisitorDocuments,
+deleteVisitorDocument
 } = require("./controllers");
 
 const path = require("path");
@@ -1149,6 +1153,100 @@ router.put("/updateVisitorDocs",
 router.post("/addVisitor", addVisitor);
 router.post("/sendKittyReminder", sendKittyReminder);
 router.post("/sendKittyReminderToAll", sendKittyReminderToAll);
+// Add this with other multer configurations in routes.js
+const visitorDocsStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        // Create base directory
+        const baseDir = './uploads/visitor_documents';
+        if (!fs.existsSync(baseDir)) {
+            fs.mkdirSync(baseDir, { recursive: true });
+        }
+        cb(null, baseDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const filename = `temp-${uniqueSuffix}${path.extname(file.originalname)}`;
+        cb(null, filename);
+    }
+});
+
+const uploadVisitorDoc = multer({
+    storage: visitorDocsStorage,
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png|pdf/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (extname && mimetype) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only .png, .jpg, .jpeg and .pdf format allowed!'));
+        }
+    }
+});
+
+// Add these routes
+router.post("/upload-visitor-document", 
+    uploadVisitorDoc.single('document'),
+    async (req, res, next) => {
+        try {
+            const { visitor_id, chapter_id, document_type, member_id } = req.body;
+            
+            if (!visitor_id || !chapter_id || !document_type || !member_id) {
+                throw new Error('Missing required fields');
+            }
+
+            // Create proper directory structure
+            const properDir = `./uploads/visitor_documents/${document_type}`;
+            if (!fs.existsSync(properDir)) {
+                fs.mkdirSync(properDir, { recursive: true });
+            }
+
+            // Move file to proper location
+            const oldPath = req.file.path;
+            const newPath = path.join(properDir, `${visitor_id}-${Date.now()}${path.extname(req.file.originalname)}`);
+            fs.renameSync(oldPath, newPath);
+
+            // Update file info
+            req.file.filename = path.basename(newPath);
+            req.file.path = newPath;
+
+            next();
+        } catch (error) {
+            console.error('Error processing file:', error);
+            res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+    },
+    uploadVisitorDocument
+);
+
+router.post("/get-visitor-documents", getVisitorDocuments);
+router.post("/delete-visitor-document", deleteVisitorDocument);
+
+// Add route to serve visitor documents
+router.get('/uploads/visitor_documents/:docType/:filename', (req, res) => {
+    const filePath = path.join(__dirname, 'uploads', 'visitor_documents', req.params.docType, req.params.filename);
+    
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ 
+            message: 'Document not found',
+            requestedFile: req.params.filename
+        });
+    }
+    
+    // Set proper headers based on file type
+    const ext = path.extname(req.params.filename).toLowerCase();
+    const contentType = ext === '.pdf' ? 'application/pdf' : 'image/jpeg';
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(filePath);
+});
+
+router.get("/getAllVisitorDocuments", getAllVisitorDocuments);
 
 
 module.exports = router;

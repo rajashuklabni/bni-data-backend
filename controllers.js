@@ -6927,6 +6927,216 @@ const updateChapterRequisition = async (req, res) => {
       const isVisitorRequest = visitorCheck.rows[0]?.visitor_id !== null;
       console.log('👤 Is Visitor Request:', isVisitorRequest);
 
+
+    // NEW CODE FOR VISITOR TO MEMBER CONVERSION
+// NEW CODE FOR VISITOR TO MEMBER CONVERSION
+if (isVisitorRequest && approve_status === 'approved') {
+  try {
+      // Fetch visitor data
+      const visitorsResponse = await fetch('https://backend.bninewdelhi.com/api/getallvisitors');
+      const visitors = await visitorsResponse.json();
+      
+      // Find the specific visitor
+      const visitor = visitors.find(v => v.visitor_id === visitorCheck.rows[0].visitor_id);
+      
+      if (visitor) {
+          // Split visitor name into first and last name
+          const nameParts = visitor.visitor_name.split(' ');
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.slice(1).join(' ') || '';
+          
+          // Calculate renewal date (1 year from now)
+          const inductionDate = new Date();
+          const renewalDate = new Date(inductionDate);
+          renewalDate.setFullYear(renewalDate.getFullYear() + 1);
+          
+          // Insert into member table
+          const insertMemberQuery = `
+              INSERT INTO member (
+                  member_first_name, member_last_name, member_date_of_birth, member_phone_number,
+                  member_alternate_mobile_number, member_email_address, address_pincode,
+                  address_city, address_state, region_id, chapter_id, accolades_id, category_name,
+                  member_induction_date, member_current_membership, member_renewal_date, member_gst_number,
+                  member_company_name, member_company_address, member_company_state, member_company_city,
+                  member_photo, member_website, member_company_logo,
+                  member_facebook, member_instagram, member_linkedin, member_youtube, country,
+                  street_address_line_1, street_address_line_2, gender, notification_consent,
+                  date_of_publishing, member_sponsored_by, member_status, meeting_opening_balance,
+                  member_company_pincode
+              ) VALUES (
+                  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+                  $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, 
+                  $33, $34, $35, $36, $37, $38
+              ) RETURNING *
+          `;
+          const memberValues = [
+              firstName,                    // member_first_name
+              lastName,                     // member_last_name
+              '1970-04-04',                // member_date_of_birth
+              visitor.visitor_phone,        // member_phone_number
+              visitor.visitor_phone,        // member_alternate_mobile_number
+              visitor.visitor_email,        // member_email_address
+              '110075',                    // address_pincode
+              'New Delhi',                 // address_city
+              'Delhi',                     // address_state
+              visitor.region_id,           // region_id
+              visitor.chapter_id,          // chapter_id
+              null,                        // accolades_id
+              visitor.visitor_category,    // category_name
+              inductionDate,               // member_induction_date
+              '1 yr',                      // member_current_membership
+              renewalDate,                 // member_renewal_date
+              visitor.visitor_gst,         // member_gst_number
+              visitor.visitor_company_name,// member_company_name
+              visitor.visitor_company_address, // member_company_address
+              'Delhi',                     // member_company_state
+              'New Delhi',                 // member_company_city
+              null,                        // member_photo
+              null,                        // member_website
+              null,                        // member_company_logo
+              null,                        // member_facebook
+              null,                        // member_instagram
+              null,                        // member_linkedin
+              null,                        // member_youtube
+              'IND',                       // country
+              visitor.visitor_address,     // street_address_line_1
+              null,                        // street_address_line_2
+              null,                        // gender
+              'on',                        // notification_consent
+              new Date(),                  // date_of_publishing
+              null,                        // member_sponsored_by
+              'active',                    // member_status
+              0,                           // meeting_opening_balance
+              '110075'                     // member_company_pincode
+          ];
+          
+          const memberResult = await con.query(insertMemberQuery, memberValues);
+          console.log('✅ New member created from visitor:', memberResult.rows[0]);
+
+          // ✅ Get the new member details
+          const newMember = memberResult.rows[0];
+          const member_id = newMember.member_id;
+
+          // ✅ Declare meeting_opening_balance
+          const meeting_opening_balance = 0; // Since it's a new member, we start with 0
+
+          // 1. Fetch Kitty Bills
+          const chapterId = visitor.chapter_id;
+          const dateOfPublishing = new Date();
+
+          const kittyBillsResponse = await fetch('https://backend.bninewdelhi.com/api/getAllKittyPayments');
+          const allKittyBills = await kittyBillsResponse.json();
+
+          const chapterKittyBills = allKittyBills.filter(bill => 
+              bill.chapter_id === chapterId && bill.delete_status === 0
+          );
+
+          // 2. Fetch chapter meeting day
+          const chaptersResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
+          const chapters = await chaptersResponse.json();
+          const chapterInfo = chapters.find(ch => ch.chapter_id === chapterId);
+
+          if (!chapterInfo) {
+              throw new Error('Chapter not found for meeting day');
+          }
+
+          const chapterMeetingDay = chapterInfo.chapter_meeting_day;
+          const chapterMeetingFees = chapterInfo.chapter_kitty_fees;
+
+          // 🔥 Helper Function to calculate Meeting Dates
+          function getMeetingDatesInRange(startDate, endDate, meetingDay) {
+              const daysOfWeek = {
+                  Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+                  Thursday: 4, Friday: 5, Saturday: 6
+              };
+              const meetingDates = [];
+              const meetingDayNum = daysOfWeek[meetingDay];
+
+              let current = new Date(startDate);
+              current.setHours(0, 0, 0, 0);
+
+              while (current.getDay() !== meetingDayNum) {
+                  current.setDate(current.getDate() + 1);
+              }
+
+              while (current <= endDate) {
+                  meetingDates.push(new Date(current));
+                  current.setDate(current.getDate() + 7);
+              }
+              return meetingDates;
+          }
+
+          // 3. Calculate Kitty Amount
+          let totalKittyAmount = 0;
+          let kittyDueDate = null;
+          let kittyPenalty = null;
+
+          for (const bill of chapterKittyBills) {
+              const billStartDate = bill.raised_on ? new Date(bill.raised_on) : new Date(bill.payment_date);
+              const billEndDate = new Date(bill.kitty_due_date);
+
+              if (dateOfPublishing > billEndDate) {
+                  continue; // Ignore past bills
+              }
+
+              // Capture kittyDueDate and kittyPenalty from the first eligible bill
+              if (!kittyDueDate && bill.kitty_due_date) {
+                  kittyDueDate = bill.kitty_due_date;
+                  kittyPenalty = bill.penalty_fee || 0;
+              }
+
+              if (['weekly', 'monthly', 'quartely'].includes(bill.bill_type)) {
+                  const meetingDates = getMeetingDatesInRange(
+                      dateOfPublishing > billStartDate ? dateOfPublishing : billStartDate,
+                      billEndDate,
+                      chapterMeetingDay
+                  );
+                  totalKittyAmount += meetingDates.length * parseFloat(chapterMeetingFees);
+              }
+          }
+
+          // If somehow not found, fallback
+          if (!kittyDueDate) kittyDueDate = new Date(); // default to now
+          if (kittyPenalty === null || kittyPenalty === undefined) kittyPenalty = 0;
+
+          // 4. Update bankorder amount_to_pay
+          const finalAmountToPay = meeting_opening_balance + totalKittyAmount;
+
+          await con.query(
+              `INSERT INTO bankorder (amount_to_pay, member_id, chapter_id, kitty_due_date, kitty_penalty)
+               VALUES ($1, $2, $3, $4, $5)`,
+              [finalAmountToPay, member_id, chapterId, kittyDueDate, kittyPenalty]
+          );
+
+          console.log('✅ Updated bankorder with Kitty Amount:', finalAmountToPay);
+
+          // 5. Insert into member_accolades
+          const insertAccoladeQuery = `
+              INSERT INTO member_accolades 
+              (member_id, accolade_id, issue_date, count, given_date, comment)
+              VALUES ($1, $2, $3, $4, $5, $6)
+              RETURNING *
+          `;
+
+          const accoladeValues = [
+              member_id,           // member_id
+              1,                   // accolade_id (fixed as 1)
+              new Date(),          // issue_date (current date)
+              1,                   // count
+              null,                // given_date
+              null                 // comment
+          ];
+
+          const accoladeResult = await con.query(insertAccoladeQuery, accoladeValues);
+          console.log('✅ Added member accolade:', accoladeResult.rows[0]);
+      }
+  } catch (error) {
+      console.error('❌ Error converting visitor to member:', error);
+      // Continue with the rest of the function even if member creation fails
+  }
+}
+
+
       // Keep existing slab wise comment check
       const isOnlySlabWiseCommentUpdate = slab_wise_comment && 
           !approve_status && 
@@ -7149,6 +7359,7 @@ const updateChapterRequisition = async (req, res) => {
 
 
 
+
 const updateMemberRequisition = async (req, res) => {
   console.log('\n🔄 Starting Member Requisition Update');
   console.log('=====================================');
@@ -7363,12 +7574,49 @@ const updateMemberRequisition = async (req, res) => {
 // Add this new controller
 const sendVisitorEmail = async (req, res) => {
   try {
-      const { visitor_email, visitor_name, chapter_name } = req.body;
+      const { visitor_email, visitor_name, chapter_name, visitor_id } = req.body;
       console.log('📧 Preparing welcome email:', {
           to: visitor_email,
           name: visitor_name,
           chapter: chapter_name
       });
+
+      // First get the visitor's chapter_id and visitor_category
+      const visitorQuery = `
+          SELECT chapter_id, visitor_category 
+          FROM visitors 
+          WHERE visitor_id = $1
+      `;
+      const visitorResult = await con.query(visitorQuery, [visitor_id]);
+      
+      if (!visitorResult.rows[0]) {
+          throw new Error('Visitor not found');
+      }
+
+      const { chapter_id, visitor_category } = visitorResult.rows[0];
+
+      // Then get the chapter details including email addresses
+      const chapterQuery = `
+          SELECT 
+              vice_president_mail,
+              president_mail,
+              treasurer_mail,
+              email_id
+          FROM chapter
+          WHERE chapter_id = $1
+      `;
+      const chapterResult = await con.query(chapterQuery, [chapter_id]);
+      
+      if (!chapterResult.rows[0]) {
+          throw new Error('Chapter not found');
+      }
+
+      const { 
+          vice_president_mail, 
+          president_mail, 
+          treasurer_mail, 
+          email_id 
+      } = chapterResult.rows[0];
 
       // Get current date and time in the required format
       const currentDate = new Date().toLocaleString('en-US', {
@@ -7381,47 +7629,49 @@ const sendVisitorEmail = async (req, res) => {
           second: 'numeric',
           hour12: true
       });
-       // Define the attachments with exact paths
-       const attachments = [
-        {
-            filename: '4(a)- Contact Sphere Sheet.docx',
-            path: path.join(__dirname, 'email-attachments', '4(a)- Contact Sphere Sheet (2) (1).docx'),
-            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        },
-        {
-            filename: '4(b)- GAINS Profile Sheet.docx',
-            path: path.join(__dirname, 'email-attachments', '4(b)- GAINS Profile Sheet (2) (1).docx'),
-            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        },
-        {
-            filename: '4(c)- Biography Sheet for members.doc',
-            path: path.join(__dirname, 'email-attachments', '4(c)- Biography Sheet for members (2) (1) (1).doc'),
-            contentType: 'application/msword'
-        },
-        {
-            filename: '4(d)- SAMPLE Filled GAINS profile.pdf',
-            path: path.join(__dirname, 'email-attachments', '4(d)- SAMPLE Filled GAINS profile (2) (1).pdf'),
-            contentType: 'application/pdf'
-        }
-    ];
 
-    // Verify all attachments exist
-    for (const attachment of attachments) {
-        if (!fs.existsSync(attachment.path)) {
-            console.error('❌ Missing attachment:', attachment.filename);
-            throw new Error(`Required attachment ${attachment.filename} not found`);
-        }
-    }
+      // Define the attachments with exact paths
+      const attachments = [
+          {
+              filename: '4(a)- Contact Sphere Sheet.docx',
+              path: path.join(__dirname, 'email-attachments', '4(a)- Contact Sphere Sheet (2) (1).docx'),
+              contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          },
+          {
+              filename: '4(b)- GAINS Profile Sheet.docx',
+              path: path.join(__dirname, 'email-attachments', '4(b)- GAINS Profile Sheet (2) (1).docx'),
+              contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          },
+          {
+              filename: '4(c)- Biography Sheet for members.doc',
+              path: path.join(__dirname, 'email-attachments', '4(c)- Biography Sheet for members (2) (1) (1).doc'),
+              contentType: 'application/msword'
+          },
+          {
+              filename: '4(d)- SAMPLE Filled GAINS profile.pdf',
+              path: path.join(__dirname, 'email-attachments', '4(d)- SAMPLE Filled GAINS profile (2) (1).pdf'),
+              contentType: 'application/pdf'
+          }
+      ];
 
+      // Verify all attachments exist
+      for (const attachment of attachments) {
+          if (!fs.existsSync(attachment.path)) {
+              console.error('❌ Missing attachment:', attachment.filename);
+              throw new Error(`Required attachment ${attachment.filename} not found`);
+          }
+      }
 
       const mailOptions = {
-          from: 'Vice President Desk-BNI Prolific <info@bninewdelhi.in>',
+          from: `Vice President Desk-BNI ${chapter_name} <info@bninewdelhi.in>`,
           to: `${visitor_name} <${visitor_email}>`,
           cc: [
               'SUNIL K. BNI DIRECTOR <sunilk@bni-india.in>',
               'Shini Sunil <shini.sunil@adico.in>',
-              'Raja Shukla | Digital Marketing | Prolific Shukla <rajashukla@outlook.com>',
-              'Yatin wadhwa| Prolific| General Insurance <yatinwadhwa@ymail.com>',
+              `${chapter_name} Vice President <${vice_president_mail}>`,
+              `${chapter_name} President <${president_mail}>`,
+              `${chapter_name} Treasurer <${treasurer_mail}>`,
+              `${chapter_name} Chapter <${email_id}>`,
               'admin.bnidw@adico.in',
               'BNI N E W Delhi Admin <admin@bninewdelhi.com>',
               'sunil.k@adico.in'
@@ -7440,42 +7690,63 @@ const sendVisitorEmail = async (req, res) => {
                   <p>Dear ${visitor_name},</p>
 
                   <p style="margin-top: 20px;">
-                      I, on behalf of the Membership Committee, congratulate you for deciding to be a part of the ${chapter_name} Chapter in the business category of REAL ESTATE - 2ND HOMES- Only Uttrakhand Please remember that a BNI member represents his / her given business category on this platform and not his / her entire business.
+                      I am delighted to extend my warmest congratulations on behalf of the Membership Committee for your decision to join the prestigious ${chapter_name} Chapter as a representative in the ${visitor_category} business category. This is a significant milestone in your professional journey, and we are thrilled to have you as part of our growing network of business professionals.
                   </p>
 
                   <p style="margin-top: 20px;">
-                      Your payment of membership has been received and we are going to inducted you in the chapter on 20th March 2025
+                      I am pleased to confirm that we have successfully received your membership payment. We are excited to formally induct you into the chapter on 20th March 2025. This induction ceremony will mark the beginning of your journey with BNI, where you'll have the opportunity to connect with like-minded professionals and grow your business through our proven referral-based networking system.
                   </p>
 
                   <p style="margin-top: 20px;">
-                      In order to proceed with the Induction formalities, please comply with the following:
+                      To ensure a smooth and successful induction process, we kindly request your assistance with the following preparatory steps:
                   </p>
 
                   <ul style="margin-top: 20px; margin-left: 20px;">
-                      <li style="margin-bottom: 10px;">Share your Bio Sheet (sample attached-prose form), as this would be read out during the induction.</li>
-                      <li style="margin-bottom: 10px;">Send a high-resolution passport size photograph along with your personal and professional photos, email ID and mobile number so that our creative team can include these details in the 30 seconds meeting note sheet and induction video.</li>
-                      <li style="margin-bottom: 10px;">Your Gains Profile which is required for Goal-Oriented 1-2-1's</li>
+                      <li style="margin-bottom: 10px;">Please complete and submit your Bio Sheet (a sample template is attached for your reference). This document will be used during your induction ceremony to introduce you to the chapter members.</li>
+                      <li style="margin-bottom: 10px;">We require a high-resolution passport size photograph, along with your personal and professional photos. These will be used by our creative team to prepare your 30-second meeting note sheet and induction video. Please include your email ID and mobile number with these submissions.</li>
+                      <li style="margin-bottom: 10px;">Your Gains Profile is an essential component for our Goal-Oriented 1-2-1 meetings. This profile helps us understand your business objectives and how we can best support your growth within the BNI community.</li>
                   </ul>
 
                   <p style="margin-top: 20px;">
-                      In this formal meeting, you may bring along a client or a vendor to add to your business credibility. I would request the observer details to be shared, at least 48 hrs prior to the meeting day.
+                      As part of your induction ceremony, you are welcome to bring a client or vendor to enhance your business credibility. To ensure proper arrangements, we kindly request that you share the observer's details at least 48 hours before the meeting.
                   </p>
 
                   <p style="margin-top: 20px;">
-                      Please note that Mr. RAJA SHUKLA (President) - 9599052298, Mr. Yatin Wadhwa (Secretary- 9818979676), Mr. Sachit Chawla (Mentor Coordinator-9811930922) would be calling you over the next few days to advise you on our mentoring program to help start your BNI journey.
+                      To support your successful integration into the BNI community, our leadership team will be reaching out to you in the coming days:
+                  </p>
+
+                  <ul style="margin-top: 20px; margin-left: 20px;">
+                      <li style="margin-bottom: 10px;">Mr. RAJA SHUKLA (President) - 9599052298</li>
+                      <li style="margin-bottom: 10px;">Mr. Yatin Wadhwa (Secretary) - 9818979676</li>
+                      <li style="margin-bottom: 10px;">Mr. Sachit Chawla (Mentor Coordinator) - 9811930922</li>
+                  </ul>
+
+                  <p style="margin-top: 20px;">
+                      They will guide you through our comprehensive mentoring program, designed to help you maximize your BNI membership benefits and establish meaningful business relationships.
                   </p>
 
                   <p style="margin-top: 20px;">
-                      I would be keen to help you with any clarifications that you may have.
+                      Please remember that as a BNI member, you represent your specific business category within our platform. This focused approach ensures that each member can maximize their networking potential while maintaining the integrity of our referral system.
+                  </p>
+
+                  <p style="margin-top: 20px;">
+                      I am here to assist you with any questions or concerns you may have during this exciting transition. Feel free to reach out to me directly, and I will be happy to help you navigate this new chapter in your professional journey.
+                  </p>
+
+                  <p style="margin-top: 20px;">
+                      Welcome to the BNI family! We look forward to celebrating your success and supporting your business growth.
+                  </p>
+
+                  <p style="margin-top: 20px;">
+                      Best regards,<br>
+                      Vice President Desk<br>
+                      BNI Prolific
                   </p>
               </div>
           `,
           attachments: attachments
       };
       console.log('📎 Attaching documents:', attachments.map(a => a.filename));
-
-      await transporter.sendMail(mailOptions);
-      console.log('✅ Welcome email sent successfully to:', visitor_email);
 
       await transporter.sendMail(mailOptions);
       console.log('✅ Welcome email sent successfully to:', visitor_email);
@@ -7505,6 +7776,8 @@ const sendVisitorEmail = async (req, res) => {
       });
   }
 };
+
+
 const sendVPEmail = async (req, res) => {
 try {
     const { visitor_email, visitor_name, chapter_name } = req.body;
@@ -10872,6 +11145,240 @@ const tdsUpdateexpense = async (req, res) => {
   }
 };
 
+const uploadVisitorDocument = async (req, res) => {
+  try {
+      if (!req.file) {
+          return res.status(400).json({
+              success: false,
+              message: "No file uploaded"
+          });
+      }
+
+      const { visitor_id, chapter_id, document_type, member_id } = req.body;
+      console.log('📄 Received document upload request:', {
+          visitor_id,
+          chapter_id,
+          document_type,
+          member_id,
+          filename: req.file.filename
+      });
+
+      // Validate required fields
+      if (!visitor_id || !chapter_id || !document_type || !member_id) {
+          return res.status(400).json({
+              success: false,
+              message: "visitor_id, chapter_id, document_type, and member_id are required"
+          });
+      }
+
+      // Start a transaction
+      await con.query('BEGIN');
+
+       // First check if a document of this type already exists
+       const checkQuery = `
+       SELECT document_id, file_name 
+       FROM visitor_documents 
+       WHERE visitor_id = $1 
+       AND chapter_id = $2 
+       AND document_type = $3`;
+
+      const existingDoc = await con.query(checkQuery, [visitor_id, chapter_id, document_type]);
+
+      let result;
+      if (existingDoc.rows.length > 0) {
+          // Update existing document
+          const updateQuery = `
+              UPDATE visitor_documents 
+              SET file_name = $1,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE visitor_id = $2 
+              AND chapter_id = $3 
+              AND document_type = $4 
+              RETURNING *`;
+
+          result = await con.query(updateQuery, [req.file.filename, visitor_id, chapter_id, document_type]);
+          console.log('✅ Existing document updated:', result.rows[0]);
+      } else {
+          // Insert new document
+          const insertQuery = `
+              INSERT INTO visitor_documents 
+              (visitor_id, chapter_id, member_id, document_type, file_name) 
+              VALUES ($1, $2, $3, $4, $5) 
+              RETURNING *`;
+
+          result = await con.query(insertQuery, [visitor_id, chapter_id, member_id, document_type, req.file.filename]);
+          console.log('✅ New document inserted:', result.rows[0]);
+      }
+
+      // Update the corresponding field in Visitors table
+      let updateField;
+      switch(document_type) {
+          case 'member_application_form':
+              updateField = 'member_application_form';
+              break;
+          case 'interview_sheet':
+              updateField = 'interview_sheet';
+              break;
+          case 'commitment_sheet':
+              updateField = 'commitment_sheet';
+              break;
+          case 'inclusion_exclusion_sheet':
+              updateField = 'inclusion_exclusion_sheet';
+              break;
+          case 'onboarding_call':
+              updateField = 'onboarding_call';
+              break;
+          default:
+              updateField = null;
+      }
+
+      if (updateField) {
+          console.log('🔄 Updating field:', updateField, 'for visitor:', visitor_id);
+          const updateQuery = `
+              UPDATE Visitors 
+              SET ${updateField} = true 
+              WHERE visitor_id = $1 
+              RETURNING visitor_id, ${updateField}`;
+          
+          const updateResult = await con.query(updateQuery, [visitor_id]);
+          console.log('✅ Update result:', updateResult.rows[0]);
+      }
+
+      // Commit the transaction
+      await con.query('COMMIT');
+
+      res.status(201).json({
+          success: true,
+          message: existingDoc.rows.length > 0 ? "Document updated successfully" : "Document uploaded successfully",
+          data: result.rows[0]
+      });
+
+  } catch (error) {
+      // Rollback in case of error
+      await con.query('ROLLBACK');
+      console.error("❌ Error uploading document:", error);
+      res.status(500).json({
+          success: false,
+          message: "Error uploading document",
+          error: error.message
+      });
+  }
+};
+// 
+
+
+// Get visitor documents
+const getVisitorDocuments = async (req, res) => {
+  try {
+      const { visitor_id } = req.body;
+
+      if (!visitor_id) {
+          return res.status(400).json({
+              success: false,
+              message: "visitor_id is required"
+          });
+      }
+
+      const query = `
+          SELECT * FROM visitor_documents 
+          WHERE visitor_id = $1 
+          ORDER BY uploaded_at DESC`;
+
+      const result = await con.query(query, [visitor_id]);
+
+      res.json({
+          success: true,
+          data: result.rows
+      });
+
+  } catch (error) {
+      console.error("Error fetching documents:", error);
+      res.status(500).json({
+          success: false,
+          message: "Error fetching documents",
+          error: error.message
+      });
+  }
+};
+
+// Delete visitor document
+const deleteVisitorDocument = async (req, res) => {
+  try {
+      const { document_id } = req.body;
+
+      if (!document_id) {
+          return res.status(400).json({
+              success: false,
+              message: "document_id is required"
+          });
+      }
+
+      // First get the document details
+      const getDocQuery = `SELECT * FROM visitor_documents WHERE document_id = $1`;
+      const docResult = await con.query(getDocQuery, [document_id]);
+
+      if (docResult.rows.length === 0) {
+          return res.status(404).json({
+              success: false,
+              message: "Document not found"
+          });
+      }
+
+      const document = docResult.rows[0];
+      const filePath = path.join(__dirname, 'uploads', 'visitor_documents', document.document_type, document.file_name);
+
+      // Delete file from filesystem
+      if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+      }
+
+      // Delete from database
+      const deleteQuery = `DELETE FROM visitor_documents WHERE document_id = $1`;
+      await con.query(deleteQuery, [document_id]);
+
+      res.json({
+          success: true,
+          message: "Document deleted successfully"
+      });
+
+  } catch (error) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({
+          success: false,
+          message: "Error deleting document",
+          error: error.message
+      });
+  }
+};
+// Get all visitor documents
+const getAllVisitorDocuments = async (req, res) => {
+  try {
+      const query = `
+          SELECT 
+              document_id,
+              visitor_id,
+              chapter_id,
+              member_id,
+              document_type,
+              file_name,
+              uploaded_at
+          FROM visitor_documents 
+          ORDER BY uploaded_at DESC`;
+
+      const result = await con.query(query);
+
+      res.json(result.rows);
+
+  } catch (error) {
+      console.error("Error fetching all visitor documents:", error);
+      res.status(500).json({
+          success: false,
+          message: "Error fetching all visitor documents",
+          error: error.message
+      });
+  }
+};
+
 
 
 module.exports = {
@@ -11045,5 +11552,10 @@ module.exports = {
   einvoiceData,
   einvoicePdf,
   tdsUpdateexpense,
-  updateKittyBillStatus
+  updateKittyBillStatus,
+  uploadVisitorDocument,
+  getVisitorDocuments,
+  deleteVisitorDocument,
+  getAllVisitorDocuments
+
 };
