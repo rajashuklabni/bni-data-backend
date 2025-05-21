@@ -10902,7 +10902,7 @@ const sendKittyReminderToAll = async (req, res) => {
           SELECT m.member_id, m.member_first_name, m.member_email_address, m.chapter_id, c.region_id 
           FROM member m
           LEFT JOIN chapter c ON m.chapter_id = c.chapter_id
-          WHERE m.member_id = $1 AND m.writeoff_status = FALSE
+          WHERE m.member_id = $1 AND (m.writeoff_status IS NULL OR m.writeoff_status = FALSE)
         `;
         
         const memberResult = await con.query(memberQuery, [member_id]);
@@ -11145,6 +11145,8 @@ const tdsUpdateexpense = async (req, res) => {
   }
 };
 
+
+
 const uploadVisitorDocument = async (req, res) => {
   try {
       if (!req.file) {
@@ -11190,7 +11192,7 @@ const uploadVisitorDocument = async (req, res) => {
           const updateQuery = `
               UPDATE visitor_documents 
               SET file_name = $1,
-                  updated_at = CURRENT_TIMESTAMP
+                  uploaded_at = CURRENT_TIMESTAMP
               WHERE visitor_id = $2 
               AND chapter_id = $3 
               AND document_type = $4 
@@ -11236,9 +11238,9 @@ const uploadVisitorDocument = async (req, res) => {
           console.log('🔄 Updating field:', updateField, 'for visitor:', visitor_id);
           const updateQuery = `
               UPDATE Visitors 
-              SET ${updateField} = true 
+              SET "${updateField}" = true 
               WHERE visitor_id = $1 
-              RETURNING visitor_id, ${updateField}`;
+              RETURNING visitor_id, "${updateField}"`;
           
           const updateResult = await con.query(updateQuery, [visitor_id]);
           console.log('✅ Update result:', updateResult.rows[0]);
