@@ -2800,7 +2800,7 @@ const addKittyPayment = async (req, res) => {
     const updateMemberQuery = `
           UPDATE member
           SET meeting_payable_amount = $1
-          WHERE chapter_id = $2 AND writeoff_status = FALSE;
+          WHERE chapter_id = $2 AND writeoff_status = false;
       `;
 
     await con.query(updateMemberQuery, [total_bill_amount, chapter_id]);
