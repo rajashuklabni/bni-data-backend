@@ -242,7 +242,7 @@ async function generateIRN(req, res) {
       console.log("Fetching chapter with ID:", chapter_id);
       
       try {
-        const chapterResponse = await axios.get(`https://backend.bninewdelhi.com/api/chapters`);
+        const chapterResponse = await axios.get(`http://localhost:5000/api/chapters`);
         const chapters = chapterResponse.data;
         console.log("Chapters fetched:", chapters.length);
         
@@ -269,6 +269,7 @@ async function generateIRN(req, res) {
             paymentType = 'MP';
             break;
           case 'visitor-payment':
+          case 'Visitor Payment':
             paymentType = 'VP';
             break;
           case 'All Training Payments':
@@ -314,7 +315,7 @@ async function generateIRN(req, res) {
     const { authtoken, sek } = result.rows[0];  // Fetch the most recent token
     const member_id = req.body.orderId.customer_id;
     console.log("member id", member_id);
-    const memberResponse = await axios.get(`https://backend.bninewdelhi.com/api/getMember/${member_id}`);
+    const memberResponse = await axios.get(`http://localhost:5000/api/getMember/${member_id}`);
     const memberData = memberResponse.data;
     const gstin = memberData.member_gst_number;
 
@@ -322,8 +323,12 @@ async function generateIRN(req, res) {
       throw new Error("GST and address details not found.");
     }
 
-    // If GSTIN is 'N/A', skip IRN generation and send email without IRN/QR/AckNo
-    if (gstin === 'N/A') {
+    // Check for visitor payment without GSTIN
+    const isVisitorPayment = req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment';
+    const hasNoVisitorGstin = isVisitorPayment && (!req.body.orderId.visitor_gstin || req.body.orderId.visitor_gstin === 'N/A');
+
+    // If GSTIN is 'N/A' or it's a visitor payment without GSTIN
+    if (gstin === 'N/A' || hasNoVisitorGstin) {
       // Generate document number as usual (already done above)
       // Insert a record into einvoice table with null IRN fields
       const transaction_id = req.body.transactionId.transaction_id;
@@ -336,13 +341,13 @@ async function generateIRN(req, res) {
       
       // Send email without IRN/QR/AckNo
       await processEmailSending(
-        req.body.orderId.customer_email,
+        isVisitorPayment ? req.body.orderId.visitor_email : req.body.orderId.customer_email,
         req.body.orderId.order_id,
         req.body.amount,
         null, // irn
         null, // qrCode
         docNo,
-        req.body.orderId.company,
+        isVisitorPayment ? req.body.orderId.visitor_company : req.body.orderId.company,
         req,
         true // noIrn flag
       ).catch(err => {
@@ -350,7 +355,7 @@ async function generateIRN(req, res) {
       });
       // Respond to frontend
       return res.status(200).json({
-        message: "Document generated successfully (no IRN, GSTIN is N/A)",
+        message: hasNoVisitorGstin ? "Document generated successfully (no IRN, Visitor GSTIN not provided)" : "Document generated successfully (no IRN, GSTIN is N/A)",
         data: {
           ackNo: null,
           ackDate: null,
@@ -365,17 +370,39 @@ async function generateIRN(req, res) {
 
     // Populate address fields from member data
     const buyerDetails = {
-      Addr1: memberData.member_company_address || "Address not found",
-      Addr2: memberData.member_company_address || "",
-      Loc: (memberData.member_company_state || "Delhi").padEnd(3, ' '), // Ensure minimum 3 characters
-      Pos: stateCode,
-      Pin: memberData.address_pincode || 110001,
-      Stcd: stateCode,  // Extract state code from GSTIN
-      Ph: req.body.orderId.customer_phone,
-      Em: req.body.orderId.customer_email,
-      LglNm: req.body.orderId.company,
-      TrdNm: req.body.orderId.company,
-      Gstin: memberData.member_gst_number
+      Addr1: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' 
+        ? req.body.orderId.visitor_address 
+        : (memberData.member_company_address || "Address not found"),
+      Addr2: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
+        ? req.body.orderId.visitor_address
+        : (memberData.member_company_address || ""),
+      Loc: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
+        ? (req.body.orderId.visitor_state || "Delhi").padEnd(3, ' ')
+        : (memberData.member_company_state || "Delhi").padEnd(3, ' '),
+      Pos: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
+        ? req.body.orderId.visitor_gstin.substring(0, 2)
+        : stateCode,
+      Pin: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
+        ? req.body.orderId.visitor_pincode
+        : (memberData.address_pincode || 110001),
+      Stcd: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
+        ? req.body.orderId.visitor_gstin.substring(0, 2)
+        : stateCode,
+      Ph: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
+        ? req.body.orderId.visitor_mobilenumber
+        : req.body.orderId.customer_phone,
+      Em: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
+        ? req.body.orderId.visitor_email
+        : req.body.orderId.customer_email,
+      LglNm: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
+        ? req.body.orderId.visitor_company
+        : req.body.orderId.company,
+      TrdNm: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
+        ? req.body.orderId.visitor_company
+        : req.body.orderId.company,
+      Gstin: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
+        ? req.body.orderId.visitor_gstin
+        : memberData.member_gst_number
     };
 
     console.log("buyer details", buyerDetails);
@@ -563,13 +590,17 @@ async function generateIRN(req, res) {
 
     // Send email with e-invoice to the member asynchronously after response
     await processEmailSending(
-      req.body.orderId.customer_email,
+      (req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment') 
+        ? req.body.orderId.visitor_email 
+        : req.body.orderId.customer_email,
       req.body.orderId.order_id,
       req.body.amount,
       decryptedDataa.Irn,
       decryptedDataa.SignedQRCode,
       docNo,
-      req.body.orderId.company,
+      (req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment')
+        ? req.body.orderId.visitor_company
+        : req.body.orderId.company,
       req
     ).catch(err => {
       console.error("Error in background email processing:", err);
@@ -780,7 +811,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     // Get chapter details
     let chapterName = 'Unknown Chapter';
     try {
-      const chapterResponse = await axios.get(`https://backend.bninewdelhi.com/api/chapters`);
+      const chapterResponse = await axios.get(`http://localhost:5000/api/chapters`);
       const chapters = chapterResponse.data;
       const chapter = chapters.find(ch => ch.chapter_id === orderData.chapter_id);
       if (chapter) {
@@ -859,19 +890,19 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
       .replace('class="invoice_date">', `class="invoice_date">${currentDate}`)
       .replace('class="doc_number">', `class="doc_number">${docNo}`)
       .replace('class="payment_mode">', `class="payment_mode">${paymentMethod}`)
-      .replace('class="bill_to_name"><strong>', `class="bill_to_name"><strong>${orderData.full_name}`)
-      .replace('class="bill_to_company"><strong>', `class="bill_to_company"><strong>${orderData.company}`)
-      .replace('class="bill_to_address">', `class="bill_to_address">${orderData.company_address}`)
-      .replace('class="bill_to_gst">', `class="bill_to_gst">${orderData.gst_number}`)
-      .replace('class="bill_to_state">', `class="bill_to_state">${orderData.company_state || 'Delhi'}`)
-      .replace('class="ship_to_company"><strong>', `class="ship_to_company"><strong>${orderData.company}`)
-      .replace('class="ship_to_address">', `class="ship_to_address">${orderData.company_address}`)
-      .replace('class="ship_to_gst">', `class="ship_to_gst">${orderData.gst_number}`)
-      .replace('class="ship_to_state">', `class="ship_to_state">${orderData.company_state || 'Delhi'}`)
+      .replace('class="bill_to_name"><strong>', `class="bill_to_name"><strong>${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_name : orderData.full_name}`)
+      .replace('class="bill_to_company"><strong>', `class="bill_to_company"><strong>${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_company : orderData.company}`)
+      .replace('class="bill_to_address">', `class="bill_to_address">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_address : orderData.company_address}`)
+      .replace('class="bill_to_gst">', `class="bill_to_gst">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_gstin : orderData.gst_number}`)
+      .replace('class="bill_to_state">', `class="bill_to_state">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_state || 'Delhi' : orderData.company_state || 'Delhi'}`)
+      .replace('class="ship_to_company"><strong>', `class="ship_to_company"><strong>${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_company : orderData.company}`)
+      .replace('class="ship_to_address">', `class="ship_to_address">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_address : orderData.company_address}`)
+      .replace('class="ship_to_gst">', `class="ship_to_gst">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_gstin : orderData.gst_number}`)
+      .replace('class="ship_to_state">', `class="ship_to_state">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_state || 'Delhi' : orderData.company_state || 'Delhi'}`)
       .replace('class="transaction_id">', `class="transaction_id">${req.body.transactionId?.cf_payment_id || 'N/A'}`)
       .replace('class="order_id">', `class="order_id">${orderId}`)
-      .replace('class="buyer_email">', `class="buyer_email">${orderData.customer_email || email}`)
-      .replace('class="buyer_phone">', `class="buyer_phone">${orderData.customer_phone}`);
+      .replace('class="buyer_email">', `class="buyer_email">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_email : (orderData.customer_email || email)}`)
+      .replace('class="buyer_phone">', `class="buyer_phone">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_mobilenumber : orderData.customer_phone}`);
 
     // If noIrn is true, hide IRN, QR code, and Ack No sections using display:none
     if (noIrn) {
@@ -890,7 +921,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     if (req.body.universalLinkName === 'Meeting Payments' && req.body.orderId?.chapter_id && req.body.orderId?.kitty_bill_id) {
       try {
         // Fetch all kitty bills
-        const kittyRes = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
+        const kittyRes = await axios.get('http://localhost:5000/api/getAllKittyPayments');
         console.log('Fetched kitty bills:', kittyRes.data);
         if (kittyRes.data && kittyRes.data.length > 0) {
           // Force both to numbers and log for debugging
@@ -1000,7 +1031,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
       subject: `Invoice for ${req.body.universalLinkName || 'BNI Payment'}(${chapterName}) - ${docNo}`,
       html: `
         <h2>Your Invoice is Ready</h2>
-        <p>Dear <b>${memberName}</b>,</p>
+        <p>Dear <b>${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_name : memberName}</b>,</p>
         <p>Your invoice for the following transaction has been generated successfully.</p>
         <p><strong>Invoice Details:</strong></p>
         <ul>
