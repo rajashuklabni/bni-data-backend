@@ -10613,7 +10613,7 @@ const addVisitor = async (req, res) => {
       false, // visitor_form
       false, // eoi_form
       false, // new_member_form
-      '', // visitor_company_address
+      visitor_address || '', // visitor_company_address
       false, // interview_sheet
       false, // commitment_sheet
       false, // inclusion_exclusion_sheet
