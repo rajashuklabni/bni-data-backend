@@ -6899,7 +6899,7 @@ const addChapterRequisition = async (req, res) => {
 };;
 
 const updateChapterRequisition = async (req, res) => {
-  console.log('\n🔄 Starting Chapter Requisition Update');
+  console.log('\n🔄 Starting Chapter Requisition Update'); 
   console.log('=====================================');
 
   try {
@@ -6929,7 +6929,6 @@ const updateChapterRequisition = async (req, res) => {
 
 
     // NEW CODE FOR VISITOR TO MEMBER CONVERSION
-// NEW CODE FOR VISITOR TO MEMBER CONVERSION
 if (isVisitorRequest && approve_status === 'approved') {
   try {
       // Fetch visitor data
@@ -7109,26 +7108,6 @@ if (isVisitorRequest && approve_status === 'approved') {
           );
 
           console.log('✅ Updated bankorder with Kitty Amount:', finalAmountToPay);
-
-          // 5. Insert into member_accolades
-          const insertAccoladeQuery = `
-              INSERT INTO member_accolades 
-              (member_id, accolade_id, issue_date, count, given_date, comment)
-              VALUES ($1, $2, $3, $4, $5, $6)
-              RETURNING *
-          `;
-
-          const accoladeValues = [
-              member_id,           // member_id
-              1,                   // accolade_id (fixed as 1)
-              new Date(),          // issue_date (current date)
-              1,                   // count
-              null,                // given_date
-              null                 // comment
-          ];
-
-          const accoladeResult = await con.query(insertAccoladeQuery, accoladeValues);
-          console.log('✅ Added member accolade:', accoladeResult.rows[0]);
       }
   } catch (error) {
       console.error('❌ Error converting visitor to member:', error);
@@ -7356,6 +7335,7 @@ if (isVisitorRequest && approve_status === 'approved') {
       });
   }
 };
+
 
 
 
