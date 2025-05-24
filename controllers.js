@@ -6899,7 +6899,7 @@ const addChapterRequisition = async (req, res) => {
 };;
 
 const updateChapterRequisition = async (req, res) => {
-  console.log('\n🔄 Starting Chapter Requisition Update'); 
+  console.log('\n🔄 Starting Chapter Requisition Update');
   console.log('=====================================');
 
   try {
@@ -6929,6 +6929,7 @@ const updateChapterRequisition = async (req, res) => {
 
 
     // NEW CODE FOR VISITOR TO MEMBER CONVERSION
+// NEW CODE FOR VISITOR TO MEMBER CONVERSION
 if (isVisitorRequest && approve_status === 'approved') {
   try {
       // Fetch visitor data
@@ -7012,102 +7013,233 @@ if (isVisitorRequest && approve_status === 'approved') {
           const memberResult = await con.query(insertMemberQuery, memberValues);
           console.log('✅ New member created from visitor:', memberResult.rows[0]);
 
-          // ✅ Get the new member details
-          const newMember = memberResult.rows[0];
-          const member_id = newMember.member_id;
+     // ✅ Member inserted
+const newMember = result.rows[0];
+const member_id = newMember.member_id;
 
-          // ✅ Declare meeting_opening_balance
-          const meeting_opening_balance = 0; // Since it's a new member, we start with 0
+// ✅ Declare meeting_opening_balance properly
+const meeting_opening_balance = parseFloat(req.body.meeting_opening_balance) || 0;
 
-          // 1. Fetch Kitty Bills
-          const chapterId = visitor.chapter_id;
-          const dateOfPublishing = new Date();
+// 1. Fetch Kitty Bills
+const chapterId = parseInt(req.body.chapter_id);
+const dateOfPublishing = new Date(req.body.date_of_publishing);
 
-          const kittyBillsResponse = await fetch('https://backend.bninewdelhi.com/api/getAllKittyPayments');
-          const allKittyBills = await kittyBillsResponse.json();
+const kittyBillsResponse = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
+const allKittyBills = kittyBillsResponse.data;
 
-          const chapterKittyBills = allKittyBills.filter(bill => 
-              bill.chapter_id === chapterId && bill.delete_status === 0
-          );
+const chapterKittyBills = allKittyBills.filter(bill => bill.chapter_id === chapterId && bill.delete_status === 0);
 
-          // 2. Fetch chapter meeting day
-          const chaptersResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
-          const chapters = await chaptersResponse.json();
-          const chapterInfo = chapters.find(ch => ch.chapter_id === chapterId);
+// 2. Fetch chapter meeting day and billing frequency
+const chaptersResponse = await axios.get('https://backend.bninewdelhi.com/api/chapters');
+const chapterInfo = chaptersResponse.data.find(ch => ch.chapter_id === chapterId);
 
-          if (!chapterInfo) {
-              throw new Error('Chapter not found for meeting day');
-          }
+if (!chapterInfo) {
+    throw new Error('Chapter not found for meeting day');
+}
 
-          const chapterMeetingDay = chapterInfo.chapter_meeting_day;
-          const chapterMeetingFees = chapterInfo.chapter_kitty_fees;
+const chapterMeetingDay = chapterInfo.chapter_meeting_day;
+const chapterMeetingFees = chapterInfo.chapter_kitty_fees;
+const kittyBillingFrequency = chapterInfo.kitty_billing_frequency;
 
-          // 🔥 Helper Function to calculate Meeting Dates
-          function getMeetingDatesInRange(startDate, endDate, meetingDay) {
-              const daysOfWeek = {
-                  Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
-                  Thursday: 4, Friday: 5, Saturday: 6
-              };
-              const meetingDates = [];
-              const meetingDayNum = daysOfWeek[meetingDay];
+console.log('�� Chapter Info:', {
+    meetingDay: chapterMeetingDay,
+    meetingFees: chapterMeetingFees,
+    billingFrequency: kittyBillingFrequency
+});
 
-              let current = new Date(startDate);
-              current.setHours(0, 0, 0, 0);
+// Function to check if meeting day has passed for the week
+function hasMeetingDayPassed(dop, meetingDay) {
+    const daysOfWeek = {
+        Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+        Thursday: 4, Friday: 5, Saturday: 6
+    };
+    
+    const dopDate = new Date(dop);
+    const meetingDayNum = daysOfWeek[meetingDay];
+    
+    // Find the meeting day of the same week
+    const meetingDate = new Date(dopDate);
+    while (meetingDate.getDay() !== meetingDayNum) {
+        meetingDate.setDate(meetingDate.getDate() - 1);
+    }
+    
+    // If meeting date is before DOP, meeting has passed
+    return meetingDate < dopDate;
+}
 
-              while (current.getDay() !== meetingDayNum) {
-                  current.setDate(current.getDate() + 1);
-              }
+// Calculate Kitty Amount
+let totalKittyAmount = 0;
+let kittyDueDate = null;
+let kittyPenalty = null;
 
-              while (current <= endDate) {
-                  meetingDates.push(new Date(current));
-                  current.setDate(current.getDate() + 7);
-              }
-              return meetingDates;
-          }
+console.log('🔍 Starting kitty calculation...');
+console.log('📅 Date of Publishing:', dateOfPublishing);
 
-          // 3. Calculate Kitty Amount
-          let totalKittyAmount = 0;
-          let kittyDueDate = null;
-          let kittyPenalty = null;
+for (const bill of chapterKittyBills) {
+    // Convert dates to IST
+    const billStartDate = bill.raised_on ? 
+        new Date(new Date(bill.raised_on).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })) : 
+        new Date(bill.payment_date);
+    
+    const totalWeeks = bill.total_weeks;
 
-          for (const bill of chapterKittyBills) {
-              const billStartDate = bill.raised_on ? new Date(bill.raised_on) : new Date(bill.payment_date);
-              const billEndDate = new Date(bill.kitty_due_date);
+    // Calculate bill end date based on bill type and raised_on date
+    let billEndDate;
+    const raisedOnDate = new Date(new Date(bill.raised_on).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const raisedOnMonth = raisedOnDate.getMonth(); // 0-11
+    const raisedOnYear = raisedOnDate.getFullYear();
 
-              if (dateOfPublishing > billEndDate) {
-                  continue; // Ignore past bills
-              }
+    console.log('📅 Bill Type:', bill.bill_type);
+    console.log('📅 Raised On Date:', raisedOnDate);
+    console.log('📅 Total Weeks:', totalWeeks);
 
-              // Capture kittyDueDate and kittyPenalty from the first eligible bill
-              if (!kittyDueDate && bill.kitty_due_date) {
-                  kittyDueDate = bill.kitty_due_date;
-                  kittyPenalty = bill.penalty_fee || 0;
-              }
+    // Fix the bill type check to be case-insensitive and handle the typo
+    const billType = bill.bill_type.toLowerCase().trim();
+    if (billType === 'quartely' || billType === 'quarterly') {
+        // For quarterly, end date is 3 months from raised_on
+        billEndDate = new Date(raisedOnYear, raisedOnMonth + 3, 0); // Last day of the 3rd month
+        console.log('📅 Calculated End Date for Quarterly:', billEndDate);
+    } else if (billType === 'half-yearly') {
+        billEndDate = new Date(raisedOnYear, raisedOnMonth + 6, 0);
+    } else if (billType === 'yearly') {
+        billEndDate = new Date(raisedOnYear, raisedOnMonth + 12, 0);
+    } else if (billType === 'weekly') {
+        billEndDate = new Date(raisedOnDate);
+        billEndDate.setDate(billEndDate.getDate() + 7);
+    } else {
+        console.log('⚠️ Unknown bill type:', bill.bill_type);
+        continue;
+    }
 
-              if (['weekly', 'monthly', 'quartely'].includes(bill.bill_type)) {
-                  const meetingDates = getMeetingDatesInRange(
-                      dateOfPublishing > billStartDate ? dateOfPublishing : billStartDate,
-                      billEndDate,
-                      chapterMeetingDay
-                  );
-                  totalKittyAmount += meetingDates.length * parseFloat(chapterMeetingFees);
-              }
-          }
+    const billKittyDueDate = new Date(new Date(bill.kitty_due_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
 
-          // If somehow not found, fallback
-          if (!kittyDueDate) kittyDueDate = new Date(); // default to now
-          if (kittyPenalty === null || kittyPenalty === undefined) kittyPenalty = 0;
+    console.log('📊 Processing bill:', {
+        billStartDate: billStartDate.toISOString(),
+        billEndDate: billEndDate.toISOString(),
+        kittyDueDate: billKittyDueDate.toISOString(),
+        totalWeeks: totalWeeks,
+        billType: bill.bill_type
+    });
 
-          // 4. Update bankorder amount_to_pay
-          const finalAmountToPay = meeting_opening_balance + totalKittyAmount;
+    if (dateOfPublishing > billEndDate) {
+        console.log('⏭️ Skipping past bill');
+        continue;
+    }
 
-          await con.query(
-              `INSERT INTO bankorder (amount_to_pay, member_id, chapter_id, kitty_due_date, kitty_penalty)
-               VALUES ($1, $2, $3, $4, $5)`,
-              [finalAmountToPay, member_id, chapterId, kittyDueDate, kittyPenalty]
-          );
+    // Capture kittyDueDate and kittyPenalty from the first eligible bill
+    if (!kittyDueDate && bill.kitty_due_date) {
+        kittyDueDate = bill.kitty_due_date;
+        kittyPenalty = bill.penalty_fee || 0;
+        console.log('📌 Captured kitty due date:', kittyDueDate);
+        console.log('💰 Kitty penalty:', kittyPenalty);
+    }
 
-          console.log('✅ Updated bankorder with Kitty Amount:', finalAmountToPay);
+    // Check if DOP is after raised_on date
+    if (dateOfPublishing > billStartDate) {
+        console.log('📅 DOP is after raised_on date, calculating weeks from DOP');
+        
+        // Calculate weeks from DOP to bill end date
+        const weeksFromDOP = Math.ceil((billEndDate - dateOfPublishing) / (7 * 24 * 60 * 60 * 1000));
+        console.log('📅 Weeks from DOP to bill end:', weeksFromDOP);
+        
+        // Calculate amount based on weeks from DOP
+        const weeklyAmount = parseFloat(chapterMeetingFees);
+        totalKittyAmount += weeksFromDOP * weeklyAmount;
+        
+        console.log('💵 Weekly amount:', weeklyAmount);
+        console.log('💵 Total kitty amount before first meeting deduction:', totalKittyAmount);
+        
+        // Always deduct first meeting fee regardless of meeting day
+        totalKittyAmount -= weeklyAmount;
+        console.log('💵 Total kitty amount after first meeting deduction:', totalKittyAmount);
+        
+    } else {
+        console.log('📅 DOP is before or equal to raised_on date, using total weeks from API');
+        
+        // Calculate amount based on total weeks from API
+        const weeklyAmount = parseFloat(chapterMeetingFees);
+        totalKittyAmount += totalWeeks * weeklyAmount;
+        
+        console.log('💵 Weekly amount:', weeklyAmount);
+        console.log('📅 Total weeks from API:', totalWeeks);
+        console.log('💵 Total kitty amount:', totalKittyAmount);
+    }
+}
+
+
+// If somehow not found, fallback
+if (!kittyDueDate) {
+    kittyDueDate = new Date();
+    console.log('⚠️ No kitty due date found, using current date');
+}
+if (kittyPenalty === null || kittyPenalty === undefined) {
+    kittyPenalty = 0;
+    console.log('⚠️ No kitty penalty found, using 0');
+}
+
+// Check if publishing date exceeds kitty due date
+const publishingDate = new Date(dateOfPublishing);
+const dueDate = new Date(kittyDueDate);
+let finalPenalty = 0;
+
+if (publishingDate > dueDate) {
+    console.log('⚠️ Publishing date exceeds kitty due date');
+    console.log('�� Publishing date:', publishingDate);
+    console.log('📅 Due date:', dueDate);
+    finalPenalty = kittyPenalty;
+    console.log('💰 Adding penalty:', finalPenalty);
+}
+
+// Calculate final amount
+const finalAmountToPay = meeting_opening_balance + totalKittyAmount + finalPenalty;
+
+console.log('📊 Final calculation:', {
+    meetingOpeningBalance: meeting_opening_balance,
+    totalKittyAmount: totalKittyAmount,
+    finalPenalty: finalPenalty,
+    finalAmountToPay: finalAmountToPay
+});
+
+// Update bankorder
+await con.query(
+    `INSERT INTO bankorder (amount_to_pay, member_id, chapter_id, kitty_due_date, kitty_penalty)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [finalAmountToPay, member_id, chapterId, kittyDueDate, finalPenalty]
+);
+
+console.log('✅ Updated bankorder with final amount:', finalAmountToPay);
+
+
+// Update member's meeting_payable_amount
+await con.query(
+    `UPDATE member 
+     SET meeting_payable_amount = $1 
+     WHERE member_id = $2`,
+    [totalKittyAmount, member_id]
+);
+
+console.log('✅ Updated member meeting_payable_amount:', totalKittyAmount);
+
+
+          // 5. Insert into member_accolades
+          const insertAccoladeQuery = `
+              INSERT INTO member_accolades 
+              (member_id, accolade_id, issue_date, count, given_date, comment)
+              VALUES ($1, $2, $3, $4, $5, $6)
+              RETURNING *
+          `;
+
+          const accoladeValues = [
+              member_id,           // member_id
+              1,                   // accolade_id (fixed as 1)
+              new Date(),          // issue_date (current date)
+              1,                   // count
+              null,                // given_date
+              null                 // comment
+          ];
+
+          const accoladeResult = await con.query(insertAccoladeQuery, accoladeValues);
+          console.log('✅ Added member accolade:', accoladeResult.rows[0]);
       }
   } catch (error) {
       console.error('❌ Error converting visitor to member:', error);
