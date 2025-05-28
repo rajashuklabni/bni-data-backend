@@ -4,9 +4,21 @@ const axios = require('axios');
 const db = require('../../database/db');
 const { Cashfree } = require('cashfree-pg');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 const app = express();
 const { Cashfree: CashfreeWebhook } = require('./cashfreeSignature');
 require('dotenv').config();
+
+// Define the transporter for nodemailer
+const transporter = nodemailer.createTransport({
+  host: "server.bninewdelhi.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: "info@bninewdelhi.in",
+    pass: "PzfE8JH93pV1RUx",
+  },
+});
 
 // Set up Cashfree SDK with environment variables
 Cashfree.XClientId = process.env.x_client_id;
@@ -893,24 +905,26 @@ const getOrderByTrainingId = async (req, res) => {
 };
 
 const webhookSettlementStatus = async (req, res) => {
-  let payload;
+  let payload, rawBody;
   if (Buffer.isBuffer(req.body)) {
+    rawBody = req.body.toString('utf8');
     try {
-      payload = JSON.parse(req.body.toString('utf8'));
+      payload = JSON.parse(rawBody);
     } catch (e) {
       console.error('Failed to parse buffer:', e);
       return res.status(400).json({ error: 'Invalid JSON' });
     }
   } else {
     payload = req.body;
+    rawBody = JSON.stringify(req.body);
   }
 
-  // Now payload should be the parsed object
+  // Log the parsed payload
   console.log('Parsed webhook payload:', payload);
 
+  // Handle Cashfree test payload
   if (!payload || !payload.data || !payload.data.settlement) {
     if (payload && payload.data && payload.data.test_object) {
-      // This is a test payload from Cashfree dashboard
       console.log('Received Cashfree test webhook payload');
       return res.status(200).json({ message: 'Test webhook received' });
     }
@@ -918,8 +932,51 @@ const webhookSettlementStatus = async (req, res) => {
     return res.status(400).json({ error: 'Invalid webhook payload' });
   }
 
-  // You can add your business logic here (signature check, email, etc.)
-  res.status(200).json({ message: 'Webhook received and parsed' });
+  // --- Business Logic for Real Settlement Webhook ---
+  try {
+    // Get signature and timestamp from headers
+    const signature = req.headers['x-webhook-signature'];
+    const timestamp = req.headers['x-webhook-timestamp'];
+
+    // Set the client secret for signature verification
+    if (!process.env.x_client_secret) {
+      console.error('Missing x_client_secret in environment variables');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+    CashfreeWebhook.XClientSecret = process.env.x_client_secret;
+
+    // Verify the webhook signature
+    const webhookEvent = CashfreeWebhook.PGVerifyWebhookSignature(signature, rawBody, timestamp);
+    console.log('Webhook signature verified successfully');
+    console.log('Webhook data:', webhookEvent.object);
+
+    // Send email notification
+    const mailOptions = {
+      from: 'info@bninewdelhi.in',
+      to: 'scriptforprince@gmail.com',
+      cc: 'rajashukla@outlook.com',
+      subject: 'Cashfree Settlement Webhook Received',
+      html: `
+        <h2>Cashfree Settlement Webhook Received</h2>
+        <p><strong>Event Type:</strong> ${webhookEvent.object.type}</p>
+        <p><strong>Event Time:</strong> ${webhookEvent.object.event_time}</p>
+        <p><strong>Settlement ID:</strong> ${webhookEvent.object.data.settlement.settlement_id}</p>
+        <p><strong>Status:</strong> ${webhookEvent.object.data.settlement.status}</p>
+        <p><strong>UTR:</strong> ${webhookEvent.object.data.settlement.utr}</p>
+        <p><strong>Settlement Amount:</strong> ${webhookEvent.object.data.settlement.settlement_amount}</p>
+        <p><strong>Settled On:</strong> ${webhookEvent.object.data.settlement.settled_on}</p>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log('Settlement webhook notification email sent successfully');
+
+    // Return success response
+    res.status(200).json({ message: 'Webhook processed successfully' });
+  } catch (error) {
+    console.error('Error processing real settlement webhook:', error);
+    res.status(400).json({ error: 'Webhook processing failed' });
+  }
 };
 
 
