@@ -7,6 +7,7 @@ const bcrypt = require("bcrypt");
 const nodemailer = require("nodemailer"); // Ensure you have nodemailer installed
 const QRCode = require("qrcode"); // Import the qrcode library
 const PDFDocument = require("pdfkit");
+const { PDFDocument: PDFLibDocument } = require('pdf-lib');
 const { QueryTypes } = require("sequelize"); // If using Sequelize
 const { v4: uuidv4 } = require("uuid"); // For generating unique IDs
 const { Parser } = require('json2csv');
@@ -133,10 +134,10 @@ const getMember = async (req, res) => {
           ...member,
           // Add image URLs if images exist
           member_photo_url: member.member_photo 
-              ? `https://backend.bninewdelhi.com/api/uploads/memberLogos/${member.member_photo}`
+              ? `http://localhost:5000/api/uploads/memberLogos/${member.member_photo}`
               : null,
           member_company_logo_url: member.member_company_logo 
-              ? `https://backend.bninewdelhi.com/api/uploads/memberCompanyLogos/${member.member_company_logo}`
+              ? `http://localhost:5000/api/uploads/memberCompanyLogos/${member.member_company_logo}`
               : null,
           // Parse arrays that might be stored as strings
           accolades_id: Array.isArray(member.accolades_id)
@@ -183,7 +184,7 @@ const getChapter = async (req, res) => {
         // Add image URL to response
         const chapterData = result.rows[0];
         if (chapterData.chapter_logo) {
-            chapterData.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+            chapterData.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
             console.log('🖼️ Added logo URL:', chapterData.chapter_logo_url);
         }
 
@@ -242,7 +243,7 @@ const getRegion = async (req, res) => {
         // Transform the logo data
         let logoUrl = null;
         if (region.region_logo && region.region_logo !== '{}' && region.region_logo !== 'null') {
-            logoUrl = `https://backend.bninewdelhi.com/api/uploads/regionLogos/${region.region_logo}`;
+            logoUrl = `http://localhost:5000/api/uploads/regionLogos/${region.region_logo}`;
             console.log('🖼️ Constructed logo URL:', logoUrl);
         }
 
@@ -476,7 +477,7 @@ const addRegion = async (req, res) => {
       message: "Region added successfully!", 
       data: {
         ...result.rows[0],
-        region_logo_url: region_logo ? `https://backend.bninewdelhi.com/uploads/regionLogos/${region_logo}` : null
+        region_logo_url: region_logo ? `http://localhost:5000/uploads/regionLogos/${region_logo}` : null
       }
     });
   } catch (error) {
@@ -624,7 +625,7 @@ const addChapter = async (req, res) => {
       // Rest of your code remains the same...
       const chapterData = result.rows[0];
       if (chapterData.chapter_logo) {
-          chapterData.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+          chapterData.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Creation Success:');
@@ -767,13 +768,13 @@ const addMember = async (req, res) => {
     const chapterId = parseInt(req.body.chapter_id);
     const dateOfPublishing = new Date(req.body.date_of_publishing);
     
-    const kittyBillsResponse = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
+    const kittyBillsResponse = await axios.get('http://localhost:5000/api/getAllKittyPayments');
     const allKittyBills = kittyBillsResponse.data;
     
     const chapterKittyBills = allKittyBills.filter(bill => bill.chapter_id === chapterId && bill.delete_status === 0);
     
     // 2. Fetch chapter meeting day
-    const chaptersResponse = await axios.get('https://backend.bninewdelhi.com/api/chapters');
+    const chaptersResponse = await axios.get('http://localhost:5000/api/chapters');
     const chapterInfo = chaptersResponse.data.find(ch => ch.chapter_id === chapterId);
     
     if (!chapterInfo) {
@@ -1426,7 +1427,7 @@ const updateChapter = async (req, res) => {
 
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Update Success:');
@@ -2838,7 +2839,7 @@ const addKittyPayment = async (req, res) => {
     const membersToEmail = membersResult.rows;
 
     // Fetch chapters to get chapter_name and region_id from chapter_id
-    const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
+    const chapterResponse = await fetch('http://localhost:5000/api/chapters');
     const chapterData = await chapterResponse.json();
     const chapter = chapterData.find(c => c.chapter_id === Number(chapter_id));
     const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; // fallback if not found
@@ -2875,7 +2876,7 @@ const addKittyPayment = async (req, res) => {
       }
     }
 
-    const response = await fetch('https://backend.bninewdelhi.com/api/getbankOrder');
+    const response = await fetch('http://localhost:5000/api/getbankOrder');
     const bankOrders = await response.json();
 
     // Filter the bank orders based on chapter_id
@@ -3880,7 +3881,7 @@ const sendQrCodeByEmail = async (req, res) => {
   try {
     // Fetch order details to get customer email
     const orderResponse = await fetch(
-      `https://backend.bninewdelhi.com/api/allOrders`
+      `http://localhost:5000/api/allOrders`
     );
     const orders = await orderResponse.json();
 
@@ -4459,7 +4460,7 @@ const updateChapterSettings = async (req, res) => {
       // Add the logo URL to the response
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('Chapter updated successfully:', updatedChapter);
@@ -4638,7 +4639,7 @@ const addMemberCredit = async (req, res) => {
 
     let insertedRecords = [];
 
-    const response = await fetch("https://backend.bninewdelhi.com/api/getbankOrder");
+    const response = await fetch("http://localhost:5000/api/getbankOrder");
     const bankOrders = await response.json();
 
     
@@ -5291,7 +5292,7 @@ const getZone = async (req, res) => {
 
         // Add base URL to zone logo
         if (result.rows[0].zone_logo) {
-            result.rows[0].zone_logo = `https://backend.bninewdelhi.com/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
+            result.rows[0].zone_logo = `http://localhost:5000/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
         }
 
         res.json({
@@ -6565,7 +6566,7 @@ const updateOnboardingCall = async (req, res) => {
       const updatedVisitor = result.rows[0];
       
       // Add the full URL for the uploaded image
-      const imageUrl = `https://backend.bninewdelhi.com/api/uploads/onboardingCalls/${filename}`;
+      const imageUrl = `http://localhost:5000/api/uploads/onboardingCalls/${filename}`;
       
       console.log('✅ Onboarding call updated successfully:', {
           visitor_id: updatedVisitor.visitor_id,
@@ -6955,7 +6956,7 @@ const updateChapterRequisition = async (req, res) => {
 if (isVisitorRequest && approve_status === 'approved') {
   try {
       // Fetch visitor data
-      const visitorsResponse = await fetch('https://backend.bninewdelhi.com/api/getallvisitors');
+      const visitorsResponse = await fetch('http://localhost:5000/api/getallvisitors');
       const visitors = await visitorsResponse.json();
       
       // Find the specific visitor
@@ -7046,13 +7047,13 @@ const meeting_opening_balance = parseFloat(req.body.meeting_opening_balance) || 
 const chapterId = parseInt(req.body.chapter_id);
 const dateOfPublishing = new Date(req.body.date_of_publishing);
 
-const kittyBillsResponse = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
+const kittyBillsResponse = await axios.get('http://localhost:5000/api/getAllKittyPayments');
 const allKittyBills = kittyBillsResponse.data;
 
 const chapterKittyBills = allKittyBills.filter(bill => bill.chapter_id === chapterId && bill.delete_status === 0);
 
 // 2. Fetch chapter meeting day and billing frequency
-const chaptersResponse = await axios.get('https://backend.bninewdelhi.com/api/chapters');
+const chaptersResponse = await axios.get('http://localhost:5000/api/chapters');
 const chapterInfo = chaptersResponse.data.find(ch => ch.chapter_id === chapterId);
 
 if (!chapterInfo) {
@@ -10893,7 +10894,7 @@ const sendKittyReminder = async (req, res) => {
     const member = memberResult.rows[0];
 
     // Get chapter name
-    const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
+    const chapterResponse = await fetch('http://localhost:5000/api/chapters');
     const chapterData = await chapterResponse.json();
     const chapter = chapterData.find(c => c.chapter_id === member.chapter_id);
     const chapterName = chapter ? chapter.chapter_name : `Chapter #${member.chapter_id}`;
@@ -11025,7 +11026,7 @@ const sendKittyReminderToAll = async (req, res) => {
     }
 
     // Get chapter data once for all members
-    const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
+    const chapterResponse = await fetch('http://localhost:5000/api/chapters');
     const chapterData = await chapterResponse.json();
 
     // Process each member
@@ -11515,6 +11516,283 @@ const getAllVisitorDocuments = async (req, res) => {
   }
 };
 
+// Add your Delhi zip codes here
+const delhiZipCodes = ["110080", "110081", "110082", "110083", "110084", "110085", "110086", "110087", "110088", "110089", "110090", "110091", "110092", "110093", "110094", "110095", "110096", "110097", "110099", "110110", "110001", "110002", "110003", "110004", "110005", "110006", "110007", "110008", "110009", "110010", "110011", "110012", "110013", "110014", "110015", "110016", "110017", "110018", "110019", "110020", "110021", "110022", "110023", "110024", "110025", "110026", "110027", "110028", "110029", "110030", "110031", "110032", "110033", "110034", "110035", "110036", "110037", "110038", "110039", "110040", "110041", "110042", "110043", "110044", "110045", "110046", "110047", "110048", "110049", "110051", "110052", "110053", "110054", "110055", "110056", "110057", "110058", "110059", "110060", "110061", "110062", "110063", "110064", "110065", "110066", "110067", "110068", "110069", "110070", "110071", "110072", "110073", "110074", "110075", "110076", "110077", "110078"];
+
+function numberToWords(amount) {
+  // Implement or import your number-to-words logic here
+  return `${amount} Rupees only`;
+}
+
+const generateBulkEinvoicePdf = async (req, res) => {
+  try {
+    const { orderIds } = req.body;
+    if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ success: false, message: "No order IDs provided" });
+    }
+
+    const templatePath = path.join(__dirname, 'einvoice-handler', 'temp.html');
+    const templateHtml = fs.readFileSync(templatePath, 'utf8');
+    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    const mergedPdf = await PDFLibDocument.create();
+    for (const orderId of orderIds) {
+      // 1. Fetch order and member details
+      const orderQuery = `
+        SELECT 
+          o.*,
+          COALESCE(m.member_company_address, o.visitor_company_address) as company_address,
+          COALESCE(m.member_company_state, '') as company_state,
+          COALESCE(m.member_gst_number, o.visitor_gstin) as gst_number,
+          COALESCE(m.member_company_name, o.visitor_company) as company_name,
+          COALESCE(m.member_first_name || ' ' || m.member_last_name, o.visitor_name) as full_name,
+          COALESCE(o.company, o.visitor_company) as company,
+          m.address_pincode,
+          o.chapter_id,
+          o.customer_id,
+          COALESCE(m.member_email_address, o.visitor_email) as customer_email,
+          COALESCE(m.member_phone_number, o.visitor_mobilenumber) as customer_phone
+        FROM orders o
+        LEFT JOIN member m ON o.customer_id = m.member_id
+        WHERE o.order_id = $1
+      `;
+      const orderResult = await con.query(orderQuery, [orderId]);
+      const orderData = orderResult.rows[0];
+      if (!orderData) continue;
+
+      // 2. Get einvoice details
+      const einvoiceResult = await con.query('SELECT * FROM einvoice WHERE order_id = $1', [orderId]);
+      const einvoice = einvoiceResult.rows[0] || {};
+
+      // After getting einvoice details
+const hasIrn = einvoice.irn && einvoice.irn.trim() !== '';
+
+
+// Add QR code generation here
+let qrCodeDataUrl = '';
+if (einvoice.irn) {
+  try {
+    qrCodeDataUrl = await QRCode.toDataURL(einvoice.irn, {
+      errorCorrectionLevel: 'H',
+      margin: 1,
+      width: 100
+    });
+  } catch (err) {
+    console.error('Error generating QR code:', err);
+  }
+}
+
+      // 3. Get doc number
+      const docNumberResult = await con.query('SELECT * FROM documentnumbers WHERE order_id = $1', [orderId]);
+      const docNumber = docNumberResult.rows[0] || {};
+
+      // 4. Get chapter name
+      let chapterName = '';
+      try {
+        const chapterResponse = await axios.get(`http://localhost:5000/api/chapters`);
+        const chapters = chapterResponse.data;
+        const chapter = chapters.find(ch => ch.chapter_id == orderData.chapter_id);
+        if (chapter) chapterName = chapter.chapter_name;
+      } catch (e) { chapterName = ''; }
+
+      // 5. Get transaction details for payment mode and transaction ID
+      let paymentMode = 'Online';
+      let transactionId = '';
+      try {
+        const txnRes = await con.query('SELECT * FROM transactions WHERE order_id = $1', [orderId]);
+        const txn = txnRes.rows[0];
+        if (txn && txn.payment_method) {
+          const methodObj = typeof txn.payment_method === 'string' ? JSON.parse(txn.payment_method) : txn.payment_method;
+          paymentMode = Object.keys(methodObj)[0] || 'Online';
+        }
+        if (txn && txn.cf_payment_id) {
+          transactionId = txn.cf_payment_id;
+        }
+      } catch (e) {}
+
+      // 6. Calculate taxes
+      const orderAmount = parseFloat(orderData.order_amount);
+      const baseAmount = (orderAmount / 1.18).toFixed(2);
+      const totalTax = (orderAmount - parseFloat(baseAmount)).toFixed(2);
+      let cgst = '0.00', sgst = '0.00', igst = '0.00';
+      const isDelhiPincode = delhiZipCodes.includes(orderData.address_pincode);
+      if (isDelhiPincode) {
+        cgst = (totalTax / 2).toFixed(2);
+        sgst = (totalTax / 2).toFixed(2);
+      } else {
+        igst = totalTax;
+      }
+
+      // 7. Format dates
+      const invoiceDate = einvoice.invoice_dt
+        ? new Date(einvoice.invoice_dt).toLocaleDateString('en-GB')
+        : new Date().toLocaleDateString('en-GB');
+      const ackDate = einvoice.ack_dt
+        ? new Date(einvoice.ack_dt).toLocaleDateString('en-GB')
+        : '';
+
+      // 8. Particulars (Meeting Payment logic)
+     // In your bulk controller:
+let particularsText = 'BNI Payment';
+
+if (orderData.payment_note?.toLowerCase().includes('meeting')) {
+  try {
+    // Use the correct API endpoint
+    const kittyRes = await axios.get('http://localhost:5000/api/getAllKittyPayments');
+    console.log('Fetched kitty bills:', kittyRes.data);
+    
+    if (kittyRes.data && kittyRes.data.length > 0) {
+      const chapterId = Number(orderData.chapter_id);
+      const kittyBillId = Number(orderData.kitty_bill_id);
+      
+      console.log('Looking for chapter_id:', chapterId, 'kitty_bill_id:', kittyBillId);
+      
+      const kitty = kittyRes.data.find(
+        k => Number(k.chapter_id) === chapterId && Number(k.kitty_bill_id) === kittyBillId
+      );
+      
+      console.log('Matched kitty bill:', kitty);
+      
+      if (kitty) {
+        particularsText = `<b>Meeting Payment</b><br><b>Bill Type:</b> ${kitty.bill_type || ''}<br><b>Month:</b> ${kitty.description || ''}<br><b>Total Weeks:</b> ${kitty.total_weeks || ''}`;
+      } else {
+        console.error('No matching kitty bill found!');
+        particularsText = 'Meeting Payment';
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching kitty bill details:', err.message);
+    particularsText = 'Meeting Payment';
+  }
+}
+      // 9. Amount in words
+      const amountInWords = numberToWords(orderAmount);
+
+
+// Add this check for state names
+const getStateName = (state) => {
+  if (!state || state === '0' || state === '') {
+    return 'India';
+  }
+  return state;
+};
+
+      // 10. Buyer email/phone
+      const buyerEmail = orderData.customer_email || '';
+      const buyerPhone = orderData.customer_phone || '';
+
+      // 11. Buyer/Consignee details
+      const billToName = orderData.full_name || '';
+      const billToCompany = orderData.company_name || '';
+      const billToAddress = orderData.company_address || '';
+      const billToGst = orderData.gst_number || '';
+      const billToState = getStateName(orderData.company_state);
+      const shipToCompany = orderData.company || '';
+     
+      const shipToAddress = orderData.company_address || '';
+      const shipToGst = orderData.gst_number || '';
+      const shipToState = getStateName(orderData.company_state);
+
+      // 12. Fill HTML template (string replace for static, JS for dynamic)
+      let html = templateHtml
+      .replace('class="qr_code" src=""', `class="qr_code" src="${qrCodeDataUrl}"`)
+        .replace('class="irn_number">', `class="irn_number">${einvoice.irn || ''}`)
+        .replace('class="ack_no">', `class="ack_no">${einvoice.ack_no || ''}`)
+        .replace('class="ack_date">', `class="ack_date">${ackDate}`)
+        .replace('class="invoice_date">', `class="invoice_date">${invoiceDate}`)
+        .replace('class="doc_number">', `class="doc_number">${docNumber?.doc_no || ''}`)
+        .replace('class="payment_mode">', `class="payment_mode">${paymentMode}`)
+        .replace('class="bill_to_name"><strong>', `class="bill_to_name"><strong>${billToName}`)
+        .replace('class="bill_to_company"><strong>', `class="bill_to_company"><strong>${billToCompany}`)
+        .replace('class="bill_to_address">', `class="bill_to_address">${billToAddress}`)
+        .replace('class="bill_to_gst">', `class="bill_to_gst">${billToGst}`)
+        .replace('class="bill_to_state">', `class="bill_to_state">${billToState}`)
+        .replace('class="ship_to_company"><strong>', `class="ship_to_company"><strong>${shipToCompany}`)
+        .replace('class="ship_to_address">', `class="ship_to_address">${shipToAddress}`)
+        .replace('class="ship_to_gst">', `class="ship_to_gst">${shipToGst}`)
+        .replace('class="ship_to_state">', `class="ship_to_state">${shipToState}`)
+        .replace('class="transaction_id">', `class="transaction_id">${transactionId}`)
+        .replace('class="order_id">', `class="order_id">${orderId}`)
+        .replace('class="buyer_email">', `class="buyer_email">${buyerEmail}`)
+        .replace('class="buyer_phone">', `class="buyer_phone">${buyerPhone}`);
+
+      // Add CSS and JavaScript for dynamic fields
+      const safeParticularsText = particularsText.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+      html = html.replace('</head>', 
+        `<style>
+    ${isDelhiPincode ? '.igst-row { display: none; }' : '.cgst-row, .sgst-row { display: none; }'}
+    ${!hasIrn ? '.irn-section { display: none; }' : ''}
+    .text-end { text-align: right; }
+    .text-center { text-align: center; }
+    td { padding: 6px; }  /* Reduced padding */
+    .table { width: 100%; border-collapse: collapse; }
+    .border { border: 1px solid #dee2e6; }
+    
+    /* Add these new styles */
+    body { 
+      margin: 0;
+      padding: 0;
+      font-size: 12px;  /* Slightly smaller font size */
+    }
+    .row {
+      margin-bottom: 5px;  /* Reduced margin between rows */
+    }
+    address {
+      margin-bottom: 5px;  /* Reduced margin for addresses */
+    }
+    hr {
+      margin: 5px 0;  /* Reduced margin for horizontal lines */
+    }
+    .qr_code {
+      max-width: 80px;  /* Control QR code size */
+      height: auto;
+    }
+  </style>
+        <script>
+          window.onload = function() {
+            document.getElementById('particulars').innerHTML = "${safeParticularsText}";
+            document.getElementById('rate').textContent = '${baseAmount}';
+            document.getElementById('amount').textContent = '${baseAmount}';
+            document.getElementById('taxable_value').textContent = '${baseAmount}';
+            document.getElementById('cgst').textContent = '${cgst}';
+            document.getElementById('sgst').textContent = '${sgst}';
+            document.getElementById('igst').textContent = '${igst}';
+            document.getElementById('grand_total').textContent = '${orderAmount.toFixed(2)}';
+            document.getElementById('amount_in_words').textContent = '${amountInWords}';
+          }
+        </script>
+        </head>`);
+
+      // 13. Generate PDF
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      await page.waitForFunction(() => document.getElementById('particulars').textContent !== '');
+      const pdfBuffer = await page.pdf({ format: 'A4' });
+      await page.close();
+
+      const pdf = await PDFLibDocument.load(pdfBuffer);
+      const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+      copiedPages.forEach(p => mergedPdf.addPage(p));
+    }
+
+    await browser.close();
+    const mergedPdfBytes = await mergedPdf.save();
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=bulk-einvoices.pdf');
+    res.send(Buffer.from(mergedPdfBytes));
+    console.log('PDF generation and response complete.');
+  } catch (error) {
+    console.error("Error in generateBulkEinvoicePdf:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error generating bulk PDF",
+      error: error.message
+    });
+  }
+};
+
+
+
 
 
 module.exports = {
@@ -11693,6 +11971,7 @@ module.exports = {
   getVisitorDocuments,
   deleteVisitorDocument,
   getAllVisitorDocuments,
-  getSettlementOrder
+  getSettlementOrder,
+  generateBulkEinvoicePdf
 
 };

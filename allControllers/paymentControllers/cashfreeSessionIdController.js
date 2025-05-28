@@ -231,7 +231,7 @@ const sessionIdGenerator = async (req, res) => {
                     setTimeout(async () => {
                         try {
                             console.log('🔍 Checking transaction status for order:', responseData.order_id);
-                            const transactionResponse = await axios.get('https://backend.bninewdelhi.com/api/allTransactions');
+                            const transactionResponse = await axios.get('http://localhost:5000/api/allTransactions');
                             const transactions = transactionResponse.data;
                             
                             const relevantTransaction = transactions.find(t => t.order_id === responseData.order_id);
@@ -241,7 +241,7 @@ const sessionIdGenerator = async (req, res) => {
                                 console.log('💰 Found successful transaction:', relevantTransaction.cf_payment_id);
                                 
                                 // Get training details
-                                const trainingResponse = await axios.get('https://backend.bninewdelhi.com/api/allTrainings');
+                                const trainingResponse = await axios.get('http://localhost:5000/api/allTrainings');
                                 const trainings = trainingResponse.data;
                                 
                                 const training = trainings.find(t => t.training_id === data.customer_details.trainingId);
@@ -267,7 +267,7 @@ const sessionIdGenerator = async (req, res) => {
                                     
                                     // Send QR code email
                                     try {
-                                        await axios.post('https://backend.bninewdelhi.com/api/send-qr-code', qrCodeData);
+                                        await axios.post('http://localhost:5000/api/send-qr-code', qrCodeData);
                                         console.log('✉️ QR code email sent successfully');
                                     } catch (emailError) {
                                         console.error('❌ Error sending QR code email:', emailError);
@@ -371,8 +371,8 @@ const getOrderStatus = async (req, res) => {
         `INSERT INTO Transactions 
           (cf_payment_id, order_id, payment_gateway_id, payment_amount, payment_currency, payment_status, 
            payment_message, payment_time, payment_completion_time, bank_reference, auth_id, payment_method, 
-           error_details, gateway_order_id, gateway_payment_id, payment_group, is_settled)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+           error_details, gateway_order_id, gateway_payment_id, payment_group, is_settled, settlement_id, utr, settled_on, einvoice_generated)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
         [
           cf_payment_id,
           order_id,
@@ -390,6 +390,10 @@ const getOrderStatus = async (req, res) => {
           gateway_order_id,
           gateway_payment_id,
           payment_group,
+          false,
+          null,
+          null,
+          null,
           false
         ]
       );
@@ -414,7 +418,7 @@ const getOrderStatus = async (req, res) => {
           // db query
           console.log("adding in db.....");
           
-    const creditResponse = await fetch("https://backend.bninewdelhi.com/api/getAllMemberCredit");
+    const creditResponse = await fetch("http://localhost:5000/api/getAllMemberCredit");
     const creditData = await creditResponse.json();
 
     // Filter credits based on member_id and chapter_id
@@ -498,7 +502,7 @@ const getOrderStatus = async (req, res) => {
     
         }
         const getvisitorData = await axios.get(
-          "https://backend.bninewdelhi.com/api/getAllVisitors"
+          "http://localhost:5000/api/getAllVisitors"
         );
         // console.log("---",getvisitorData.data);
         const matchedVisitor = getvisitorData.data.find(visitor => 
@@ -607,7 +611,7 @@ const getOrderStatus = async (req, res) => {
 
           // Get membership pending details from API
           try {
-            const membershipResponse = await axios.get(`https://backend.bninewdelhi.com/api/getMembershipPending`);
+            const membershipResponse = await axios.get(`http://localhost:5000/api/getMembershipPending`);
             const membershipData = membershipResponse.data;
 
             // Check if visitor_id exists in API response
@@ -949,6 +953,30 @@ const webhookSettlementStatus = async (req, res) => {
     const webhookEvent = CashfreeWebhook.PGVerifyWebhookSignature(signature, rawBody, timestamp);
     console.log('Webhook signature verified successfully');
     console.log('Webhook data:', webhookEvent.object);
+
+    // --- Reconciliation Logic ---
+    const settlement = webhookEvent.object.data.settlement;
+    const settlement_id = settlement.settlement_id;
+    const payment_from = settlement.payment_from;
+    const payment_till = settlement.payment_till;
+    const utr = settlement.utr;
+    const settled_on = settlement.settled_on;
+
+    try {
+      const updateQuery = `
+        UPDATE transactions
+        SET is_settled = true, settlement_id = $1, utr = $2, settled_on = $3
+        WHERE payment_status = 'SUCCESS'
+          AND payment_completion_time >= $4
+          AND payment_completion_time <= $5
+          AND payment_group NOT IN ('cash', 'visitor_payment')
+      `;
+      const updateValues = [settlement_id, utr, settled_on, payment_from, payment_till];
+      const result = await db.query(updateQuery, updateValues);
+      console.log(`Reconciliation: ${result.rowCount} transactions marked as settled for settlement_id ${settlement_id}`);
+    } catch (err) {
+      console.error('Error during reconciliation:', err);
+    }
 
     // Send email notification
     const mailOptions = {

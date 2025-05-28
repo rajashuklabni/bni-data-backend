@@ -178,7 +178,8 @@ getAllVisitorDocuments,
 uploadVisitorDocument,
 getVisitorDocuments,
 deleteVisitorDocument,
-getSettlementOrder
+getSettlementOrder,
+generateBulkEinvoicePdf
 } = require("./controllers");
 
 const path = require("path");
@@ -1249,6 +1250,6 @@ router.get('/uploads/visitor_documents/:docType/:filename', (req, res) => {
 });
 
 router.get("/getAllVisitorDocuments", getAllVisitorDocuments);
-
+router.post('/generate-bulk-einvoice-pdf', generateBulkEinvoicePdf);
 
 module.exports = router;

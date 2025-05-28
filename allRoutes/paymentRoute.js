@@ -10,8 +10,8 @@ router.get('/orders/:order_id/paymentStatus',getPaymentStatus)
 router.get('/orders/:order_id/settlementStatus', getSettlementStatus);
 router.get('/settlement/:cf_payment_id', getSettlementByCfPaymentId);
 router.get('/getTrainingOrder/:training_id', getOrderByTrainingId);
-router.post('/webhook/settlementStatus',webhookSettlementStatus);
+router.post('/webhook/settlementStatus', bodyParser.raw({ type: 'application/json' }), webhookSettlementStatus);
 
  
 
-module.exports = router;
+module.exports = router;

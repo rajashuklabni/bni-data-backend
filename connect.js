@@ -21,7 +21,7 @@ app.use(cors());
 // Body parser middleware - must be before multer
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(bodyParser.raw({ type: "application/json" }));
+// app.use(bodyParser.raw({ type: "application/json" }));
 
 // Serve static files from uploads directory
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -60,7 +60,7 @@ const allowedOrigins = [
   "http://54.39.51.161:3000",
   "backend.bninewdelhi.com/",
   "https://backend.bninewdelhi.com",
-  "https://backend.bninewdelhi.com/",
+  "http://localhost:5000/",
   "https://backend.bninewdelhi.com",
   "http://localhost:5000"
 ];

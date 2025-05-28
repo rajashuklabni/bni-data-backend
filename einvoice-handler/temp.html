@@ -650,7 +650,7 @@ hr {
 		<header>
 			<div class="row align-items-center gy-3">
 				<div class="col-sm-4 text-center text-sm-start">
-					<img src="https://backend.bninewdelhi.com/uploads/dynamicLogo/1746695986750-87659972.jpg" width="200px">
+					<img src="http://localhost:5000/uploads/dynamicLogo/1746695986750-87659972.jpg" width="200px">
 				</div>
 				<div class="col-sm-4 text-center text-sm-start">
 					<h2 style="font-family: Arial, Helvetica, sans-serif; font-weight: 500;">Tax Invoice</h2>
@@ -659,6 +659,7 @@ hr {
 					<img class="qr_code" src="" title="qrcode" alt="Koice" width="150px">
 				</div>
 			</div>
+      <div class="irn-section">
 			<div class="row align-items-center gy-3">
         <div class="col-sm-4 text-center text-sm-start">
           <div class="irn_block">
@@ -667,6 +668,7 @@ hr {
             <span><b>Ack Date :</b></span> <span class="ack_date"></span> <br>
           </div>
         </div>
+      </div>
       </div>
 			<hr>
 		</header>
@@ -795,12 +797,12 @@ hr {
             // QR Code handling
             document.addEventListener('DOMContentLoaded', function() {
                 // Logo fetching
-                fetch("https://backend.bninewdelhi.com/api/getDisplayLogo")
+                fetch("http://localhost:5000/api/getDisplayLogo")
                     .then(response => response.json())
                     .then(data => {
                         if (data.length > 0 && data[0].display_image_name) {
                             const displayImageName = data[0].display_image_name;
-                            const imagePath = `https://backend.bninewdelhi.com/uploads/dynamicLogo/${displayImageName}`;
+                            const imagePath = `http://localhost:5000/uploads/dynamicLogo/${displayImageName}`;
                             document.getElementById("dynamic-logo").src = imagePath;
                         }
                     })
