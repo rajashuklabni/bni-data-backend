@@ -893,75 +893,15 @@ const getOrderByTrainingId = async (req, res) => {
 };
 
 const webhookSettlementStatus = async (req, res) => {
-  try {
-    // Get the signature and timestamp from headers
-    const signature = req.headers['x-webhook-signature'];
-    const timestamp = req.headers['x-webhook-timestamp'];
-    
-    // Validate required headers
-    if (!signature || !timestamp) {
-      console.error('Missing required headers:', { signature: !!signature, timestamp: !!timestamp });
-      return res.status(400).json({ error: 'Missing required headers' });
-    }
-
-    // Validate request body
-    if (!req.body || !req.body.data || !req.body.data.settlement) {
-      console.error('Invalid webhook payload structure');
-      return res.status(400).json({ error: 'Invalid webhook payload' });
-    }
-
-    const rawBody = JSON.stringify(req.body);
-    console.log('Received webhook payload:', rawBody);
-
-    // Set the client secret for signature verification
-    if (!process.env.x_client_secret) {
-      console.error('Missing x_client_secret in environment variables');
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
-    CashfreeWebhook.XClientSecret = process.env.x_client_secret;
-
-    // Verify the webhook signature
-    try {
-      const webhookEvent = CashfreeWebhook.PGVerifyWebhookSignature(signature, rawBody, timestamp);
-      console.log('Webhook signature verified successfully');
-      console.log('Webhook data:', webhookEvent.object);
-
-      // Validate webhook type
-      if (webhookEvent.object.type !== 'SETTLEMENT_SUCCESS') {
-        console.log('Ignoring non-settlement webhook:', webhookEvent.object.type);
-        return res.status(200).json({ message: 'Webhook received but ignored - not a settlement event' });
-      }
-
-      // Send email notification
-      const mailOptions = {
-        from: 'info@bninewdelhi.in',
-        to: 'scriptforprince@gmail.com',
-        subject: 'Cashfree Settlement Webhook Received',
-        html: `
-          <h2>Cashfree Settlement Webhook Received</h2>
-          <p><strong>Event Type:</strong> ${webhookEvent.object.type}</p>
-          <p><strong>Event Time:</strong> ${webhookEvent.object.event_time}</p>
-          <p><strong>Settlement ID:</strong> ${webhookEvent.object.data.settlement.settlement_id}</p>
-          <p><strong>Status:</strong> ${webhookEvent.object.data.settlement.status}</p>
-          <p><strong>UTR:</strong> ${webhookEvent.object.data.settlement.utr}</p>
-          <p><strong>Settlement Amount:</strong> ${webhookEvent.object.data.settlement.settlement_amount}</p>
-          <p><strong>Settled On:</strong> ${webhookEvent.object.data.settlement.settled_on}</p>
-        `
-      };
-
-      await transporter.sendMail(mailOptions);
-      console.log('Settlement webhook notification email sent successfully');
-
-      // Return success response
-      res.status(200).json({ message: 'Webhook processed successfully' });
-    } catch (error) {
-      console.error('Webhook signature verification failed:', error);
-      res.status(400).json({ error: 'Invalid webhook signature' });
-    }
-  } catch (error) {
-    console.error('Error processing webhook:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  // Log headers and body for debugging
+  console.log('Webhook headers:', req.headers);
+  if (Buffer.isBuffer(req.body)) {
+    console.log('Webhook body (buffer):', req.body.toString('utf8'));
+  } else {
+    console.log('Webhook body:', req.body);
   }
+  // Always return 200 for initial registration/testing
+  res.status(200).json({ message: 'Webhook received (test mode)' });
 };
 
 
