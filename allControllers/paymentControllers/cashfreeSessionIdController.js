@@ -378,7 +378,7 @@ const getOrderStatus = async (req, res) => {
           gateway_order_id,
           gateway_payment_id,
           payment_group,
-          FALSE
+          false
         ]
       );
 
