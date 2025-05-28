@@ -909,6 +909,11 @@ const webhookSettlementStatus = async (req, res) => {
   console.log('Parsed webhook payload:', payload);
 
   if (!payload || !payload.data || !payload.data.settlement) {
+    if (payload && payload.data && payload.data.test_object) {
+      // This is a test payload from Cashfree dashboard
+      console.log('Received Cashfree test webhook payload');
+      return res.status(200).json({ message: 'Test webhook received' });
+    }
     console.error('Invalid webhook payload structure');
     return res.status(400).json({ error: 'Invalid webhook payload' });
   }
