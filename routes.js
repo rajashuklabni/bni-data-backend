@@ -177,7 +177,8 @@ updateKittyBillStatus,
 getAllVisitorDocuments,
 uploadVisitorDocument,
 getVisitorDocuments,
-deleteVisitorDocument
+deleteVisitorDocument,
+getSettlementOrder
 } = require("./controllers");
 
 const path = require("path");
@@ -659,6 +660,7 @@ router.get("/allTransactions", getTransactions);
 router.get("/authTokens", authTokens);
 router.get("/getMember/:member_id", getMember);
 router.get("/einvoice/:order_id", getEinvoice);
+router.get("/getSettlementOrder/:order_id", getSettlementOrder);
 router.get("/getChapter/:chapter_id", getChapter);
 router.get("/getRegion/:region_id", getRegion);
 router.get("/getUniversalLink/:id", getUniversalLink);

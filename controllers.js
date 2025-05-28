@@ -329,6 +329,28 @@ const getEinvoice = async (req, res) => {
   }
 };
 
+
+const getSettlementOrder = async (req, res) => {
+  const { order_id } = req.params; // Get member_id from route parameters
+
+  try {
+    // Use a parameterized query to safely insert member_id into the SQL statement
+    const result = await con.query(
+      "SELECT * FROM settlementstatus WHERE order_id = $1",
+      [order_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Settlement Status for this order not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Settlement Status for this order not found:", error);
+    res.status(500).send("Settlement Status for this order not found");
+  }
+};
+
 // ... existing code ...
 
 const addRegion = async (req, res) => {
@@ -11670,6 +11692,7 @@ module.exports = {
   uploadVisitorDocument,
   getVisitorDocuments,
   deleteVisitorDocument,
-  getAllVisitorDocuments
+  getAllVisitorDocuments,
+  getSettlementOrder
 
 };

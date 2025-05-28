@@ -334,9 +334,9 @@ async function generateIRN(req, res) {
       const transaction_id = req.body.transactionId.transaction_id;
       await db.query(
         `INSERT INTO einvoice (
-           order_id, transaction_id, member_id, ack_no, ack_dt, irn, qrcode, invoice_dt
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [order_id, transaction_id, member_id, null, null, null, null, new Date()]
+           order_id, transaction_id, member_id, ack_no, ack_dt, irn, qrcode, invoice_dt, is_gst_number
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [order_id, transaction_id, member_id, null, null, null, null, new Date(), false]
       );
       
       // Send email without IRN/QR/AckNo
@@ -353,6 +353,9 @@ async function generateIRN(req, res) {
       ).catch(err => {
         console.error("Error in background email processing (no IRN):", err);
       });
+
+         // Update settlementstatus table
+    await db.query('UPDATE settlementstatus SET einvoice_generated = $1 WHERE order_id = $2', ['yes', order_id]);
       // Respond to frontend
       return res.status(200).json({
         message: hasNoVisitorGstin ? "Document generated successfully (no IRN, Visitor GSTIN not provided)" : "Document generated successfully (no IRN, GSTIN is N/A)",
@@ -559,8 +562,8 @@ async function generateIRN(req, res) {
 
     // Insert the decrypted IRN data into the einvoice table
     const insertEInvoiceQuery = `
-    INSERT INTO einvoice (order_id, transaction_id, member_id, ack_no, ack_dt, irn, qrcode)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    INSERT INTO einvoice (order_id, transaction_id, member_id, ack_no, ack_dt, irn, qrcode, is_gst_number)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `;
 
     const transaction_id = req.body.transactionId.transaction_id; // Assuming transaction_id is in the request body
@@ -571,10 +574,14 @@ async function generateIRN(req, res) {
       decryptedDataa.AckNo,
       decryptedDataa.AckDt,
       decryptedDataa.Irn,
-      decryptedDataa.SignedQRCode
+      decryptedDataa.SignedQRCode,
+      true
     ]);
 
     console.log("IRN Data saved to einvoice table");
+
+       // Update settlementstatus table
+       await db.query('UPDATE settlementstatus SET einvoice_generated = $1 WHERE order_id = $2', ['yes', order_id]);
 
     // Send success response to frontend first
     res.status(200).json({
