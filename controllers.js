@@ -134,10 +134,10 @@ const getMember = async (req, res) => {
           ...member,
           // Add image URLs if images exist
           member_photo_url: member.member_photo 
-              ? `http://localhost:5000/api/uploads/memberLogos/${member.member_photo}`
+              ? `https://backend.bninewdelhi.com/api/uploads/memberLogos/${member.member_photo}`
               : null,
           member_company_logo_url: member.member_company_logo 
-              ? `http://localhost:5000/api/uploads/memberCompanyLogos/${member.member_company_logo}`
+              ? `https://backend.bninewdelhi.com/api/uploads/memberCompanyLogos/${member.member_company_logo}`
               : null,
           // Parse arrays that might be stored as strings
           accolades_id: Array.isArray(member.accolades_id)
@@ -184,7 +184,7 @@ const getChapter = async (req, res) => {
         // Add image URL to response
         const chapterData = result.rows[0];
         if (chapterData.chapter_logo) {
-            chapterData.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+            chapterData.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
             console.log('🖼️ Added logo URL:', chapterData.chapter_logo_url);
         }
 
@@ -243,7 +243,7 @@ const getRegion = async (req, res) => {
         // Transform the logo data
         let logoUrl = null;
         if (region.region_logo && region.region_logo !== '{}' && region.region_logo !== 'null') {
-            logoUrl = `http://localhost:5000/api/uploads/regionLogos/${region.region_logo}`;
+            logoUrl = `https://backend.bninewdelhi.com/api/uploads/regionLogos/${region.region_logo}`;
             console.log('🖼️ Constructed logo URL:', logoUrl);
         }
 
@@ -477,7 +477,7 @@ const addRegion = async (req, res) => {
       message: "Region added successfully!", 
       data: {
         ...result.rows[0],
-        region_logo_url: region_logo ? `http://localhost:5000/uploads/regionLogos/${region_logo}` : null
+        region_logo_url: region_logo ? `https://backend.bninewdelhi.com/uploads/regionLogos/${region_logo}` : null
       }
     });
   } catch (error) {
@@ -625,7 +625,7 @@ const addChapter = async (req, res) => {
       // Rest of your code remains the same...
       const chapterData = result.rows[0];
       if (chapterData.chapter_logo) {
-          chapterData.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+          chapterData.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Creation Success:');
@@ -768,13 +768,13 @@ const addMember = async (req, res) => {
     const chapterId = parseInt(req.body.chapter_id);
     const dateOfPublishing = new Date(req.body.date_of_publishing);
     
-    const kittyBillsResponse = await axios.get('http://localhost:5000/api/getAllKittyPayments');
+    const kittyBillsResponse = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
     const allKittyBills = kittyBillsResponse.data;
     
     const chapterKittyBills = allKittyBills.filter(bill => bill.chapter_id === chapterId && bill.delete_status === 0);
     
     // 2. Fetch chapter meeting day
-    const chaptersResponse = await axios.get('http://localhost:5000/api/chapters');
+    const chaptersResponse = await axios.get('https://backend.bninewdelhi.com/api/chapters');
     const chapterInfo = chaptersResponse.data.find(ch => ch.chapter_id === chapterId);
     
     if (!chapterInfo) {
@@ -1427,7 +1427,7 @@ const updateChapter = async (req, res) => {
 
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Update Success:');
@@ -2839,7 +2839,7 @@ const addKittyPayment = async (req, res) => {
     const membersToEmail = membersResult.rows;
 
     // Fetch chapters to get chapter_name and region_id from chapter_id
-    const chapterResponse = await fetch('http://localhost:5000/api/chapters');
+    const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
     const chapterData = await chapterResponse.json();
     const chapter = chapterData.find(c => c.chapter_id === Number(chapter_id));
     const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; // fallback if not found
@@ -2876,7 +2876,7 @@ const addKittyPayment = async (req, res) => {
       }
     }
 
-    const response = await fetch('http://localhost:5000/api/getbankOrder');
+    const response = await fetch('https://backend.bninewdelhi.com/api/getbankOrder');
     const bankOrders = await response.json();
 
     // Filter the bank orders based on chapter_id
@@ -3881,7 +3881,7 @@ const sendQrCodeByEmail = async (req, res) => {
   try {
     // Fetch order details to get customer email
     const orderResponse = await fetch(
-      `http://localhost:5000/api/allOrders`
+      `https://backend.bninewdelhi.com/api/allOrders`
     );
     const orders = await orderResponse.json();
 
@@ -4460,7 +4460,7 @@ const updateChapterSettings = async (req, res) => {
       // Add the logo URL to the response
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('Chapter updated successfully:', updatedChapter);
@@ -4639,7 +4639,7 @@ const addMemberCredit = async (req, res) => {
 
     let insertedRecords = [];
 
-    const response = await fetch("http://localhost:5000/api/getbankOrder");
+    const response = await fetch("https://backend.bninewdelhi.com/api/getbankOrder");
     const bankOrders = await response.json();
 
     
@@ -5292,7 +5292,7 @@ const getZone = async (req, res) => {
 
         // Add base URL to zone logo
         if (result.rows[0].zone_logo) {
-            result.rows[0].zone_logo = `http://localhost:5000/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
+            result.rows[0].zone_logo = `https://backend.bninewdelhi.com/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
         }
 
         res.json({
@@ -6566,7 +6566,7 @@ const updateOnboardingCall = async (req, res) => {
       const updatedVisitor = result.rows[0];
       
       // Add the full URL for the uploaded image
-      const imageUrl = `http://localhost:5000/api/uploads/onboardingCalls/${filename}`;
+      const imageUrl = `https://backend.bninewdelhi.com/api/uploads/onboardingCalls/${filename}`;
       
       console.log('✅ Onboarding call updated successfully:', {
           visitor_id: updatedVisitor.visitor_id,
@@ -6956,7 +6956,7 @@ const updateChapterRequisition = async (req, res) => {
 if (isVisitorRequest && approve_status === 'approved') {
   try {
       // Fetch visitor data
-      const visitorsResponse = await fetch('http://localhost:5000/api/getallvisitors');
+      const visitorsResponse = await fetch('https://backend.bninewdelhi.com/api/getallvisitors');
       const visitors = await visitorsResponse.json();
       
       // Find the specific visitor
@@ -6992,6 +6992,12 @@ if (isVisitorRequest && approve_status === 'approved') {
                   $33, $34, $35, $36, $37, $38
               ) RETURNING *
           `;
+
+          // Before memberValues:
+const now = new Date();
+const istOffset = 5.5 * 60 * 60 * 1000;
+const istDate = new Date(now.getTime() + istOffset);
+const date_OfPublishing = istDate.toISOString().slice(0, 10); // 'YYYY-MM-DD'
           const memberValues = [
               firstName,                    // member_first_name
               lastName,                     // member_last_name
@@ -7026,7 +7032,7 @@ if (isVisitorRequest && approve_status === 'approved') {
               null,                        // street_address_line_2
               null,                        // gender
               'on',                        // notification_consent
-              new Date(),                  // date_of_publishing
+              date_OfPublishing,                   // date_of_publishing
               null,                        // member_sponsored_by
               'active',                    // member_status
               0,                           // meeting_opening_balance
@@ -7037,24 +7043,30 @@ if (isVisitorRequest && approve_status === 'approved') {
           console.log('✅ New member created from visitor:', memberResult.rows[0]);
 
      // ✅ Member inserted
-const newMember = result.rows[0];
+const newMember = memberResult.rows[0];
 const member_id = newMember.member_id;
 
 // ✅ Declare meeting_opening_balance properly
 const meeting_opening_balance = parseFloat(req.body.meeting_opening_balance) || 0;
 
 // 1. Fetch Kitty Bills
-const chapterId = parseInt(req.body.chapter_id);
-const dateOfPublishing = new Date(req.body.date_of_publishing);
+const chapterId = visitor.chapter_id; // Always use the visitor's chapter_id for visitor-to-member conversion
+console.log('visitor.date_of_publishing:', visitor.date_of_publishing);
+const dateOfPublishing = visitor.date_of_publishing
+    ? new Date(visitor.date_of_publishing)
+    : new Date(); // fallback
+console.log('📅 Date of Publishing:', dateOfPublishing);
 
-const kittyBillsResponse = await axios.get('http://localhost:5000/api/getAllKittyPayments');
+const kittyBillsResponse = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
 const allKittyBills = kittyBillsResponse.data;
 
 const chapterKittyBills = allKittyBills.filter(bill => bill.chapter_id === chapterId && bill.delete_status === 0);
 
 // 2. Fetch chapter meeting day and billing frequency
-const chaptersResponse = await axios.get('http://localhost:5000/api/chapters');
-const chapterInfo = chaptersResponse.data.find(ch => ch.chapter_id === chapterId);
+const chaptersResponse = await axios.get('https://backend.bninewdelhi.com/api/chapters');
+console.log('chapterId:', chapterId, 'typeof:', typeof chapterId);
+console.log('chapter_id in API:', chaptersResponse.data.map(ch => ch.chapter_id));
+const chapterInfo = chaptersResponse.data.find(ch => Number(ch.chapter_id) === Number(chapterId));
 
 if (!chapterInfo) {
     throw new Error('Chapter not found for meeting day');
@@ -10894,7 +10906,7 @@ const sendKittyReminder = async (req, res) => {
     const member = memberResult.rows[0];
 
     // Get chapter name
-    const chapterResponse = await fetch('http://localhost:5000/api/chapters');
+    const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
     const chapterData = await chapterResponse.json();
     const chapter = chapterData.find(c => c.chapter_id === member.chapter_id);
     const chapterName = chapter ? chapter.chapter_name : `Chapter #${member.chapter_id}`;
@@ -11026,7 +11038,7 @@ const sendKittyReminderToAll = async (req, res) => {
     }
 
     // Get chapter data once for all members
-    const chapterResponse = await fetch('http://localhost:5000/api/chapters');
+    const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
     const chapterData = await chapterResponse.json();
 
     // Process each member
@@ -11588,7 +11600,7 @@ if (einvoice.irn) {
       // 4. Get chapter name
       let chapterName = '';
       try {
-        const chapterResponse = await axios.get(`http://localhost:5000/api/chapters`);
+        const chapterResponse = await axios.get(`https://backend.bninewdelhi.com/api/chapters`);
         const chapters = chapterResponse.data;
         const chapter = chapters.find(ch => ch.chapter_id == orderData.chapter_id);
         if (chapter) chapterName = chapter.chapter_name;
@@ -11637,7 +11649,7 @@ let particularsText = 'BNI Payment';
 if (orderData.payment_note?.toLowerCase().includes('meeting')) {
   try {
     // Use the correct API endpoint
-    const kittyRes = await axios.get('http://localhost:5000/api/getAllKittyPayments');
+    const kittyRes = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
     console.log('Fetched kitty bills:', kittyRes.data);
     
     if (kittyRes.data && kittyRes.data.length > 0) {
