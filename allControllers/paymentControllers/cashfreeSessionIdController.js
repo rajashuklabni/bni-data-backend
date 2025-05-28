@@ -893,15 +893,28 @@ const getOrderByTrainingId = async (req, res) => {
 };
 
 const webhookSettlementStatus = async (req, res) => {
-  // Log headers and body for debugging
-  console.log('Webhook headers:', req.headers);
+  let payload;
   if (Buffer.isBuffer(req.body)) {
-    console.log('Webhook body (buffer):', req.body.toString('utf8'));
+    try {
+      payload = JSON.parse(req.body.toString('utf8'));
+    } catch (e) {
+      console.error('Failed to parse buffer:', e);
+      return res.status(400).json({ error: 'Invalid JSON' });
+    }
   } else {
-    console.log('Webhook body:', req.body);
+    payload = req.body;
   }
-  // Always return 200 for initial registration/testing
-  res.status(200).json({ message: 'Webhook received (test mode)' });
+
+  // Now payload should be the parsed object
+  console.log('Parsed webhook payload:', payload);
+
+  if (!payload || !payload.data || !payload.data.settlement) {
+    console.error('Invalid webhook payload structure');
+    return res.status(400).json({ error: 'Invalid webhook payload' });
+  }
+
+  // You can add your business logic here (signature check, email, etc.)
+  res.status(200).json({ message: 'Webhook received and parsed' });
 };
 
 
