@@ -69,7 +69,7 @@ function numberToWords(amount) {
 
 // Initialize Axios client with base URL and headers
 const apiClient = axios.create({
-  baseURL: 'https://api.sandbox.core.irisirp.com/',
+  baseURL: 'https://api.prod.core.irisirp.com/',
   headers: {
     'client_id': process.env.CLIENT_ID,
     'client_secret': process.env.CLIENT_SECRET,
