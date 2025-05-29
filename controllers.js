@@ -134,10 +134,10 @@ const getMember = async (req, res) => {
           ...member,
           // Add image URLs if images exist
           member_photo_url: member.member_photo 
-              ? `http://localhost:5000/api/uploads/memberLogos/${member.member_photo}`
+              ? `https://backend.bninewdelhi.com/api/uploads/memberLogos/${member.member_photo}`
               : null,
           member_company_logo_url: member.member_company_logo 
-              ? `http://localhost:5000/api/uploads/memberCompanyLogos/${member.member_company_logo}`
+              ? `https://backend.bninewdelhi.com/api/uploads/memberCompanyLogos/${member.member_company_logo}`
               : null,
           // Parse arrays that might be stored as strings
           accolades_id: Array.isArray(member.accolades_id)
@@ -184,7 +184,7 @@ const getChapter = async (req, res) => {
         // Add image URL to response
         const chapterData = result.rows[0];
         if (chapterData.chapter_logo) {
-            chapterData.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+            chapterData.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
             console.log('🖼️ Added logo URL:', chapterData.chapter_logo_url);
         }
 
@@ -243,7 +243,7 @@ const getRegion = async (req, res) => {
         // Transform the logo data
         let logoUrl = null;
         if (region.region_logo && region.region_logo !== '{}' && region.region_logo !== 'null') {
-            logoUrl = `http://localhost:5000/api/uploads/regionLogos/${region.region_logo}`;
+            logoUrl = `https://backend.bninewdelhi.com/api/uploads/regionLogos/${region.region_logo}`;
             console.log('🖼️ Constructed logo URL:', logoUrl);
         }
 
@@ -477,7 +477,7 @@ const addRegion = async (req, res) => {
       message: "Region added successfully!", 
       data: {
         ...result.rows[0],
-        region_logo_url: region_logo ? `http://localhost:5000/uploads/regionLogos/${region_logo}` : null
+        region_logo_url: region_logo ? `https://backend.bninewdelhi.com/uploads/regionLogos/${region_logo}` : null
       }
     });
   } catch (error) {
@@ -625,7 +625,7 @@ const addChapter = async (req, res) => {
       // Rest of your code remains the same...
       const chapterData = result.rows[0];
       if (chapterData.chapter_logo) {
-          chapterData.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
+          chapterData.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${chapterData.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Creation Success:');
@@ -768,13 +768,13 @@ const addMember = async (req, res) => {
     const chapterId = parseInt(req.body.chapter_id);
     const dateOfPublishing = new Date(req.body.date_of_publishing);
     
-    const kittyBillsResponse = await axios.get('http://localhost:5000/api/getAllKittyPayments');
+    const kittyBillsResponse = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
     const allKittyBills = kittyBillsResponse.data;
     
     const chapterKittyBills = allKittyBills.filter(bill => bill.chapter_id === chapterId && bill.delete_status === 0);
     
     // 2. Fetch chapter meeting day
-    const chaptersResponse = await axios.get('http://localhost:5000/api/chapters');
+    const chaptersResponse = await axios.get('https://backend.bninewdelhi.com/api/chapters');
     const chapterInfo = chaptersResponse.data.find(ch => ch.chapter_id === chapterId);
     
     if (!chapterInfo) {
@@ -1427,7 +1427,7 @@ const updateChapter = async (req, res) => {
 
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('\n✅ Chapter Update Success:');
@@ -2839,7 +2839,7 @@ const addKittyPayment = async (req, res) => {
     const membersToEmail = membersResult.rows;
 
     // Fetch chapters to get chapter_name and region_id from chapter_id
-    const chapterResponse = await fetch('http://localhost:5000/api/chapters');
+    const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
     const chapterData = await chapterResponse.json();
     const chapter = chapterData.find(c => c.chapter_id === Number(chapter_id));
     const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; // fallback if not found
@@ -2876,7 +2876,7 @@ const addKittyPayment = async (req, res) => {
       }
     }
 
-    const response = await fetch('http://localhost:5000/api/getbankOrder');
+    const response = await fetch('https://backend.bninewdelhi.com/api/getbankOrder');
     const bankOrders = await response.json();
 
     // Filter the bank orders based on chapter_id
@@ -3881,7 +3881,7 @@ const sendQrCodeByEmail = async (req, res) => {
   try {
     // Fetch order details to get customer email
     const orderResponse = await fetch(
-      `http://localhost:5000/api/allOrders`
+      `https://backend.bninewdelhi.com/api/allOrders`
     );
     const orders = await orderResponse.json();
 
@@ -4460,7 +4460,7 @@ const updateChapterSettings = async (req, res) => {
       // Add the logo URL to the response
       const updatedChapter = result.rows[0];
       if (updatedChapter.chapter_logo) {
-          updatedChapter.chapter_logo_url = `http://localhost:5000/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
+          updatedChapter.chapter_logo_url = `https://backend.bninewdelhi.com/api/uploads/chapterLogos/${updatedChapter.chapter_logo}`;
       }
 
       console.log('Chapter updated successfully:', updatedChapter);
@@ -4639,7 +4639,7 @@ const addMemberCredit = async (req, res) => {
 
     let insertedRecords = [];
 
-    const response = await fetch("http://localhost:5000/api/getbankOrder");
+    const response = await fetch("https://backend.bninewdelhi.com/api/getbankOrder");
     const bankOrders = await response.json();
 
     
@@ -5292,7 +5292,7 @@ const getZone = async (req, res) => {
 
         // Add base URL to zone logo
         if (result.rows[0].zone_logo) {
-            result.rows[0].zone_logo = `http://localhost:5000/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
+            result.rows[0].zone_logo = `https://backend.bninewdelhi.com/uploads/ZonesLogos/${result.rows[0].zone_logo}`;
         }
 
         res.json({
@@ -6566,7 +6566,7 @@ const updateOnboardingCall = async (req, res) => {
       const updatedVisitor = result.rows[0];
       
       // Add the full URL for the uploaded image
-      const imageUrl = `http://localhost:5000/api/uploads/onboardingCalls/${filename}`;
+      const imageUrl = `https://backend.bninewdelhi.com/api/uploads/onboardingCalls/${filename}`;
       
       console.log('✅ Onboarding call updated successfully:', {
           visitor_id: updatedVisitor.visitor_id,
@@ -6956,7 +6956,7 @@ const updateChapterRequisition = async (req, res) => {
 if (isVisitorRequest && approve_status === 'approved') {
   try {
       // Fetch visitor data
-      const visitorsResponse = await fetch('http://localhost:5000/api/getallvisitors');
+      const visitorsResponse = await fetch('https://backend.bninewdelhi.com/api/getallvisitors');
       const visitors = await visitorsResponse.json();
       
       // Find the specific visitor
@@ -7057,13 +7057,13 @@ const dateOfPublishing = visitor.date_of_publishing
     : new Date(); // fallback
 console.log('📅 Date of Publishing:', dateOfPublishing);
 
-const kittyBillsResponse = await axios.get('http://localhost:5000/api/getAllKittyPayments');
+const kittyBillsResponse = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
 const allKittyBills = kittyBillsResponse.data;
 
 const chapterKittyBills = allKittyBills.filter(bill => bill.chapter_id === chapterId && bill.delete_status === 0);
 
 // 2. Fetch chapter meeting day and billing frequency
-const chaptersResponse = await axios.get('http://localhost:5000/api/chapters');
+const chaptersResponse = await axios.get('https://backend.bninewdelhi.com/api/chapters');
 console.log('chapterId:', chapterId, 'typeof:', typeof chapterId);
 console.log('chapter_id in API:', chaptersResponse.data.map(ch => ch.chapter_id));
 const chapterInfo = chaptersResponse.data.find(ch => Number(ch.chapter_id) === Number(chapterId));
@@ -7360,38 +7360,50 @@ console.log('✅ Updated member meeting_payable_amount:', totalKittyAmount);
       }
 
           // Handle member_accolades insertion for approved statuses
+          // const [memberId, accoladeId] = key.split('_').map(Number);
           if (!isVisitorRequest && approve_status) {
-              const approveStatusObj = safeJSONParse(approve_status);
-              
-              for (const [key, status] of Object.entries(approveStatusObj)) {
-                  if (status === 'approved') {
-                      const [memberId, accoladeId] = key.split('_').map(Number);
-                      console.log(`🎯 Processing approved accolade for member ${memberId}, accolade ${accoladeId}`);
+            const approveStatusObj = safeJSONParse(approve_status);
 
-                      // First check if this combination already exists
-                      const checkQuery = `
-                          SELECT id FROM member_accolades 
-                          WHERE member_id = $1 AND accolade_id = $2
-                          LIMIT 1
-                      `;
-                      
-                      const existingRecord = await con.query(checkQuery, [memberId, accoladeId]);
-                      
-                      if (existingRecord.rows.length === 0) { 
-                          const insertQuery = `
-                              INSERT INTO member_accolades 
-                              (member_id, accolade_id, issue_date, count, given_date, comment)
-                              VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL)
-                              RETURNING *
-                          `;
+for (const [key, status] of Object.entries(approveStatusObj)) {
+    const [memberId, accoladeId] = key.split('_').map(Number);
 
-                          const insertResult = await con.query(insertQuery, [memberId, accoladeId]);
-                          console.log('✅ Inserted new record into member_accolades:', insertResult.rows[0]);
-                      } else {
-                          console.log(`ℹ️ Skipping insert: Accolade ${accoladeId} already exists for member ${memberId}`);
-                      }
-                  }
-              }
+    if (status === 'approved') {
+        console.log(`🎯 Processing approved accolade for member ${memberId}, accolade ${accoladeId}`);
+
+        // First check if this combination already exists
+        const checkQuery = `
+            SELECT id FROM member_accolades 
+            WHERE member_id = $1 AND accolade_id = $2
+            LIMIT 1
+        `;
+        
+        const existingRecord = await con.query(checkQuery, [memberId, accoladeId]);
+        
+        if (existingRecord.rows.length === 0) { 
+            const insertQuery = `
+                INSERT INTO member_accolades 
+                (member_id, accolade_id, issue_date, count, given_date, comment)
+                VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL)
+                RETURNING *
+            `;
+
+            const insertResult = await con.query(insertQuery, [memberId, accoladeId]);
+            console.log('✅ Inserted new record into member_accolades:', insertResult.rows[0]);
+        } else {
+            console.log(`ℹ️ Skipping insert: Accolade ${accoladeId} already exists for member ${memberId}`);
+        }
+    }
+
+    // NEW: Remove member_accolades record if status is declined
+    if (status === 'declined') {
+        console.log(`🗑️ Removing declined accolade for member ${memberId}, accolade ${accoladeId}`);
+        const deleteQuery = `
+            DELETE FROM member_accolades
+            WHERE member_id = $1 AND accolade_id = $2
+        `;
+        await con.query(deleteQuery, [memberId, accoladeId]);
+    }
+}
           }
 
           // Handle given status updates - Only update member_accolades table
@@ -8709,6 +8721,21 @@ const addVisitorPayment = async (req, res) => {
       error_details: {}
     };
 
+    // Get payment method from frontend and modify cash payment note
+    let paymentMethod = invoiceData.mode_of_payment;
+    
+    // If payment method is cash, set payment_note to "Cash"
+    if (paymentMethod?.cash) {
+      paymentMethod.cash.payment_note = "Cash";
+    } else if (!paymentMethod) {
+      // Default to cash if no payment method provided
+      paymentMethod = {
+        cash: {
+          payment_note: "Cash"
+        }
+      };
+    }
+
     // Prepare order data with visitor information
     const orderData = [
       order_id,
@@ -8772,18 +8799,6 @@ const addVisitorPayment = async (req, res) => {
 
     console.log("✅ Order Created:", orderResult.rows[0]);
 
-    // Update the payment note in the mode_of_payment object
-    const paymentMethod = invoiceData.mode_of_payment;
-    if (paymentMethod.cash) {
-      paymentMethod.cash.payment_note = "Visitor Payment";
-    } else if (paymentMethod.upi) {
-      paymentMethod.upi.payment_note = "Visitor Payment";
-    } else if (paymentMethod.bank_transfer) {
-      paymentMethod.bank_transfer.payment_note = "Visitor Payment";
-    } else if (paymentMethod.cheque) {
-      paymentMethod.cheque.payment_note = "Visitor Payment";
-    }
-
     // Prepare transaction data
     const transactionData = [
       cf_payment_id,
@@ -8797,7 +8812,7 @@ const addVisitorPayment = async (req, res) => {
       issuedDate,
       null, // bank_reference
       "VISITOR_PAYMENT", // auth_id
-      JSON.stringify(paymentMethod),
+      JSON.stringify(paymentMethod), // This will have "Cash" as payment_note for cash payments
       JSON.stringify(defaultValues.error_details),
       null, // gateway_order_id
       null, // gateway_payment_id
@@ -8922,7 +8937,8 @@ const addKittyPaymentManually = async (req, res) => {
       member_gstin,
       payment_type,
       remaining_balance_with_gst,
-      created_at
+      created_at,
+      mode_of_payment  // New field from frontend containing payment method details
     } = req.body;
 
     // Generate order ID in the required format
@@ -8984,8 +9000,8 @@ const addKittyPaymentManually = async (req, res) => {
     const orderResult = await con.query(orderQuery, orderValues);
     console.log('✅ Order created successfully');
 
-    // Payment method object
-    const paymentMethod = {
+    // Use payment method from frontend request
+    const paymentMethod = mode_of_payment || {
       cash: {
         payment_note: payment_type === "partial" ? "Partial Meeting Payment" : 
                      payment_type === "advance" ? "Advance Meeting Payment" : 
@@ -9004,17 +9020,26 @@ const addKittyPaymentManually = async (req, res) => {
         $1, $2, 1,
         $3, 'INR', 'SUCCESS',
         'Kitty Payment Successful', $4, $4,
-        'KITTY_PAYMENT', $5, '{}', 'cash'
+        'KITTY_PAYMENT', $5, '{}', $6
       ) RETURNING *
     `;
 
     const cf_payment_id = `TRX_${Date.now()}${Math.random().toString(36).substring(2, 8)}`;
+    
+    // Determine payment group based on payment method
+    let paymentGroup = 'cash';
+    if (mode_of_payment) {
+      if (mode_of_payment.upi) paymentGroup = 'upi';
+      if (mode_of_payment.netbanking) paymentGroup = 'netbanking';
+    }
+
     const transactionValues = [
       cf_payment_id,
       order_id,
       order_amount || 0,
       created_at,
-      JSON.stringify(paymentMethod)
+      JSON.stringify(paymentMethod),
+      paymentGroup
     ];
 
     console.log('💳 Inserting transaction with values:', transactionValues);
@@ -9081,7 +9106,7 @@ const addKittyPaymentManually = async (req, res) => {
       bankorderValues = [chapter_id, member_id, newAmountToPay];
     }
 
-    console.log('🏦 Updating bankorder for member:', { 
+    console.log('�� Updating bankorder for member:', { 
       member_id, 
       chapter_id, 
       payment_type,
@@ -9097,7 +9122,8 @@ const addKittyPaymentManually = async (req, res) => {
       data: {
         order: orderResult.rows[0],
         transaction: transactionResult.rows[0],
-        bankorder: bankorderResult.rows[0]
+        bankorder: bankorderResult.rows[0],
+        payment_method: paymentMethod  // Include payment method in response
       }
     });
 
@@ -10906,7 +10932,7 @@ const sendKittyReminder = async (req, res) => {
     const member = memberResult.rows[0];
 
     // Get chapter name
-    const chapterResponse = await fetch('http://localhost:5000/api/chapters');
+    const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
     const chapterData = await chapterResponse.json();
     const chapter = chapterData.find(c => c.chapter_id === member.chapter_id);
     const chapterName = chapter ? chapter.chapter_name : `Chapter #${member.chapter_id}`;
@@ -11038,7 +11064,7 @@ const sendKittyReminderToAll = async (req, res) => {
     }
 
     // Get chapter data once for all members
-    const chapterResponse = await fetch('http://localhost:5000/api/chapters');
+    const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
     const chapterData = await chapterResponse.json();
 
     // Process each member
@@ -11600,7 +11626,7 @@ if (einvoice.irn) {
       // 4. Get chapter name
       let chapterName = '';
       try {
-        const chapterResponse = await axios.get(`http://localhost:5000/api/chapters`);
+        const chapterResponse = await axios.get(`https://backend.bninewdelhi.com/api/chapters`);
         const chapters = chapterResponse.data;
         const chapter = chapters.find(ch => ch.chapter_id == orderData.chapter_id);
         if (chapter) chapterName = chapter.chapter_name;
@@ -11649,7 +11675,7 @@ let particularsText = 'BNI Payment';
 if (orderData.payment_note?.toLowerCase().includes('meeting')) {
   try {
     // Use the correct API endpoint
-    const kittyRes = await axios.get('http://localhost:5000/api/getAllKittyPayments');
+    const kittyRes = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
     console.log('Fetched kitty bills:', kittyRes.data);
     
     if (kittyRes.data && kittyRes.data.length > 0) {
