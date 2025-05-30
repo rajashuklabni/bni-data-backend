@@ -4,6 +4,10 @@ const router = express.Router();
 const app = express();
 const { sessionIdGenerator,getOrderStatus,getPaymentStatus, getSettlementStatus, getSettlementByCfPaymentId, getOrderByTrainingId, webhookSettlementStatus} = require('../allControllers/paymentControllers/cashfreeSessionIdController');
 
+// Configure bodyParser for all routes except webhook
+router.use(bodyParser.json());
+router.use(bodyParser.urlencoded({ extended: true }));
+
 router.post('/generate-cashfree-session',sessionIdGenerator);
 router.get('/getCashfreeOrderDataAndVerifyPayment/:order_id',getOrderStatus)
 router.get('/orders/:order_id/paymentStatus',getPaymentStatus)
@@ -15,9 +19,8 @@ router.get('/getTrainingOrder/:training_id', getOrderByTrainingId);
 router.post('/webhook/settlementStatus', 
   bodyParser.raw({ type: 'application/json' }), 
   (req, res, next) => {
-    console.log('Webhook middleware - Content-Type:', req.headers['content-type']);
-    console.log('Webhook middleware - Body type:', typeof req.body);
-    console.log('Webhook middleware - Is Buffer:', Buffer.isBuffer(req.body));
+    // Store the raw body as a string for signature verification
+    req.rawBody = req.body.toString('utf8');
     next();
   },
   webhookSettlementStatus

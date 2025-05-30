@@ -27,8 +27,14 @@ class Cashfree {
 		console.log('Raw body:', rawBody);
 		console.log('Secret key length:', Cashfree.XClientSecret?.length || 0);
 
-		const body = timestamp + rawBody;
+		// Ensure rawBody is a string
+		const bodyString = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
+		const body = timestamp + bodyString;
 		console.log('Combined string (timestamp + rawBody):', body);
+
+		if (!Cashfree.XClientSecret) {
+			throw new Error("Client secret is not set");
+		}
 
 		const secretKey = Cashfree.XClientSecret;
 		let generatedSignature = crypto
@@ -41,8 +47,8 @@ class Cashfree {
 		console.log('=== End Debug ===');
 
 		if (generatedSignature === signature) {
-			let jsonObject = JSON.parse(rawBody);
-			return new PayoutWebhookEvent(jsonObject.type, rawBody, jsonObject);
+			let jsonObject = JSON.parse(bodyString);
+			return new PayoutWebhookEvent(jsonObject.type, bodyString, jsonObject);
 		}
 		throw new Error(
 			"Generated signature and received signature did not match."
