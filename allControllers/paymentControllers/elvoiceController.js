@@ -374,10 +374,10 @@ async function generateIRN(req, res) {
     // Populate address fields from member data
     const buyerDetails = {
       Addr1: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' 
-        ? req.body.orderId.visitor_address 
+        ? req.body.orderId.visitor_company_address 
         : (memberData.member_company_address || "Address not found"),
       Addr2: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
-        ? req.body.orderId.visitor_address
+        ? req.body.orderId.visitor_company_address
         : (memberData.member_company_address || ""),
       Loc: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
         ? (req.body.orderId.visitor_state || "Delhi").padEnd(3, ' ')
@@ -899,11 +899,11 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
       .replace('class="payment_mode">', `class="payment_mode">${paymentMethod}`)
       .replace('class="bill_to_name"><strong>', `class="bill_to_name"><strong>${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_name : orderData.full_name}`)
       .replace('class="bill_to_company"><strong>', `class="bill_to_company"><strong>${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_company : orderData.company}`)
-      .replace('class="bill_to_address">', `class="bill_to_address">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_address : orderData.company_address}`)
+      .replace('class="bill_to_address">', `class="bill_to_address">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_company_address : orderData.company_address}`)
       .replace('class="bill_to_gst">', `class="bill_to_gst">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_gstin : orderData.gst_number}`)
       .replace('class="bill_to_state">', `class="bill_to_state">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_state || 'Delhi' : orderData.company_state || 'Delhi'}`)
       .replace('class="ship_to_company"><strong>', `class="ship_to_company"><strong>${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_company : orderData.company}`)
-      .replace('class="ship_to_address">', `class="ship_to_address">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_address : orderData.company_address}`)
+      .replace('class="ship_to_address">', `class="ship_to_address">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_company_address : orderData.company_address}`)
       .replace('class="ship_to_gst">', `class="ship_to_gst">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_gstin : orderData.gst_number}`)
       .replace('class="ship_to_state">', `class="ship_to_state">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_state || 'Delhi' : orderData.company_state || 'Delhi'}`)
       .replace('class="transaction_id">', `class="transaction_id">${req.body.transactionId?.cf_payment_id || 'N/A'}`)
