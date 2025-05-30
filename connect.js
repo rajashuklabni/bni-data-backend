@@ -11,16 +11,8 @@ const { request } = require("http");
 const dotEnv = require("dotenv");
 const jwt = require("jsonwebtoken");
 dotEnv.config();
-const webhookRoute = require("./allRoutes/webhookRoute.js");
-
 
 const app = express();
-// Register ONLY the webhook route with raw parser BEFORE any global body parser
-app.use(
-  "/api/webhook/settlementStatus",
-  require("body-parser").raw({ type: "application/json" }),
-  webhookRoute
-);
 const ccavService = require("./ccavenueService.js");
 
 // Enable CORS
