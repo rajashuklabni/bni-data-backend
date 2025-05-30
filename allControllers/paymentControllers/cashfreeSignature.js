@@ -21,12 +21,25 @@ class Cashfree {
 	 * @throws {Error}
 	 */
 	static PGVerifyWebhookSignature(signature, rawBody, timestamp) {
+		console.log('=== Signature Verification Debug ===');
+		console.log('Received signature:', signature);
+		console.log('Timestamp:', timestamp);
+		console.log('Raw body:', rawBody);
+		console.log('Secret key length:', Cashfree.XClientSecret?.length || 0);
+
 		const body = timestamp + rawBody;
+		console.log('Combined string (timestamp + rawBody):', body);
+
 		const secretKey = Cashfree.XClientSecret;
 		let generatedSignature = crypto
 			.createHmac("sha256", secretKey)
 			.update(body)
 			.digest("base64");
+		
+		console.log('Generated signature:', generatedSignature);
+		console.log('Signatures match:', generatedSignature === signature);
+		console.log('=== End Debug ===');
+
 		if (generatedSignature === signature) {
 			let jsonObject = JSON.parse(rawBody);
 			return new PayoutWebhookEvent(jsonObject.type, rawBody, jsonObject);

@@ -909,9 +909,13 @@ const getOrderByTrainingId = async (req, res) => {
 };
 
 const webhookSettlementStatus = async (req, res) => {
+  console.log('=== Webhook Handler Debug ===');
+  console.log('Headers:', req.headers);
+  
   let payload, rawBody;
   if (Buffer.isBuffer(req.body)) {
     rawBody = req.body.toString('utf8');
+    console.log('Raw body from buffer:', rawBody);
     try {
       payload = JSON.parse(rawBody);
     } catch (e) {
@@ -921,6 +925,7 @@ const webhookSettlementStatus = async (req, res) => {
   } else {
     payload = req.body;
     rawBody = JSON.stringify(req.body);
+    console.log('Raw body from object:', rawBody);
   }
 
   // Log the parsed payload
@@ -941,6 +946,9 @@ const webhookSettlementStatus = async (req, res) => {
     // Get signature and timestamp from headers
     const signature = req.headers['x-webhook-signature'];
     const timestamp = req.headers['x-webhook-timestamp'];
+
+    console.log('Webhook signature:', signature);
+    console.log('Webhook timestamp:', timestamp);
 
     // Set the client secret for signature verification
     if (!process.env.x_client_secret) {

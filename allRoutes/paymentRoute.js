@@ -10,8 +10,17 @@ router.get('/orders/:order_id/paymentStatus',getPaymentStatus)
 router.get('/orders/:order_id/settlementStatus', getSettlementStatus);
 router.get('/settlement/:cf_payment_id', getSettlementByCfPaymentId);
 router.get('/getTrainingOrder/:training_id', getOrderByTrainingId);
-router.post('/webhook/settlementStatus', bodyParser.raw({ type: 'application/json' }), webhookSettlementStatus);
 
- 
+// Configure the webhook route to handle raw bodies
+router.post('/webhook/settlementStatus', 
+  bodyParser.raw({ type: 'application/json' }), 
+  (req, res, next) => {
+    console.log('Webhook middleware - Content-Type:', req.headers['content-type']);
+    console.log('Webhook middleware - Body type:', typeof req.body);
+    console.log('Webhook middleware - Is Buffer:', Buffer.isBuffer(req.body));
+    next();
+  },
+  webhookSettlementStatus
+);
 
 module.exports = router;
