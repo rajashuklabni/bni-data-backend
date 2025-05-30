@@ -3117,10 +3117,10 @@ const addExpense = async (req, res) => {
         expense_type, submitted_by, description, amount,
         payment_status, bill_date, upload_bill, upload_receipt,
         transaction_no, bill_no, chapter_id, hotel_id, vendor_id,
-        mode_of_payment, gst_percentage, gst_amount, total_amount
+        mode_of_payment, gst_percentage, gst_amount, total_amount, entry_date
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8,
-        $9, $10, $11, $12, $13, $14, $15, $16, $17
+        $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
       ) RETURNING *`,
       [
         req.body.expense_type,
@@ -3139,7 +3139,8 @@ const addExpense = async (req, res) => {
         req.body.payment_mode,
         gstPercentage,
         gstAmount,
-        totalAmount
+        totalAmount,
+        req.body.expense_entry_date
       ]
     );
 
