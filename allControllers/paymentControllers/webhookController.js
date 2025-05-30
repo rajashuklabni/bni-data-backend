@@ -28,20 +28,38 @@ const webhookSettlementStatus = async (req, res) => {
     console.log('=== Webhook Handler Debug ===');
     console.log('Headers:', req.headers);
     
-    let payload, rawBody;
+    let rawBody;
+    let payload;
+
+    // 1. Get the raw body as string if it's a Buffer
     if (Buffer.isBuffer(req.body)) {
       rawBody = req.body.toString('utf8');
       console.log('Raw body from buffer:', rawBody);
       try {
         payload = JSON.parse(rawBody);
       } catch (e) {
-        console.error('Failed to parse buffer:', e);
+        console.error('Error processing webhook body:', e);
         return res.status(400).json({ error: 'Invalid JSON' });
       }
-    } else {
+    } else if (typeof req.body === 'string') {
+      // If for some reason it's a string
+      rawBody = req.body;
+      console.log('Raw body from string:', rawBody);
+      try {
+        payload = JSON.parse(rawBody);
+      } catch (e) {
+        console.error('Error processing webhook body:', e);
+        return res.status(400).json({ error: 'Invalid JSON' });
+      }
+    } else if (typeof req.body === 'object') {
+      // Already parsed
       payload = req.body;
       rawBody = JSON.stringify(req.body);
       console.log('Raw body from object:', rawBody);
+    } else {
+      // Unknown type
+      console.error('Unknown body type:', typeof req.body);
+      return res.status(400).json({ error: 'Invalid body type' });
     }
   
     // Log the parsed payload
