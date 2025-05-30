@@ -912,17 +912,24 @@ const webhookSettlementStatus = async (req, res) => {
   console.log('=== Webhook Handler Debug ===');
   console.log('Headers:', req.headers);
   
-  const rawBody = req.rawBody;
-  console.log('Raw body:', rawBody);
-  
-  let payload;
-  try {
-    payload = JSON.parse(rawBody);
-    console.log('Parsed webhook payload:', payload);
-  } catch (e) {
-    console.error('Failed to parse webhook body:', e);
-    return res.status(400).json({ error: 'Invalid JSON' });
+  let payload, rawBody;
+  if (Buffer.isBuffer(req.body)) {
+    rawBody = req.body.toString('utf8');
+    console.log('Raw body from buffer:', rawBody);
+    try {
+      payload = JSON.parse(rawBody);
+    } catch (e) {
+      console.error('Failed to parse buffer:', e);
+      return res.status(400).json({ error: 'Invalid JSON' });
+    }
+  } else {
+    payload = req.body;
+    rawBody = JSON.stringify(req.body);
+    console.log('Raw body from object:', rawBody);
   }
+
+  // Log the parsed payload
+  console.log('Parsed webhook payload:', payload);
 
   // Handle Cashfree test payload
   if (!payload || !payload.data || !payload.data.settlement) {
@@ -950,7 +957,7 @@ const webhookSettlementStatus = async (req, res) => {
     }
     CashfreeWebhook.XClientSecret = process.env.x_client_secret;
 
-    // Verify the webhook signature using the raw body
+    // Verify the webhook signature
     const webhookEvent = CashfreeWebhook.PGVerifyWebhookSignature(signature, rawBody, timestamp);
     console.log('Webhook signature verified successfully');
     console.log('Webhook data:', webhookEvent.object);
