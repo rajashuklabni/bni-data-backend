@@ -19,9 +19,22 @@ router.get('/getTrainingOrder/:training_id', getOrderByTrainingId);
 router.post('/webhook/settlementStatus', 
   bodyParser.raw({ type: 'application/json' }), 
   (req, res, next) => {
-    // Store the raw body as a string for signature verification
-    req.rawBody = req.body.toString('utf8');
-    next();
+    try {
+      // Convert buffer to string and store it
+      const rawBody = req.body.toString('utf8');
+      console.log('Raw body in middleware:', rawBody);
+      
+      // Store the raw body string
+      req.rawBody = rawBody;
+      
+      // Parse the body for later use
+      req.body = JSON.parse(rawBody);
+      
+      next();
+    } catch (error) {
+      console.error('Error processing webhook body:', error);
+      return res.status(400).json({ error: 'Invalid webhook payload' });
+    }
   },
   webhookSettlementStatus
 );

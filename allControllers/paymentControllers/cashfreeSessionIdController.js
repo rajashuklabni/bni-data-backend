@@ -912,53 +912,43 @@ const webhookSettlementStatus = async (req, res) => {
   console.log('=== Webhook Handler Debug ===');
   console.log('Headers:', req.headers);
   
-  // Use the raw body that was stored in the middleware
+  // Get the raw body that was stored in the middleware
   const rawBody = req.rawBody;
-  console.log('Raw body:', rawBody);
+  console.log('Raw body for verification:', rawBody);
 
-  let payload;
-  try {
-    payload = JSON.parse(rawBody);
-    console.log('Parsed webhook payload:', payload);
-  } catch (e) {
-    console.error('Failed to parse webhook body:', e);
-    return res.status(400).json({ error: 'Invalid JSON' });
+  // Get signature and timestamp from headers
+  const signature = req.headers['x-webhook-signature'];
+  const timestamp = req.headers['x-webhook-timestamp'];
+
+  console.log('Webhook signature:', signature);
+  console.log('Webhook timestamp:', timestamp);
+
+  // Set the client secret for signature verification
+  if (!process.env.x_client_secret) {
+    console.error('Missing x_client_secret in environment variables');
+    return res.status(500).json({ error: 'Server configuration error' });
   }
+  CashfreeWebhook.XClientSecret = process.env.x_client_secret;
 
-  // Handle Cashfree test payload
-  if (!payload || !payload.data || !payload.data.settlement) {
-    if (payload && payload.data && payload.data.test_object) {
-      console.log('Received Cashfree test webhook payload');
-      return res.status(200).json({ message: 'Test webhook received' });
-    }
-    console.error('Invalid webhook payload structure');
-    return res.status(400).json({ error: 'Invalid webhook payload' });
-  }
-
-  // --- Business Logic for Real Settlement Webhook ---
   try {
-    // Get signature and timestamp from headers
-    const signature = req.headers['x-webhook-signature'];
-    const timestamp = req.headers['x-webhook-timestamp'];
-
-    console.log('Webhook signature:', signature);
-    console.log('Webhook timestamp:', timestamp);
-    console.log('Raw body for verification:', rawBody);
-
-    // Set the client secret for signature verification
-    if (!process.env.x_client_secret) {
-      console.error('Missing x_client_secret in environment variables');
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
-    CashfreeWebhook.XClientSecret = process.env.x_client_secret;
-
     // Verify the webhook signature using the raw body
     const webhookEvent = CashfreeWebhook.PGVerifyWebhookSignature(signature, rawBody, timestamp);
     console.log('Webhook signature verified successfully');
     console.log('Webhook data:', webhookEvent.object);
 
-    // --- Reconciliation Logic ---
+    // Handle Cashfree test payload
+    if (webhookEvent.object.data && webhookEvent.object.data.test_object) {
+      console.log('Received Cashfree test webhook payload');
+      return res.status(200).json({ message: 'Test webhook received' });
+    }
+
+    // --- Business Logic for Real Settlement Webhook ---
     const settlement = webhookEvent.object.data.settlement;
+    if (!settlement) {
+      console.error('Invalid webhook payload structure');
+      return res.status(400).json({ error: 'Invalid webhook payload' });
+    }
+
     const settlement_id = settlement.settlement_id;
     const payment_from = settlement.payment_from;
     const payment_till = settlement.payment_till;
@@ -1005,7 +995,7 @@ const webhookSettlementStatus = async (req, res) => {
     // Return success response
     res.status(200).json({ message: 'Webhook processed successfully' });
   } catch (error) {
-    console.error('Error processing real settlement webhook:', error);
+    console.error('Error processing webhook:', error);
     res.status(400).json({ error: 'Webhook processing failed' });
   }
 };

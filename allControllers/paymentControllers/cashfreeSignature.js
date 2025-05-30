@@ -24,17 +24,18 @@ class Cashfree {
 		console.log('=== Signature Verification Debug ===');
 		console.log('Received signature:', signature);
 		console.log('Timestamp:', timestamp);
+		console.log('Raw body type:', typeof rawBody);
 		console.log('Raw body:', rawBody);
 		console.log('Secret key length:', Cashfree.XClientSecret?.length || 0);
-
-		// Ensure rawBody is a string
-		const bodyString = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
-		const body = timestamp + bodyString;
-		console.log('Combined string (timestamp + rawBody):', body);
 
 		if (!Cashfree.XClientSecret) {
 			throw new Error("Client secret is not set");
 		}
+
+		// Ensure rawBody is a string and not [object Object]
+		const bodyString = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
+		const body = timestamp + bodyString;
+		console.log('Combined string (timestamp + rawBody):', body);
 
 		const secretKey = Cashfree.XClientSecret;
 		let generatedSignature = crypto
