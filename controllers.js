@@ -8817,7 +8817,12 @@ const addVisitorPayment = async (req, res) => {
       JSON.stringify(defaultValues.error_details),
       null, // gateway_order_id
       null, // gateway_payment_id
-      'visitor_payment'
+      JSON.stringify(paymentMethod),
+      true, // is_settled
+      null, // settlement_id
+      null, // utr
+      null, // settled_on
+      false // einvoice_generated
     ];
 
     console.log("📝 Prepared Transaction Data:", transactionData);
@@ -8828,8 +8833,8 @@ const addVisitorPayment = async (req, res) => {
         cf_payment_id, order_id, payment_gateway_id, payment_amount, 
         payment_currency, payment_status, payment_message, payment_time, 
         payment_completion_time, bank_reference, auth_id, payment_method, 
-        error_details, gateway_order_id, gateway_payment_id, payment_group
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) 
+        error_details, gateway_order_id, gateway_payment_id, payment_group, is_settled, settlement_id, utr, settled_on, einvoice_generated
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) 
       RETURNING *`,
       transactionData
     );
