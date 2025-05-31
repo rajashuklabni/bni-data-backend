@@ -8817,7 +8817,7 @@ const addVisitorPayment = async (req, res) => {
       JSON.stringify(defaultValues.error_details),
       null, // gateway_order_id
       null, // gateway_payment_id
-      JSON.stringify(paymentMethod),
+      'cash',
       true, // is_settled
       null, // settlement_id
       null, // utr
