@@ -18,6 +18,7 @@ router.post('/webhook/settlementStatus',
     console.log('Webhook middleware - Content-Type:', req.headers['content-type']);
     console.log('Webhook middleware - Body type:', typeof req.body);
     console.log('Webhook middleware - Is Buffer:', Buffer.isBuffer(req.body));
+    console.log('Webhook middleware - Raw body:', req.body.toString('utf8'));
     next();
   },
   webhookSettlementStatus

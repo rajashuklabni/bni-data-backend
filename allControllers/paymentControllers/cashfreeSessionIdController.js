@@ -231,7 +231,7 @@ const sessionIdGenerator = async (req, res) => {
                     setTimeout(async () => {
                         try {
                             console.log('🔍 Checking transaction status for order:', responseData.order_id);
-                            const transactionResponse = await axios.get('http://localhost:5000/api/allTransactions');
+                            const transactionResponse = await axios.get('https://backend.bninewdelhi.com/api/allTransactions');
                             const transactions = transactionResponse.data;
                             
                             const relevantTransaction = transactions.find(t => t.order_id === responseData.order_id);
@@ -241,7 +241,7 @@ const sessionIdGenerator = async (req, res) => {
                                 console.log('💰 Found successful transaction:', relevantTransaction.cf_payment_id);
                                 
                                 // Get training details
-                                const trainingResponse = await axios.get('http://localhost:5000/api/allTrainings');
+                                const trainingResponse = await axios.get('https://backend.bninewdelhi.com/api/allTrainings');
                                 const trainings = trainingResponse.data;
                                 
                                 const training = trainings.find(t => t.training_id === data.customer_details.trainingId);
@@ -267,7 +267,7 @@ const sessionIdGenerator = async (req, res) => {
                                     
                                     // Send QR code email
                                     try {
-                                        await axios.post('http://localhost:5000/api/send-qr-code', qrCodeData);
+                                        await axios.post('https://backend.bninewdelhi.com/api/send-qr-code', qrCodeData);
                                         console.log('✉️ QR code email sent successfully');
                                     } catch (emailError) {
                                         console.error('❌ Error sending QR code email:', emailError);
@@ -418,7 +418,7 @@ const getOrderStatus = async (req, res) => {
           // db query
           console.log("adding in db.....");
           
-    const creditResponse = await fetch("http://localhost:5000/api/getAllMemberCredit");
+    const creditResponse = await fetch("https://backend.bninewdelhi.com/api/getAllMemberCredit");
     const creditData = await creditResponse.json();
 
     // Filter credits based on member_id and chapter_id
@@ -502,7 +502,7 @@ const getOrderStatus = async (req, res) => {
     
         }
         const getvisitorData = await axios.get(
-          "http://localhost:5000/api/getAllVisitors"
+          "https://backend.bninewdelhi.com/api/getAllVisitors"
         );
         // console.log("---",getvisitorData.data);
         const matchedVisitor = getvisitorData.data.find(visitor => 
@@ -611,7 +611,7 @@ const getOrderStatus = async (req, res) => {
 
           // Get membership pending details from API
           try {
-            const membershipResponse = await axios.get(`http://localhost:5000/api/getMembershipPending`);
+            const membershipResponse = await axios.get(`https://backend.bninewdelhi.com/api/getMembershipPending`);
             const membershipData = membershipResponse.data;
 
             // Check if visitor_id exists in API response
@@ -912,20 +912,16 @@ const webhookSettlementStatus = async (req, res) => {
   console.log('=== Webhook Handler Debug ===');
   console.log('Headers:', req.headers);
   
-  let payload, rawBody;
-  if (Buffer.isBuffer(req.body)) {
-    rawBody = req.body.toString('utf8');
-    console.log('Raw body from buffer:', rawBody);
-    try {
-      payload = JSON.parse(rawBody);
-    } catch (e) {
-      console.error('Failed to parse buffer:', e);
-      return res.status(400).json({ error: 'Invalid JSON' });
-    }
-  } else {
-    payload = req.body;
-    rawBody = JSON.stringify(req.body);
-    console.log('Raw body from object:', rawBody);
+  // Get the raw body as a string
+  const rawBody = req.body.toString('utf8');
+  console.log('Raw body:', rawBody);
+  
+  let payload;
+  try {
+    payload = JSON.parse(rawBody);
+  } catch (e) {
+    console.error('Failed to parse webhook body:', e);
+    return res.status(400).json({ error: 'Invalid JSON' });
   }
 
   // Log the parsed payload
@@ -957,7 +953,7 @@ const webhookSettlementStatus = async (req, res) => {
     }
     CashfreeWebhook.XClientSecret = process.env.x_client_secret;
 
-    // Verify the webhook signature
+    // Verify the webhook signature using the raw body
     const webhookEvent = CashfreeWebhook.PGVerifyWebhookSignature(signature, rawBody, timestamp);
     console.log('Webhook signature verified successfully');
     console.log('Webhook data:', webhookEvent.object);
