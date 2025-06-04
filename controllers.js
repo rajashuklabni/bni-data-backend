@@ -8696,6 +8696,7 @@ const updateInclusionSheet = async (req, res) => {
 };
 
 
+
 const addVisitorPayment = async (req, res) => {
   const invoiceData = req.body;
   console.log("📥 Received Visitor Payment Data:", invoiceData);
@@ -8805,7 +8806,7 @@ const addVisitorPayment = async (req, res) => {
       cf_payment_id,
       order_id,
       invoiceData.payment_gateway_id || defaultValues.payment_gateway_id,
-      invoiceData.total_amount || 0,
+      invoiceData.taxable_amount || 0,
       defaultValues.payment_currency,
       defaultValues.payment_status,
       "Visitor Payment Successful",
@@ -8817,12 +8818,12 @@ const addVisitorPayment = async (req, res) => {
       JSON.stringify(defaultValues.error_details),
       null, // gateway_order_id
       null, // gateway_payment_id
-      'cash',
-      true, // is_settled
-      null, // settlement_id
-      null, // utr
-      null, // settled_on
-      false // einvoice_generated
+      'visitor_payment',
+      true,
+      null,
+      null,
+      null,
+      false
     ];
 
     console.log("📝 Prepared Transaction Data:", transactionData);
@@ -8833,7 +8834,7 @@ const addVisitorPayment = async (req, res) => {
         cf_payment_id, order_id, payment_gateway_id, payment_amount, 
         payment_currency, payment_status, payment_message, payment_time, 
         payment_completion_time, bank_reference, auth_id, payment_method, 
-        error_details, gateway_order_id, gateway_payment_id, payment_group, is_settled, settlement_id, utr, settled_on, einvoice_generated
+        error_details, gateway_order_id, gateway_payment_id, payment_group,is_settled,settlement_id,utr,settled_on,einvoice_generated
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) 
       RETURNING *`,
       transactionData
@@ -8879,6 +8880,7 @@ const addVisitorPayment = async (req, res) => {
       false,
       false,
       null
+      
     ];
 
     const visitorResult = await con.query(
@@ -11836,6 +11838,282 @@ const getStateName = (state) => {
 };
 
 
+const addMultipleVisitorPayment = async (req, res) => {
+  const { region_id, chapter_id, universal_link_id, visitors } = req.body;
+  console.log("📥 Received Multiple Visitor Payment Data:", {
+    region_id,
+    chapter_id,
+    universal_link_id,
+    visitorCount: visitors.length
+  });
+
+  try {
+    // Start a transaction
+    await con.query('BEGIN');
+    console.log("🔄 Started database transaction");
+
+    const results = {
+      orders: [],
+      transactions: [],
+      visitors: []
+    };
+
+    // Process each visitor
+    for (const visitor of visitors) {
+      console.log(`\n🔄 Processing visitor: ${visitor.visitor_name}`);
+      console.log("Visitor data:", visitor);
+
+      const issuedDate = new Date(visitor.date_issued);
+      
+      // Generate unique IDs for this visitor
+      const order_id = `VIS${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const cf_payment_id = `TRX${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log("🔑 Generated IDs:", { order_id, cf_payment_id });
+
+      // Define default values
+      const defaultValues = {
+        order_currency: "INR",
+        payment_gateway_id: null,
+        order_status: "ACTIVE",
+        payment_session_id: null,
+        payment_currency: "INR",
+        payment_status: "SUCCESS",
+        payment_time: issuedDate,
+        payment_completion_time: issuedDate,
+        payment_note: "Visitor Payment",
+        error_details: {}
+      };
+
+      // Handle payment method
+      let paymentMethod = visitor.mode_of_payment;
+      console.log("Original payment method:", paymentMethod);
+      
+      if (paymentMethod?.cash) {
+        paymentMethod.cash.payment_note = "Cash";
+      } else if (!paymentMethod) {
+        paymentMethod = {
+          cash: {
+            payment_note: "Cash"
+          }
+        };
+      }
+      console.log("Processed payment method:", paymentMethod);
+
+      // Prepare order data
+   // Prepare order data
+const orderData = [
+  order_id,                                    // order_id
+  visitor.taxable_amount || 0,                 // order_amount
+  defaultValues.order_currency,                // order_currency
+  defaultValues.payment_gateway_id,            // payment_gateway_id
+  visitor.member_id || null,                   // customer_id
+  chapter_id,                                  // chapter_id
+  region_id,                                   // region_id
+  universal_link_id,                           // universal_link_id
+  null,                                        // ulid
+  defaultValues.order_status,                  // order_status
+  defaultValues.payment_session_id,            // payment_session_id
+  0,                                          // one_time_registration_fee
+  0,                                          // membership_fee
+  visitor.gst_amount || 0,                     // tax
+  visitor.member_name || null,                 // member_name
+  visitor.visitor_email || null,               // customer_email
+  visitor.visitor_mobile || null,              // customer_phone
+  visitor.visitor_gstin || null,               // gstin
+  visitor.visitor_company || null,             // company
+  visitor.visitor_mobile || null,              // mobile_number
+  null,                                        // renewal_year
+  defaultValues.payment_note,                  // payment_note
+  null,                                        // training_id
+  null,                                        // event_id
+  null,                                        // kitty_bill_id
+  null,                                        // visitor_id
+  visitor.visitor_name || null,                // visitor_name
+  visitor.visitor_email || null,               // visitor_email
+  visitor.visitor_mobile || null,              // visitor_mobilenumber
+  visitor.visitor_address || null,             // visitor_address
+  visitor.visitor_company || null,             // visitor_company
+  visitor.visitor_gstin || null,               // visitor_gstin
+  visitor.visitor_business_category || null,   // visitor_business
+  visitor.visitor_company_address || null,     // visitor_company_address
+  visitor.visitor_state || null,               // visitor_state
+  visitor.visitor_pincode || null,             // visitor_pincode
+  issuedDate,                                  // created_at
+  issuedDate                                   // updated_at
+];
+
+console.log("📝 Order data prepared:", orderData);
+
+// Insert order
+console.log("📝 Inserting order for visitor:", visitor.visitor_name);
+const orderResult = await con.query(
+  `INSERT INTO Orders (
+      order_id, order_amount, order_currency, payment_gateway_id, 
+      customer_id, chapter_id, region_id, universal_link_id, ulid, 
+      order_status, payment_session_id, one_time_registration_fee, 
+      membership_fee, tax, member_name, customer_email, customer_phone, 
+      gstin, company, mobile_number, renewal_year, payment_note, 
+      training_id, event_id, kitty_bill_id, visitor_id,
+      visitor_name, visitor_email, visitor_mobilenumber, visitor_address,
+      visitor_company, visitor_gstin, visitor_business, visitor_company_address,
+      visitor_state, visitor_pincode, created_at, updated_at
+  ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 
+            $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25,
+            $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38) 
+  RETURNING *`,
+  orderData
+);
+results.orders.push(orderResult.rows[0]);
+console.log("✅ Order created for visitor:", visitor.visitor_name);
+      results.orders.push(orderResult.rows[0]);
+      console.log("✅ Order created for visitor:", visitor.visitor_name);
+
+
+// Add this before the transactionData array
+let paymentGroup = 'visitor_payment'; // default value
+if (paymentMethod?.cash) {
+    paymentGroup = 'cash';
+} else if (paymentMethod?.upi) {
+    paymentGroup = 'upi';
+} else if (paymentMethod?.netbanking) {
+    paymentGroup = 'net_banking';
+}
+      // Prepare transaction data
+      const transactionData = [
+        cf_payment_id,                               // cf_payment_id
+        order_id,                                    // order_id
+        defaultValues.payment_gateway_id,            // payment_gateway_id
+        visitor.taxable_amount || 0,                 // payment_amount
+        defaultValues.payment_currency,              // payment_currency
+        defaultValues.payment_status,                // payment_status
+        "Visitor Payment Successful",                // payment_message
+        issuedDate,                                  // payment_time
+        issuedDate,                                  // payment_completion_time
+        null,                                        // bank_reference
+        "VISITOR_PAYMENT",                           // auth_id
+        JSON.stringify(paymentMethod),               // payment_method
+        JSON.stringify(defaultValues.error_details), // error_details
+        null,                                        // gateway_order_id
+        null,                                        // gateway_payment_id
+        paymentGroup,                           // payment_group
+        true,                                        // is_settled
+        null,                                        // settlement_id
+        null,                                        // utr
+        null,                                        // settled_on
+        false                                        // einvoice_generated
+      ];
+
+      console.log("📝 Transaction data prepared:", transactionData);
+
+      // Insert transaction
+      console.log("📝 Inserting transaction for visitor:", visitor.visitor_name);
+      const transactionResult = await con.query(
+        `INSERT INTO Transactions (
+          cf_payment_id, order_id, payment_gateway_id, payment_amount, 
+          payment_currency, payment_status, payment_message, payment_time, 
+          payment_completion_time, bank_reference, auth_id, payment_method, 
+          error_details, gateway_order_id, gateway_payment_id, payment_group,
+          is_settled, settlement_id, utr, settled_on, einvoice_generated
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 
+                  $14, $15, $16, $17, $18, $19, $20, $21) 
+        RETURNING *`,
+        transactionData
+      );
+      results.transactions.push(transactionResult.rows[0]);
+      console.log("✅ Transaction created for visitor:", visitor.visitor_name);
+
+      // Prepare visitor data
+      const visitorData = [
+        region_id,                                   // region_id
+        chapter_id,                                  // chapter_id
+        visitor.member_id || null,                   // invited_by
+        visitor.member_name || null,                 // invited_by_name
+        visitor.visitor_name || null,                // visitor_name
+        visitor.visitor_email || null,               // visitor_email
+        visitor.visitor_mobile || null,              // visitor_phone
+        visitor.visitor_company || null,             // visitor_company_name
+        visitor.visitor_address || null,             // visitor_address
+        visitor.visitor_gstin || null,               // visitor_gst
+        visitor.visitor_business_category || null,   // visitor_business
+        visitor.visitor_business_category || null,   // visitor_category
+        issuedDate,                                  // visited_date
+        visitor.total_amount || 0,                   // total_amount
+        visitor.taxable_amount || 0,                 // sub_total
+        visitor.gst_amount || 0,                     // tax
+        false,                                       // delete_status
+        'active',                                    // active_status
+        order_id,                                    // order_id
+        true,                                        // visitor_form
+        false,                                       // eoi_form
+        false,                                       // new_member_form
+        visitor.visitor_company_address || null,     // visitor_company_address
+        false,                                       // interview_sheet
+        false,                                       // commitment_sheet
+        false,                                       // inclusion_exclusion_sheet
+        false,                                       // member_application_form
+        null,                                        // onboarding_call
+        false,                                       // vp_mail
+        false,                                       // welcome_mail
+        null,                                        // chapter_apply_kit
+        false,                                       // visitor_entry_excel
+        false,                                       // google_updation_sheet
+        false,                                       // approve_induction_kit
+        null,                                        // induction_status
+        false,                                       // verification
+      ];
+
+      console.log("📝 Visitor data prepared:", visitorData);
+
+      // Insert visitor
+      console.log("📝 Inserting visitor record:", visitor.visitor_name);
+      const visitorResult = await con.query(
+        `INSERT INTO visitors (
+          region_id, chapter_id, invited_by, invited_by_name, 
+          visitor_name, visitor_email, visitor_phone, visitor_company_name,
+          visitor_address, visitor_gst, visitor_business, visitor_category,
+          visited_date, total_amount, sub_total, tax, delete_status,
+          active_status, order_id, visitor_form, eoi_form, new_member_form,
+          visitor_company_address, interview_sheet, commitment_sheet,
+          inclusion_exclusion_sheet, member_application_form, onboarding_call,
+          vp_mail, welcome_mail, chapter_apply_kit, visitor_entry_excel,
+          google_updation_sheet, approve_induction_kit, induction_status, verification
+          
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+                  $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28,
+                  $29, $30, $31, $32, $33, $34, $35, $36) 
+        RETURNING *`,
+        visitorData
+      );
+      results.visitors.push(visitorResult.rows[0]);
+      console.log("✅ Visitor record created for:", visitor.visitor_name);
+    }
+
+    // Commit the transaction
+    await con.query('COMMIT');
+    console.log("✅ Transaction committed successfully");
+
+    res.status(201).json({
+      success: true,
+      message: "Multiple visitor payments processed successfully",
+      data: {
+        processed_count: visitors.length,
+        results
+      }
+    });
+
+  } catch (error) {
+    // Rollback in case of error
+    await con.query('ROLLBACK');
+    console.error("❌ Error processing multiple visitor payments:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error processing multiple visitor payments",
+      error: error.message
+    });
+  }
+};
+
+
 
 
 
@@ -12016,6 +12294,7 @@ module.exports = {
   deleteVisitorDocument,
   getAllVisitorDocuments,
   getSettlementOrder,
-  generateBulkEinvoicePdf
+  generateBulkEinvoicePdf,
+  addMultipleVisitorPayment
 
 };
