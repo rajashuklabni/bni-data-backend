@@ -761,99 +761,82 @@ const addMember = async (req, res) => {
       const newMember = result.rows[0];
       const member_id = newMember.member_id;
 
-    // ✅ Declare meeting_opening_balance properly
-      const meeting_opening_balance = parseFloat(req.body.meeting_opening_balance) || 0;
-    
-    // 1. Fetch Kitty Bills
-    const chapterId = parseInt(req.body.chapter_id);
-    const dateOfPublishing = new Date(req.body.date_of_publishing);
-    
-    const kittyBillsResponse = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
-    const allKittyBills = kittyBillsResponse.data;
-    
-    const chapterKittyBills = allKittyBills.filter(bill => bill.chapter_id === chapterId && bill.delete_status === 0);
-    
-    // 2. Fetch chapter meeting day
-    const chaptersResponse = await axios.get('https://backend.bninewdelhi.com/api/chapters');
-    const chapterInfo = chaptersResponse.data.find(ch => ch.chapter_id === chapterId);
-    
-    if (!chapterInfo) {
-        throw new Error('Chapter not found for meeting day');
-    }
-    const chapterMeetingDay = chapterInfo.chapter_meeting_day;
-    const chapterMeetingFees = chapterInfo.chapter_kitty_fees;
-    
-    // 🔥 Helper Function to calculate Meeting Dates
-    function getMeetingDatesInRange(startDate, endDate, meetingDay) {
-        const daysOfWeek = {
-            Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
-            Thursday: 4, Friday: 5, Saturday: 6
-        };
-        const meetingDates = [];
-        const meetingDayNum = daysOfWeek[meetingDay];
-    
-        let current = new Date(startDate);
-        current.setHours(0, 0, 0, 0);
-    
-        while (current.getDay() !== meetingDayNum) {
-            current.setDate(current.getDate() + 1);
-        }
-    
-        while (current <= endDate) {
-            meetingDates.push(new Date(current));
-            current.setDate(current.getDate() + 7);
-        }
-        return meetingDates;
-    }
-    
-    // 3. Calculate Kitty Amount
-    let totalKittyAmount = 0;
-    let kittyDueDate = null;
-    let kittyPenalty = null;
-    
-    for (const bill of chapterKittyBills) {
-        const billStartDate = bill.raised_on ? new Date(bill.raised_on) : new Date(bill.payment_date);
-        const billEndDate = new Date(bill.kitty_due_date);
-    
-        if (dateOfPublishing > billEndDate) {
-            continue; // Ignore past bills
-        }
-    
-        // Capture kittyDueDate and kittyPenalty from the first eligible bill
-        if (!kittyDueDate && bill.kitty_due_date) {
-            kittyDueDate = bill.kitty_due_date;
-            kittyPenalty = bill.penalty_fee || 0;
-        }
-    
-        if (['weekly', 'monthly', 'quartely'].includes(bill.bill_type)) {
-            const meetingDates = getMeetingDatesInRange(
-                dateOfPublishing > billStartDate ? dateOfPublishing : billStartDate,
-                billEndDate,
-                chapterMeetingDay
-            );
-            totalKittyAmount += meetingDates.length * parseFloat(chapterMeetingFees);
-        }
-    }
-    
-    // If somehow not found, fallback
-    if (!kittyDueDate) kittyDueDate = new Date(); // default to now
-    if (kittyPenalty === null || kittyPenalty === undefined) kittyPenalty = 0;
-    
-    // 4. Update bankorder amount_to_pay
-    const finalAmountToPay = meeting_opening_balance + totalKittyAmount;
-      
-      await con.query(
-        `INSERT INTO bankorder (amount_to_pay, member_id, chapter_id, kitty_due_date, kitty_penalty)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [finalAmountToPay, member_id, chapterId, kittyDueDate, kittyPenalty]
-    );
-    
-    console.log('✅ Updated bankorder with Kitty Amount:', finalAmountToPay);
-    
+      // === Prorated Kitty Calculation and Bankorder Insert ===
+      // 1. Fetch active kitty bill for the member's chapter
+      const kittyBillRes = await con.query(
+        `SELECT * FROM kittypaymentchapter WHERE chapter_id = $1 AND is_completed = false ORDER BY raised_on DESC LIMIT 1`,
+        [newMember.chapter_id]
+      );
+      const activeBill = kittyBillRes.rows[0];
 
+      if (activeBill) {
+        const billStart = new Date(activeBill.raised_on);
+        let billEnd;
+        if (activeBill.bill_type === 'monthly') {
+          billEnd = new Date(billStart.getFullYear(), billStart.getMonth() + 1, 0);
+        } else if (activeBill.bill_type === 'quartely') {
+          billEnd = new Date(billStart.getFullYear(), billStart.getMonth() + 3, 0);
+        } else if (activeBill.bill_type === 'yearly') {
+          billEnd = new Date(billStart.getFullYear() + 1, billStart.getMonth(), 0);
+        } else {
+          billEnd = new Date(activeBill.kitty_due_date);
+        }
 
+        const memberJoin = new Date(newMember.date_of_publishing);
 
+        // 2. Prorated logic: member joined after bill start but before bill end
+        if (memberJoin > billStart && memberJoin <= billEnd) {
+          // Fetch chapter details for meeting day and kitty fee
+          const chapterRes = await con.query(
+            `SELECT * FROM chapter WHERE chapter_id = $1`,
+            [newMember.chapter_id]
+          );
+          const chapter = chapterRes.rows[0];
+          const meetingDay = chapter.chapter_meeting_day;
+          const kittyFee = parseFloat(chapter.chapter_kitty_fees);
 
+          // Calculate number of meetings from join date to bill end
+          const dayMap = {
+            'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+            'Thursday': 4, 'Friday': 5, 'Saturday': 6
+          };
+          const meetingDayNum = dayMap[meetingDay];
+          let meetingCount = 0;
+          let currentDate = new Date(memberJoin);
+          const daysUntilNext = (meetingDayNum - currentDate.getDay() + 7) % 7;
+          if (daysUntilNext === 0) {
+            currentDate.setDate(currentDate.getDate() + 7);
+          } else {
+            currentDate.setDate(currentDate.getDate() + daysUntilNext);
+          }
+          while (currentDate <= billEnd) {
+            meetingCount++;
+            currentDate.setDate(currentDate.getDate() + 7);
+          }
+          const proratedAmount = meetingCount * kittyFee + newMember.meeting_opening_balance;
+          const gstAmount = Math.round(proratedAmount * 0.18);
+          const totalAmount = proratedAmount;
+
+          // 3. Insert into bankorder
+          await con.query(
+            `INSERT INTO bankorder (member_id, chapter_id, amount_to_pay, kitty_due_date, no_of_late_payment, kitty_penalty, advance_pay)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              newMember.member_id,
+              newMember.chapter_id,
+              totalAmount,
+              activeBill.kitty_due_date,
+              0, // no_of_late_payment
+              activeBill.penalty_fee || 0,
+              null // advance_pay
+            ]
+          );
+          console.log('✅ Prorated bankorder inserted for new member:', newMember.member_id, 'Amount:', totalAmount);
+        }
+      }
+      // === End Prorated Kitty Calculation ===
+
+      // **logic for bank order and member kitty ledger**
       console.log('✅ Member added successfully:', newMember);
 
       res.status(201).json({
@@ -3222,9 +3205,6 @@ const getExpenseById = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-// ... existing code ...
-
-// ... existing code ...
 
 const updateExpense = async (req, res) => {
   const {
@@ -3373,10 +3353,6 @@ const updateExpense = async (req, res) => {
   }
 };
 
-
-// ... existing code ...
-
-// ... existing code ...
 const deleteExpense = async (req, res) => {
   const { expense_id } = req.params; // Get expense_id from URL params
 
@@ -3554,6 +3530,7 @@ const updateMemberSettings = async (req, res) => {
     });
   }
 };
+
 const updateUserSettings = async (req, res) => {
   try {
     const {
@@ -3835,6 +3812,7 @@ const getGstTypeValues = async (req, res) => {
     res.status(500).send("Error fetching gst type values");
   }
 };
+
 const getMemberByEmail = async (req, res) => {
   const { email } = req.params; // Get email from route parameters
   console.log(email);
@@ -11278,6 +11256,12 @@ const tdsUpdateexpense = async (req, res) => {
       values.push(ro_comment);
       paramCount++;
     }
+       // Add TDS certificate if it exists
+       if (req.file) {
+        updateFields.push(`tds_certificate = $${paramCount}`);
+        values.push(req.file.filename);
+        paramCount++;
+      }
 
     // Add expense_id as the last parameter
     values.push(expense_id);
@@ -11312,7 +11296,8 @@ const tdsUpdateexpense = async (req, res) => {
         ...(tds_section_list !== undefined && { tds_section_list }),
         ...(tds_type !== undefined && { tds_type }),
         ...(verification !== undefined && { verification }),
-        ...(ro_comment !== undefined && { ro_comment })
+        ...(ro_comment !== undefined && { ro_comment }),
+        ...(req.file && { tds_certificate: req.file.filename })
       }
     });
 

@@ -714,7 +714,6 @@ router.get("/getAllDocNumbers", getAllDocNumbers);
 router.post("/expenseType", addExpenseType);
 router.get("/einvoiceData", einvoiceData);
 router.get("/v/einvoice/pdf", einvoicePdf);
-router.put("/tdsUpdateexpense", tdsUpdateexpense);
 router.post("/addExpense", (req, res, next) => {
     console.log('📝 Incoming Request Body:', req.body);
     next();
@@ -1253,6 +1252,69 @@ router.get('/uploads/visitor_documents/:docType/:filename', (req, res) => {
 router.get("/getAllVisitorDocuments", getAllVisitorDocuments);
 router.post('/generate-bulk-einvoice-pdf', generateBulkEinvoicePdf);
 router.post("/addMultipleVisitorPayment", addMultipleVisitorPayment);
+
+// Configure multer storage for TDS certificates
+const tdsCertificateStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = './uploads/tds-certificates';
+        console.log('📁 Creating TDS certificate directory:', uploadDir);
+        
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+            console.log('✨ Created new TDS certificate directory');
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const filename = 'tds-cert-' + uniqueSuffix + path.extname(file.originalname);
+        console.log('📝 Generated TDS certificate filename:', filename);
+        cb(null, filename);
+    }
+});
+
+const uploadTdsCertificate = multer({
+    storage: tdsCertificateStorage,
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png|pdf/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        console.log('🔍 Validating TDS certificate:', {
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            isValid: extname && mimetype
+        });
+
+        if (extname && mimetype) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only .png, .jpg, .jpeg and .pdf format allowed!'));
+        }
+    }
+});
+
+// Add route to serve TDS certificates
+router.get('/uploads/tds-certificates/:filename', (req, res) => {
+    const filePath = path.join(__dirname, 'uploads', 'tds-certificates', req.params.filename);
+    
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ 
+            message: 'TDS certificate not found',
+            requestedFile: req.params.filename
+        });
+    }
+    
+    // Set proper headers based on file type
+    const ext = path.extname(req.params.filename).toLowerCase();
+    const contentType = ext === '.pdf' ? 'application/pdf' : 'image/jpeg';
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(filePath);
+});
+
+router.put("/tdsUpdateexpense", uploadTdsCertificate.single('tds_certificate'), tdsUpdateexpense);
 
 
 module.exports = router;
