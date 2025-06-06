@@ -9001,12 +9001,12 @@ const addKittyPaymentManually = async (req, res) => {
         cf_payment_id, order_id, payment_gateway_id,
         payment_amount, payment_currency, payment_status,
         payment_message, payment_time, payment_completion_time,
-        auth_id, payment_method, error_details, payment_group
+        auth_id, payment_method, error_details, payment_group,is_settled,settlement_id,utr,settled_on,einvoice_generated
       ) VALUES (
         $1, $2, 1,
         $3, 'INR', 'SUCCESS',
         'Kitty Payment Successful', $4, $4,
-        'KITTY_PAYMENT', $5, '{}', $6
+        'KITTY_PAYMENT', $5, '{}', $6, $7, $8, $9, $10, $11
       ) RETURNING *
     `;
 
@@ -9025,7 +9025,12 @@ const addKittyPaymentManually = async (req, res) => {
       order_amount || 0,
       created_at,
       JSON.stringify(paymentMethod),
-      paymentGroup
+      paymentGroup,
+      true,
+      null,
+      null,
+      null,
+      false
     ];
 
     console.log('💳 Inserting transaction with values:', transactionValues);
