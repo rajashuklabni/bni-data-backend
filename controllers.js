@@ -6043,13 +6043,106 @@ const importMembersCSV = async (req, res) => {
             const result = await con.query(insertMemberQuery, memberValues);
             const member_id = result.rows[0].member_id;
 
-            // Insert into bankorder
-            const meeting_opening_balance = parseFloat(data.meeting_opening_balance) || 0;
-
-            await con.query(
-              `INSERT INTO bankorder (member_id, chapter_id, amount_to_pay) VALUES ($1, $2, $3)`,
-              [member_id, parseInt(data.chapter_id), meeting_opening_balance]
+            // === Kitty Bill Calculation Logic ===
+            // 1. Fetch active kitty bill for the member's chapter
+            const kittyBillRes = await con.query(
+              `SELECT * FROM kittypaymentchapter WHERE chapter_id = $1 AND is_completed = false ORDER BY raised_on DESC LIMIT 1`,
+              [data.chapter_id]
             );
+            const activeBill = kittyBillRes.rows[0];
+
+            if (activeBill) {
+              const billStart = new Date(activeBill.raised_on);
+              let billEnd;
+              if (activeBill.bill_type === 'monthly') {
+                billEnd = new Date(billStart.getFullYear(), billStart.getMonth() + 1, 0);
+              } else if (activeBill.bill_type === 'quartely') {
+                billEnd = new Date(billStart.getFullYear(), billStart.getMonth() + 3, 0);
+              } else if (activeBill.bill_type === 'yearly') {
+                billEnd = new Date(billStart.getFullYear() + 1, billStart.getMonth(), 0);
+              } else {
+                billEnd = new Date(activeBill.kitty_due_date);
+              }
+
+              const memberJoin = new Date(data.date_of_publishing);
+
+              // 2. Check if member joined before or during bill period
+              if (memberJoin <= billEnd) {
+                // Fetch chapter details for meeting day and kitty fee
+                const chapterRes = await con.query(
+                  `SELECT * FROM chapter WHERE chapter_id = $1`,
+                  [data.chapter_id]
+                );
+                const chapter = chapterRes.rows[0];
+                const meetingDay = chapter.chapter_meeting_day;
+                const kittyFee = parseFloat(chapter.chapter_kitty_fees);
+
+                let totalAmount;
+                // If member joined before bill start, charge full amount
+                if (memberJoin <= billStart) {
+                  totalAmount = activeBill.total_amount;
+                } else {
+                  // Calculate prorated amount
+                  const dayMap = {
+                    'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+                    'Thursday': 4, 'Friday': 5, 'Saturday': 6
+                  };
+                  const meetingDayNum = dayMap[meetingDay];
+                  let meetingCount = 0;
+                  let currentDate = new Date(memberJoin);
+                  const daysUntilNext = (meetingDayNum - currentDate.getDay() + 7) % 7;
+                  if (daysUntilNext === 0) {
+                    currentDate.setDate(currentDate.getDate() + 7);
+                  } else {
+                    currentDate.setDate(currentDate.getDate() + daysUntilNext);
+                  }
+                  while (currentDate <= billEnd) {
+                    meetingCount++;
+                    currentDate.setDate(currentDate.getDate() + 7);
+                  }
+                  const proratedAmount = meetingCount * kittyFee + parseFloat(data.meeting_opening_balance || 0);
+                  totalAmount = proratedAmount;
+                }
+
+                // 3. Insert into bankorder
+                await con.query(
+                  `INSERT INTO bankorder (
+                    member_id, chapter_id, amount_to_pay, kitty_due_date,
+                    no_of_late_payment, kitty_penalty, advance_pay
+                  ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                  [
+                    member_id,
+                    data.chapter_id,
+                    totalAmount,
+                    activeBill.kitty_due_date,
+                    0, // no_of_late_payment
+                    activeBill.penalty_fee || 0,
+                    null // advance_pay
+                  ]
+                );
+                console.log('✅ Bankorder created for imported member:', member_id, 'Amount:', totalAmount);
+              }
+            } else {
+              // No active bill - just insert meeting_opening_balance
+              const meeting_opening_balance = parseFloat(data.meeting_opening_balance) || 0;
+              await con.query(
+                `INSERT INTO bankorder (
+                  member_id, chapter_id, amount_to_pay, kitty_due_date,
+                  no_of_late_payment, kitty_penalty, advance_pay
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [
+                  member_id,
+                  data.chapter_id,
+                  meeting_opening_balance,
+                  null, // kitty_due_date
+                  0, // no_of_late_payment
+                  0, // kitty_penalty
+                  null // advance_pay
+                ]
+              );
+              console.log('✅ Bankorder created for imported member (no bill):', member_id, 'Amount:', meeting_opening_balance);
+            }
+            // === End Kitty Bill Calculation ===
           }
 
           res.status(200).json({ message: 'Members and bank orders imported successfully!' });
@@ -7205,7 +7298,7 @@ if (publishingDate > dueDate) {
 }
 
 // Calculate final amount
-const finalAmountToPay = meeting_opening_balance + totalKittyAmount + finalPenalty;
+const finalAmountToPay = meeting_opening_balance + totalKittyAmount;
 
 console.log('📊 Final calculation:', {
     meetingOpeningBalance: meeting_opening_balance,
@@ -12104,9 +12197,6 @@ if (paymentMethod?.cash) {
 };
 
 
-
-
-
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -12285,6 +12375,6 @@ module.exports = {
   getAllVisitorDocuments,
   getSettlementOrder,
   generateBulkEinvoicePdf,
-  addMultipleVisitorPayment
+  addMultipleVisitorPayment,
 
 };

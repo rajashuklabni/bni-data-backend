@@ -413,94 +413,185 @@ const getOrderStatus = async (req, res) => {
       }
       // console.log("separated data");
       // console.log(balance_data);
-      
-        if(payment_status==='SUCCESS' && (responseData1.customer_details.payment_note === 'meeting-payments' || responseData1.customer_details.payment_note === 'meeting-payments-opening-only')){
-          // db query
-          console.log("adding in db.....");
-          
-    const creditResponse = await fetch("https://backend.bninewdelhi.com/api/getAllMemberCredit");
-    const creditData = await creditResponse.json();
 
-    // Filter credits based on member_id and chapter_id
-    const filteredCredits = creditData.filter(credit => 
-        credit.member_id === balance_data.member_id && 
-        credit.chapter_id === balance_data.chapter_id && 
-        credit.is_adjusted === false
-    );
-
-    // Update is_adjusted to true for all found entries
-    for (const credit of filteredCredits) {
-        await db.query(`
-            UPDATE memberkittycredit 
-            SET is_adjusted = true 
-            WHERE credit_id = $1`, [credit.credit_id]
-        );
-    }
-
-    console.log("Updated is_adjusted to true for filtered credits");
-    const amountPaid = payment_amount; // This is the actual paid amount from paymentDetails
-    const newAmountToPay = parseFloat(orderData.order_amount) - parseFloat(orderData.tax);
-    // now i have to do like if penalty is 0 then means penalty is added in orderamount
-    // else not added 
-    // so in if case i will do 
-  // Fetch the current bankOrder for the member
-  const bankOrderResult = await db.query(
-    'SELECT * FROM bankorder WHERE member_id = $1',
-    [balance_data.member_id]
-  );
-  const bankOrder = bankOrderResult.rows[0];
-
-  if (!bankOrder) {
-    console.error("No bankOrder found for member_id:", balance_data.member_id);
-    return res.status(404).json({ error: "No bankOrder found for this member" });
-  }
-
-  if(responseData1.penalty_amount > 0){
-    // === BANKORDER UPDATE: Penalty Case ===
-    console.log("=== BANKORDER UPDATE: Penalty Case ===");
-    console.log("amountPaid (from payment):", amountPaid);
-    console.log("amount_to_pay (from DB):", bankOrder.amount_to_pay);
-
-    const baseDue = parseFloat(bankOrder.amount_to_pay);
-    const expectedFullPayment = baseDue * 1.18;
-    const margin = 2;
-
-    let basePaid;
-    if (Math.abs(amountPaid - expectedFullPayment) < margin) {
-      // Full payment: subtract only the base
-      basePaid = baseDue;
-      console.log("Detected FULL payment (amountPaid ≈ amount_to_pay + 18% GST). Subtracting baseDue:", basePaid);
-    } else {
-      // Partial payment: subtract as-is
-      basePaid = amountPaid;
-      console.log("Detected PARTIAL payment. Subtracting amountPaid as-is:", basePaid);
-    }
-
-    console.log("no_of_late_payment (to set):", responseData1.no_of_late_payment);
-    console.log("kitty_penalty (to set):", responseData1.penalty_amount);
-    console.log("member_id (to match):", balance_data.member_id);
-
-    const updateQuery = `
-        UPDATE bankorder 
-        SET amount_to_pay = amount_to_pay - $1,
-            no_of_late_payment = $2,
-            kitty_penalty = $3
-        WHERE member_id = $4
-    `;
-    const values = [basePaid, responseData1.no_of_late_payment, responseData1.penalty_amount, balance_data.member_id];
-    console.log("Executing query:", updateQuery);
-    console.log("With values:", values);
-
-    await db.query(updateQuery, values);
-
-    // Fetch updated row for confirmation
-    const updatedBankOrder = await db.query('SELECT * FROM bankorder WHERE member_id = $1', [balance_data.member_id]);
-    console.log("Updated bankorder row:", updatedBankOrder.rows[0]);
-    console.log("=== END BANKORDER UPDATE: Penalty Case ===");
-  }
-
+      if(payment_status==='SUCCESS' && (responseData1.customer_details.payment_note === 'meeting-payments' || responseData1.customer_details.payment_note === 'meeting-payments-opening-only')){
+        try {
+            console.log("Starting bankorder update process for member:", balance_data.member_id);
+            
+            // Validate required data
+            if (!balance_data.member_id || !balance_data.chapter_id) {
+                throw new Error('Missing required member_id or chapter_id');
+            }
     
+            // Get member credits with retry mechanism
+            let creditData;
+            let retryCount = 0;
+            const maxRetries = 3;
+            
+            while (retryCount < maxRetries) {
+                try {
+                    const creditResponse = await fetch("https://backend.bninewdelhi.com/api/getAllMemberCredit");
+                    if (!creditResponse.ok) {
+                        throw new Error(`Credit API responded with status: ${creditResponse.status}`);
+                    }
+                    creditData = await creditResponse.json();
+                    break;
+                } catch (error) {
+                    retryCount++;
+                    if (retryCount === maxRetries) {
+                        throw new Error(`Failed to fetch credit data after ${maxRetries} attempts: ${error.message}`);
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+                }
+            }
+    
+            // Filter and update credits with transaction
+            const client = await pool.connect();
+            try {
+                await client.query('BEGIN');
+    
+                const filteredCredits = creditData.filter(credit => 
+                    credit.member_id === balance_data.member_id && 
+                    credit.chapter_id === balance_data.chapter_id && 
+                    credit.is_adjusted === false
+                );
+    
+                console.log(`Found ${filteredCredits.length} credits to update for member:`, balance_data.member_id);
+    
+                for (const credit of filteredCredits) {
+                    const updateResult = await client.query(`
+                        UPDATE memberkittycredit 
+                        SET is_adjusted = true 
+                        WHERE credit_id = $1
+                        RETURNING credit_id`, [credit.credit_id]
+                    );
+                    
+                    if (updateResult.rowCount === 0) {
+                        throw new Error(`Failed to update credit_id: ${credit.credit_id}`);
+                    }
+                }
+    
+                // Validate payment data
+                const amountPaid = parseFloat(payment_amount);
+                if (isNaN(amountPaid) || amountPaid <= 0) {
+                    throw new Error(`Invalid payment amount: ${payment_amount}`);
+                }
+    
+                // Get bankorder with row locking
+                const bankOrderResult = await client.query(
+                    'SELECT * FROM bankorder WHERE member_id = $1 FOR UPDATE',
+                    [balance_data.member_id]
+                );
+    
+                const bankOrder = bankOrderResult.rows[0];
+                if (!bankOrder) {
+                    throw new Error(`No bankOrder found for member_id: ${balance_data.member_id}`);
+                }
+
+                console.log("Penalty Amount Details:", {
+                    value: responseData1.penalty_amount,
+                    type: typeof responseData1.penalty_amount,
+                    isNumber: !isNaN(responseData1.penalty_amount),
+                    raw: responseData1.penalty_amount
+                });
+
+                // Handle penalty case
+                
+                    console.log("Processing penalty case for member:", balance_data.member_id);
+                    
+                    const baseDue = parseFloat(bankOrder.amount_to_pay);
+                    const penaltyAmount = parseFloat(responseData1.penalty_amount) || 0; // Get penalty from response data
+                   const totalWithPenalty = baseDue + penaltyAmount;
+                   let actualPenaltyPaid = 0; 
+                    
+                    if (isNaN(baseDue) || baseDue < 0) {
+                        throw new Error(`Invalid base due amount: ${bankOrder.amount_to_pay}`);
+                    }
+    
+                    const expectedPaymentWithoutPenalty = baseDue * 1.18;
+                    const expectedPaymentWithPenalty = totalWithPenalty * 1.18;
+                    const margin = 2;
+    
+                    let basePaid;
+                    let amount_to_pay
+                    if (Math.abs(amountPaid - expectedPaymentWithPenalty) < margin) {
+                      // User paid full amount including penalty
+                      basePaid = totalWithPenalty;
+                      actualPenaltyPaid = penaltyAmount;
+                      amount_to_pay = 0;
+                      console.log("Full payment with penalty detected, base amount:", basePaid);
+                    }
+                    else if (Math.abs(amountPaid - expectedPaymentWithoutPenalty) < margin) {
+                      // User paid full amount without penalty
+                      basePaid = baseDue;
+                      actualPenaltyPaid = 0;
+                      amount_to_pay = 0;
+                      console.log("Full payment without penalty detected, base amount:", basePaid);
+                  } else {
+                        basePaid = Math.round(amountPaid / 1.18);
+                        amount_to_pay = baseDue - basePaid;
+                        console.log("Partial payment detected, calculated base:", basePaid);
+                    }
+    
+                    // Validate penalty data
+                    if (isNaN(responseData1.no_of_late_payment) || isNaN(responseData1.penalty_amount)) {
+                        throw new Error('Invalid penalty data');
+                    }
+    
+                    // Update bankorder with validation
+                    const updateResult = await client.query(`
+                        UPDATE bankorder 
+                        SET amount_to_pay = $1,
+                            no_of_late_payment = $2,
+                            kitty_penalty = $3
+                        WHERE member_id = $4
+                        RETURNING *`,
+                        [amount_to_pay, responseData1.no_of_late_payment, responseData1.penalty_amount, balance_data.member_id]
+                    );
+    
+                    if (updateResult.rowCount === 0) {
+                        throw new Error('Bankorder update failed');
+                    }
+    
+                    // Verify the update
+                    const updatedBankOrder = updateResult.rows[0];
+                    console.log("Bankorder updated successfully:", {
+                        member_id: balance_data.member_id,
+                        new_amount: updatedBankOrder.amount_to_pay,
+                        penalty: updatedBankOrder.kitty_penalty
+                    });
+                
+    
+                await client.query('COMMIT');
+                console.log("Transaction completed successfully for member:", balance_data.member_id);
+    
+            } catch (error) {
+                await client.query('ROLLBACK');
+                throw error;
+            } finally {
+                client.release();
+            }
+    
+        } catch (error) {
+            console.error("Error in bankorder update process:", {
+                error: error.message,
+                member_id: balance_data.member_id,
+                payment_amount: payment_amount,
+                stack: error.stack
+            });
+            
+            // Log to monitoring system if available
+            // await logToMonitoringSystem({
+            //     type: 'BANKORDER_UPDATE_ERROR',
+            //     member_id: balance_data.member_id,
+            //     error: error.message
+            // });
+    
+            throw error; // Re-throw to be handled by the calling function
         }
+    }
+
+
         const getvisitorData = await axios.get(
           "https://backend.bninewdelhi.com/api/getAllVisitors"
         );

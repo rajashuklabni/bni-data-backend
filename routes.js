@@ -180,7 +180,7 @@ getVisitorDocuments,
 deleteVisitorDocument,
 getSettlementOrder,
 generateBulkEinvoicePdf,
-addMultipleVisitorPayment
+addMultipleVisitorPayment,
 } = require("./controllers");
 
 const path = require("path");
@@ -1315,6 +1315,5 @@ router.get('/uploads/tds-certificates/:filename', (req, res) => {
 });
 
 router.put("/tdsUpdateexpense", uploadTdsCertificate.single('tds_certificate'), tdsUpdateexpense);
-
 
 module.exports = router;
