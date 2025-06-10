@@ -1,7 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
-const db = require('../../database/db');
+const { db, pool } = require('../../database/db');
 const { Cashfree } = require('cashfree-pg');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
