@@ -1,7 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
-const { db, pool } = require('../../database/db');
+const db = require('../../database/db');
 const { Cashfree } = require('cashfree-pg');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
@@ -446,7 +446,7 @@ const getOrderStatus = async (req, res) => {
             }
     
             // Filter and update credits with transaction
-            const client = await pool.connect();
+            const client = await db.connect();
             try {
                 await client.query('BEGIN');
     
