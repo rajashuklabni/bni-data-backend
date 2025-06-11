@@ -446,9 +446,9 @@ const getOrderStatus = async (req, res) => {
             }
     
             // Filter and update credits with transaction
-            const client = await db.connect();
+            // const client = await db.connect();
             try {
-                await client.query('BEGIN');
+                await db.query('BEGIN');
     
                 const filteredCredits = creditData.filter(credit => 
                     credit.member_id === balance_data.member_id && 
@@ -459,7 +459,7 @@ const getOrderStatus = async (req, res) => {
                 console.log(`Found ${filteredCredits.length} credits to update for member:`, balance_data.member_id);
     
                 for (const credit of filteredCredits) {
-                    const updateResult = await client.query(`
+                    const updateResult = await db.query(`
                         UPDATE memberkittycredit 
                         SET is_adjusted = true 
                         WHERE credit_id = $1
@@ -478,7 +478,7 @@ const getOrderStatus = async (req, res) => {
                 }
     
                 // Get bankorder with row locking
-                const bankOrderResult = await client.query(
+                const bankOrderResult = await db.query(
                     'SELECT * FROM bankorder WHERE member_id = $1 FOR UPDATE',
                     [balance_data.member_id]
                 );
@@ -539,7 +539,7 @@ const getOrderStatus = async (req, res) => {
                     }
     
                     // Update bankorder with validation
-                    const updateResult = await client.query(`
+                    const updateResult = await db.query(`
                         UPDATE bankorder 
                         SET amount_to_pay = $1,
                             no_of_late_payment = $2,
@@ -562,14 +562,14 @@ const getOrderStatus = async (req, res) => {
                     });
                 
     
-                await client.query('COMMIT');
+                await db.query('COMMIT');
                 console.log("Transaction completed successfully for member:", balance_data.member_id);
     
             } catch (error) {
-                await client.query('ROLLBACK');
+                await db.query('ROLLBACK');
                 throw error;
             } finally {
-                client.release();
+                db.release();
             }
     
         } catch (error) {
