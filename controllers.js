@@ -3233,6 +3233,8 @@ const updateExpense = async (req, res) => {
     vendor_account_type,
     phone_number,
     email_id,
+    hotel_id,
+    
   } = req.body;
 
   const { expense_id } = req.params;
@@ -3275,9 +3277,21 @@ const updateExpense = async (req, res) => {
 
     if (expense_type) query.push(`expense_type = $${index++}`), values.push(expense_type);
     if (submitted_by) query.push(`submitted_by = $${index++}`), values.push(submitted_by);
+    // Add this with the other if conditions
+// Handle hotel_id - explicitly set to NULL if null is sent
+if (hotel_id === 'null' || hotel_id === null) {
+  query.push(`hotel_id = NULL`);
+} else if (hotel_id) {
+  query.push(`hotel_id = $${index++}`), values.push(hotel_id);
+}
     if (description) query.push(`description = $${index++}`), values.push(description);
     if (chapter) query.push(`chapter_id = $${index++}`), values.push(chapter);
-    if (vendor) query.push(`vendor_id = $${index++}`), values.push(vendor);
+   // Handle vendor_id - explicitly set to NULL if null is sent
+if (vendor === 'null' || vendor === null) {
+  query.push(`vendor_id = NULL`);
+} else if (vendor) {
+  query.push(`vendor_id = $${index++}`), values.push(vendor);
+}
     if (amount) query.push(`amount = $${index++}`), values.push(amount);
     if (payment_status) query.push(`payment_status = $${index++}`), values.push(payment_status);
     if (payment_mode) query.push(`mode_of_payment = $${index++}`), values.push(payment_mode);
