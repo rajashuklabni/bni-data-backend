@@ -8782,6 +8782,7 @@ const updateInclusionSheet = async (req, res) => {
 
 
 
+
 const addVisitorPayment = async (req, res) => {
   const invoiceData = req.body;
   console.log("📥 Received Visitor Payment Data:", invoiceData);
@@ -8797,7 +8798,7 @@ const addVisitorPayment = async (req, res) => {
     // Define default values
     const defaultValues = {
       order_currency: "INR",
-      payment_gateway_id: null,
+      payment_gateway_id: 1,
       order_status: "ACTIVE",
       payment_session_id: null,
       payment_currency: "INR",
@@ -8812,17 +8813,26 @@ const addVisitorPayment = async (req, res) => {
     let paymentMethod = invoiceData.mode_of_payment;
     
     // If payment method is cash, set payment_note to "Cash"
+    // if (paymentMethod?.cash) {
+    //   paymentMethod.cash.payment_note = "cash";
+    // } else if (!paymentMethod) {
+     
+    //   paymentMethod = {
+    //     cash: {
+    //       payment_note: "cash"
+    //     }
+    //   };
+    // }
     if (paymentMethod?.cash) {
-      paymentMethod.cash.payment_note = "Cash";
+      paymentMethod.cash.payment_note = "visitor-payment";
     } else if (!paymentMethod) {
-      // Default to cash if no payment method provided
       paymentMethod = {
         cash: {
-          payment_note: "Cash"
+          payment_note: "visitor-payment"
         }
       };
     }
-
+    
     // Prepare order data with visitor information
     const orderData = [
       order_id,
@@ -8860,7 +8870,10 @@ const addVisitorPayment = async (req, res) => {
       invoiceData.visitor_business_category,
       invoiceData.visitor_company_address,
       issuedDate, // created_at
-      issuedDate  // updated_at
+      issuedDate, // updated_at
+      invoiceData.visitor_state,
+      invoiceData.visitor_pincode,
+      
     ];
 
     console.log("📝 Prepared Order Data:", orderData);
@@ -8876,16 +8889,26 @@ const addVisitorPayment = async (req, res) => {
         training_id, event_id, kitty_bill_id, visitor_id,
         visitor_name, visitor_email, visitor_mobilenumber, visitor_address,
         visitor_company, visitor_gstin, visitor_business, visitor_company_address,
-        created_at, updated_at
+        created_at, updated_at, visitor_state, visitor_pincode
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 
                 $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25,
-                $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36) 
+                $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38) 
       RETURNING *`,
       orderData
     );
 
     console.log("✅ Order Created:", orderResult.rows[0]);
 
+
+    let paymentGroup = 'cash'; // default
+
+if (paymentMethod?.upi) {
+  paymentGroup = 'upi';
+} else if (paymentMethod?.bank_transfer) {
+  paymentGroup = 'net_banking';
+} else if (paymentMethod?.cash) {
+  paymentGroup = 'cash';
+}
     // Prepare transaction data
     const transactionData = [
       cf_payment_id,
@@ -8903,7 +8926,7 @@ const addVisitorPayment = async (req, res) => {
       JSON.stringify(defaultValues.error_details),
       null, // gateway_order_id
       null, // gateway_payment_id
-      'visitor_payment',
+      paymentGroup,
       true,
       null,
       null,
