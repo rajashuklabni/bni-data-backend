@@ -719,16 +719,18 @@ async function generateEInvoicePDF(orderId, amount, irn, qrCode, docNo, companyN
 async function sendEInvoiceEmail(email, orderId, amount, irn, pdfPath) {
   // Create transporter
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "bninewdelhi.in",
+    port: 587,
+    secure: false,
     auth: {
-      user: "demobni009@gmail.com",
-      pass: "vmsbihwbwhnktcws", // Replace with actual App Password
+      user: "info@bninewdelhi.in",
+      pass: "PzfE8JH93pV1RUx",
     },
   });
   
   // Email content
   const mailOptions = {
-    from: '"BNI N E W Delhi" <demobni009@gmail.com>',
+    from: '"BNI N E W Delhi" <info@bninewdelhi.in>',
     to: email,
     cc: [
       "scriptforprince@gmail.com",
@@ -736,8 +738,8 @@ async function sendEInvoiceEmail(email, orderId, amount, irn, pdfPath) {
         "sunil.k@adico.in",
         "singhi_bikash@yahoo.co.in",
         "support@bninewdelhi.com",
-        "demobni009@gmail.com",
-        "demobni009@gmail.com"
+        "info@bninewdelhi.in",
+        "info@bninewdelhi.in"
     ],
     subject: `E-Invoice for Order #${orderId}`,
     html: `
@@ -1011,16 +1013,17 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
 
     // Create email transporter
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "bninewdelhi.in",
+      port: 587,
+      secure: false,
       auth: {
-        user: "demobni009@gmail.com",
-        pass: "vmsbihwbwhnktcws", // Replace with actual App Password
+        user: "info@bninewdelhi.in",
+        pass: "PzfE8JH93pV1RUx",
       },
     });
-
     // Send email with the generated PDF
     const mailOptions = {
-      from: '"BNI N E W Delhi" <demobni009@gmail.com>',
+      from: '"BNI N E W Delhi" <info@bninewdelhi.in>',
       to: email,
       cc: [
         "scriptforprince@gmail.com",
@@ -1028,8 +1031,8 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
         "sunil.k@adico.in",
         "singhi_bikash@yahoo.co.in",
         "support@bninewdelhi.com",
-        "demobni009@gmail.com",
-        "demobni009@gmail.com"
+        "info@bninewdelhi.in",
+        "info@bninewdelhi.in"
       ],
       subject: `Invoice for ${req.body.universalLinkName || 'BNI Payment'}(${chapterName}) - ${docNo}`,
       html: `

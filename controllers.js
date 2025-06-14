@@ -47,10 +47,12 @@ con.connect().then(() => console.log("Connected to new BNI server PostgreSQL"));
 
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "bninewdelhi.in",
+  port: 587,
+  secure: false,
   auth: {
-    user: "demobni009@gmail.com",
-    pass: "vmsbihwbwhnktcws", // Replace with actual App Password
+    user: "info@bninewdelhi.in",
+    pass: "PzfE8JH93pV1RUx",
   },
 });
 
@@ -71,7 +73,7 @@ const sendEmail = (req, res) => {
   const { email } = req.body;
 
   const mailOptions = {
-    from: "demobni009@gmail.com",
+    from: "info@bninewdelhi.in",
     to: email,
     subject: "Test Email",
     text: "This is a test email from our application.",
@@ -2833,7 +2835,7 @@ const addKittyPayment = async (req, res) => {
       const payNowUrl = `https://bninewdelhi.com/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1?region_id=${region_id}&chapter_id=${chapter_id}&member_id=${member.member_id}`;
 
       const mailOptions = {
-        from: '"BNI New Delhi" <demobni009@gmail.com>',
+        from: '"BNI New Delhi" <info@bninewdelhi.in>',
         to: member.member_email_address,
         subject: "New Bill Raised - Payment Reminder",
         html: `
@@ -3942,10 +3944,12 @@ const sendQrCodeByEmail = async (req, res) => {
 
       // Set up nodemailer transporter
       const transporter = nodemailer.createTransport({
-        service: "gmail",
+        host: "bninewdelhi.in",
+        port: 587,
+        secure: false,
         auth: {
-          user: "demobni009@gmail.com",
-          pass: "vmsbihwbwhnktcws", // Replace with actual App Password
+          user: "info@bninewdelhi.in",
+          pass: "PzfE8JH93pV1RUx",
         },
       });
 
@@ -3964,7 +3968,7 @@ const sendQrCodeByEmail = async (req, res) => {
 
       // Email options
       const mailOptions = {
-        from: "demobni009@gmail.com",
+        from: "info@bninewdelhi.in",
         to: customerEmail,
         subject: `Training Details & QR Code for ${training_name}`,
         html: emailContent,
@@ -7905,7 +7909,7 @@ const sendVisitorEmail = async (req, res) => {
       }
 
       const mailOptions = {
-          from: `Vice President Desk-BNI ${chapter_name} <demobni009@gmail.com>`,
+          from: `Vice President Desk-BNI ${chapter_name} <info@bninewdelhi.in>`,
           to: `${visitor_name} <${visitor_email}>`,
           cc: [
               'SUNIL K. BNI DIRECTOR <sunilk@bni-india.in>',
@@ -8037,7 +8041,7 @@ try {
     }).replace(/\//g, '-');
 
     const mailOptions = {
-      from: 'Vice President Desk-BNI Prolific <demobni009@gmail.com>',
+      from: 'Vice President Desk-BNI Prolific <info@bninewdelhi.in>',
           to: `${visitor_name} <${visitor_email}>`,
         cc: [
             'Prolific DC Lalpreet Aulakh <lalpreet@studiodesignbox.com>',
@@ -8263,7 +8267,7 @@ const sendTrainingMails = async (req, res) => {
           console.log('🔗 Generated payment link:', paymentLink);
 
           const mailOptions = {
-              from: "demobni009@gmail.com",
+              from: "info@bninewdelhi.in",
               to: `${member.member_first_name} ${member.member_last_name} <${member.member_email_address}>`,
               subject: `Training Update: ${trainingResult.rows[0].training_name}`,
               html: `
@@ -9681,7 +9685,7 @@ const sendFormSubmissionEmail = async (req, res) => {
 
       // Create mail options with PDF attachment
         const mailOptions = {
-            from: 'BNI N E W Delhi <demobni009@gmail.com>',
+            from: 'BNI N E W Delhi <info@bninewdelhi.in>',
             to: `${name} <${email}>`,
           // cc: [
           //     'SUNIL K. BNI DIRECTOR <sunilk@bni-india.in>',
@@ -9873,7 +9877,7 @@ const sendInterviewSheetEmail = async (req, res) => {
 
       // Send email using existing transporter
       const mailOptions = {
-          from: 'BNI N E W Delhi <demobni009@gmail.com>',
+          from: 'BNI N E W Delhi <info@bninewdelhi.in>',
           to: `${visitorName} <${visitor_email}>`,
             cc: [
                 'SUNIL K. BNI DIRECTOR <sunilk@bni-india.in>',
@@ -10107,7 +10111,7 @@ const sendPaymentLinksEmail = async (req, res) => {
 
       // Configure mail options
       const mailOptions = {
-        from: 'BNI N E W Delhi <demobni009@gmail.com>',
+        from: 'BNI N E W Delhi <info@bninewdelhi.in>',
         to: member.member_email_address, // Fixed: Using member_email_address instead of email_id
         subject: `BNI ${chapterName} - ${paymentType} Payment Link`,
         html: emailContent
@@ -10175,7 +10179,7 @@ const sendAllPaymentLinksEmail = async (req, res) => {
 
       // Send email (use your nodemailer transporter)
       await transporter.sendMail({
-        from: 'BNI N E W Delhi <demobni009@gmail.com>',
+        from: 'BNI N E W Delhi <info@bninewdelhi.in>',
         to: member.member_email_address,
         subject: `BNI ${chapterName} - All Payment Links`,
         html: emailContent
@@ -10966,7 +10970,7 @@ const addVisitor = async (req, res) => {
     const paymentLink = `https://bninewdelhi.com/visitors-payment/5/726f7bf6-fa74-4883-b1bb-15acaf64dfb1/1?type=refer&region_id=${region_id}&chapter_id=${chapter_id}&visitor_id=${visitorResult.rows[0].visitor_id}`;
     
     const mailOptions = {
-      from: 'demobni009@gmail.com',
+      from: 'info@bninewdelhi.in',
       to: visitor_email,
       subject: 'Welcome to BNI - Visitor Registration Confirmation',
       html: `
@@ -11091,7 +11095,7 @@ const sendKittyReminder = async (req, res) => {
     const payNowUrl = `https://bninewdelhi.com/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1?region_id=${member.region_id}&chapter_id=${member.chapter_id}&member_id=${member.member_id}`;
 
     const mailOptions = {
-      from: `"LT ${chapterName}" <demobni009@gmail.com>`,
+      from: `"LT ${chapterName}" <info@bninewdelhi.in>`,
       to: member.member_email_address,
       subject: "Payment Reminder - Meeting Fee",
       html: `
@@ -11315,7 +11319,7 @@ const sendKittyReminderToAll = async (req, res) => {
         const payNowUrl = `https://bninewdelhi.com/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1?region_id=${member.region_id}&chapter_id=${member.chapter_id}&member_id=${member.member_id}`;
 
         const mailOptions = {
-          from: `"LT ${chapterName}" <demobni009@gmail.com>`,
+          from: `"LT ${chapterName}" <info@bninewdelhi.in>`,
           to: member.member_email_address,
           subject: "Payment Reminder - Meeting Fee",
           html: `

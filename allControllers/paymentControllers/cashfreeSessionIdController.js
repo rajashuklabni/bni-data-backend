@@ -11,10 +11,12 @@ require('dotenv').config();
 
 // Define the transporter for nodemailer
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "bninewdelhi.in",
+  port: 587,
+  secure: false,
   auth: {
-    user: "demobni009@gmail.com",
-    pass: "vmsbihwbwhnktcws", // Replace with actual App Password
+    user: "info@bninewdelhi.in",
+    pass: "PzfE8JH93pV1RUx",
   },
 });
 
@@ -1073,7 +1075,7 @@ const webhookSettlementStatus = async (req, res) => {
 
     // Send email notification
     const mailOptions = {
-      from: 'demobni009@gmail.com',
+      from: 'info@bninewdelhi.in',
       to: 'scriptforprince@gmail.com',
       cc: 'rajashukla@outlook.com',
       subject: 'Cashfree Settlement Webhook Received',
