@@ -7,18 +7,16 @@ require('dotenv').config();
 
 // Create a transporter for Hostinger's SMTP service
 const transporter = nodemailer.createTransport({
-    host: "server.bninewdelhi.com",
-    port: 587,
-    secure: false,
+    service: "gmail",
     auth: {
-      user: "info@bninewdelhi.in",
-      pass: "PzfE8JH93pV1RUx",
+      user: "demobni009@gmail.com",
+      pass: "vmsbihwbwhnktcws", // Replace with actual App Password
     },
   });
 
 const sendOtpEmail = (email, otp) => {
     const mailOptions = {
-        from: "info@bninewdelhi.in",
+        from: "demobni009@gmail.com",
         to: email,
         subject: `Your OTP Code`,
         text: `Your OTP code is: ${otp}`,
