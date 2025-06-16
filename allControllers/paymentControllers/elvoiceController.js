@@ -997,7 +997,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     await page.waitForFunction(() => document.getElementById('particulars').textContent !== '');
     
     // Generate PDF
-    const pdfPath = path.join(__dirname, '../../temp', `einvoice_${orderId}_${Date.now()}.pdf`);
+    const pdfPath = path.join(__dirname, '../../temp', `${memberName} - ${docNo}.pdf`);
     await page.pdf({
       path: pdfPath,
       format: 'A4',
@@ -1057,7 +1057,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
       `,
       attachments: [
         {
-          filename: `einvoice_${orderId}.pdf`,
+          filename: `${memberName} - ${docNo}.pdf`,
           path: pdfPath
         }
       ]
