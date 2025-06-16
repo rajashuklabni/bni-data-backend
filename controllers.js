@@ -7008,6 +7008,7 @@ const addChapterRequisition = async (req, res) => {
   }
 };;
 
+
 const updateChapterRequisition = async (req, res) => {
   console.log('\n🔄 Starting Chapter Requisition Update');
   console.log('=====================================');
@@ -7344,24 +7345,65 @@ console.log('✅ Updated member meeting_payable_amount:', totalKittyAmount);
 
 
           // 5. Insert into member_accolades
-          const insertAccoladeQuery = `
-              INSERT INTO member_accolades 
-              (member_id, accolade_id, issue_date, count, given_date, comment)
-              VALUES ($1, $2, $3, $4, $5, $6)
-              RETURNING *
-          `;
+          // 5. Insert into member_accolades
+const insertAccoladeQuery = `
+INSERT INTO member_accolades 
+(member_id, accolade_id, issue_date, count, given_date, comment)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING *
+`;
 
-          const accoladeValues = [
-              member_id,           // member_id
-              1,                   // accolade_id (fixed as 1)
-              new Date(),          // issue_date (current date)
-              1,                   // count
-              null,                // given_date
-              null                 // comment
-          ];
+// First accolade (ID: 1)
+const accoladeValues1 = [
+member_id,           // member_id
+1,                   // accolade_id (fixed as 1)
+new Date(),          // issue_date (current date)
+1,                   // count
+null,                // given_date
+null                 // comment
+];
 
-          const accoladeResult = await con.query(insertAccoladeQuery, accoladeValues);
-          console.log('✅ Added member accolade:', accoladeResult.rows[0]);
+const accoladeResult1 = await con.query(insertAccoladeQuery, accoladeValues1);
+console.log('✅ Added member accolade 1:', accoladeResult1.rows[0]);
+
+// Second accolade (ID: 2)
+const accoladeValues2 = [
+member_id,           // member_id
+2,                   // accolade_id
+new Date(),          // issue_date
+1,                   // count
+null,                // given_date
+null                 // comment
+];
+
+const accoladeResult2 = await con.query(insertAccoladeQuery, accoladeValues2);
+console.log('✅ Added member accolade 2:', accoladeResult2.rows[0]);
+
+// Third accolade (ID: 10)
+const accoladeValues3 = [
+member_id,           // member_id
+10,                  // accolade_id
+new Date(),          // issue_date
+1,                   // count
+null,                // given_date
+null                 // comment
+];
+
+const accoladeResult3 = await con.query(insertAccoladeQuery, accoladeValues3);
+console.log('✅ Added member accolade 10:', accoladeResult3.rows[0]);
+
+// Fourth accolade (ID: 8)
+const accoladeValues4 = [
+member_id,           // member_id
+8,                   // accolade_id
+new Date(),          // issue_date
+1,                   // count
+null,                // given_date
+null                 // comment
+];
+
+const accoladeResult4 = await con.query(insertAccoladeQuery, accoladeValues4);
+console.log('✅ Added member accolade 8:', accoladeResult4.rows[0]);
       }
   } catch (error) {
       console.error('❌ Error converting visitor to member:', error);
@@ -7601,9 +7643,6 @@ for (const [key, status] of Object.entries(approveStatusObj)) {
       });
   }
 };
-
-
-
 
 
 const updateMemberRequisition = async (req, res) => {
