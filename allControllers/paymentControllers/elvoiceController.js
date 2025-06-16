@@ -737,7 +737,7 @@ async function sendEInvoiceEmail(email, orderId, amount, irn, pdfPath) {
         "shini.sunil@adico.in",
         "rajashuklabni@gmail.com",
         "sunil.k@adico.in",
-        "singhi_bikash@yahoo.co.in",
+        // "singhi_bikash@yahoo.co.in",
         "support@bninewdelhi.com",
         "info@bninewdelhi.in",
         "info@bninewdelhi.in"
@@ -1031,7 +1031,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
         "shini.sunil@adico.in",
         "rajashuklabni@gmail.com",
         "sunil.k@adico.in",
-        "singhi_bikash@yahoo.co.in",
+        // "singhi_bikash@yahoo.co.in",
         "support@bninewdelhi.com",
         "info@bninewdelhi.in",
         "info@bninewdelhi.in"
