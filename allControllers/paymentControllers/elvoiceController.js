@@ -778,6 +778,12 @@ async function sendEInvoiceEmail(email, orderId, amount, irn, pdfPath) {
   return info;
 }
 
+// Function to sanitize filename
+function sanitizeFilename(filename) {
+  // Replace forward slashes and other problematic characters with hyphens
+  return filename.replace(/[\/\\?%*:|"<>]/g, '-');
+}
+
 // Function to process email sending in the background
 async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, companyName, req, noIrn = false) {
   try {
@@ -815,6 +821,9 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     const memberName = memberResult.rows[0] ? 
       `${memberResult.rows[0].member_first_name} ${memberResult.rows[0].member_last_name}` : 
       'Valued Member';
+
+    // Sanitize the filename
+    const sanitizedFilename = sanitizeFilename(`${memberName} - ${docNo}`);
 
     // Get chapter details
     let chapterName = 'Unknown Chapter';
@@ -997,7 +1006,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
     await page.waitForFunction(() => document.getElementById('particulars').textContent !== '');
     
     // Generate PDF
-    const pdfPath = path.join(__dirname, '../../temp', `${memberName} - ${docNo}.pdf`);
+    const pdfPath = path.join(__dirname, '../../temp', `${sanitizedFilename}.pdf`);
     await page.pdf({
       path: pdfPath,
       format: 'A4',
@@ -1057,7 +1066,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
       `,
       attachments: [
         {
-          filename: `${memberName} - ${docNo}.pdf`,
+          filename: `${sanitizedFilename}.pdf`,
           path: pdfPath
         }
       ]
