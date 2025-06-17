@@ -12168,6 +12168,7 @@ const getStateName = (state) => {
 };
 
 
+
 const addMultipleVisitorPayment = async (req, res) => {
   const { region_id, chapter_id, universal_link_id, visitors } = req.body;
   console.log("📥 Received Multiple Visitor Payment Data:", {
@@ -12219,11 +12220,11 @@ const addMultipleVisitorPayment = async (req, res) => {
       console.log("Original payment method:", paymentMethod);
       
       if (paymentMethod?.cash) {
-        paymentMethod.cash.payment_note = "Cash";
+        paymentMethod.cash.payment_note = "visitor-payment";
       } else if (!paymentMethod) {
         paymentMethod = {
           cash: {
-            payment_note: "Cash"
+            payment_note: "visitor-payment"
           }
         };
       }
@@ -12299,14 +12300,15 @@ console.log("✅ Order created for visitor:", visitor.visitor_name);
       console.log("✅ Order created for visitor:", visitor.visitor_name);
 
 
-// Add this before the transactionData array
-let paymentGroup = 'visitor_payment'; // default value
-if (paymentMethod?.cash) {
-    paymentGroup = 'cash';
-} else if (paymentMethod?.upi) {
-    paymentGroup = 'upi';
-} else if (paymentMethod?.netbanking) {
-    paymentGroup = 'net_banking';
+
+let paymentGroup = 'cash'; // default
+
+if (paymentMethod?.upi) {
+paymentGroup = 'upi';
+} else if (paymentMethod?.bank_transfer) {
+paymentGroup = 'net_banking';
+} else if (paymentMethod?.cash) {
+paymentGroup = 'cash';
 }
       // Prepare transaction data
       const transactionData = [
