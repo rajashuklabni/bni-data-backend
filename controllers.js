@@ -2760,6 +2760,9 @@ const addKittyPayment = async (req, res) => {
       penalty_amount,
     } = req.body;
 
+    // Round total_bill_amount to whole number
+    const roundedTotalBillAmount = Math.round(parseFloat(total_bill_amount));
+
     // Check if all required fields are provided
     if (
       !chapter_id ||
@@ -2798,7 +2801,7 @@ const addKittyPayment = async (req, res) => {
       bill_type,
       description,
       total_weeks,
-      total_bill_amount,
+      roundedTotalBillAmount,
       due_date,
       penalty_amount,
     ]);
@@ -2810,7 +2813,7 @@ const addKittyPayment = async (req, res) => {
           WHERE chapter_id = $2 AND writeoff_status = false;
       `;
 
-    await con.query(updateMemberQuery, [total_bill_amount, chapter_id]);
+    await con.query(updateMemberQuery, [roundedTotalBillAmount, chapter_id]);
     console.log(updateMemberQuery);
 
     // Fetch updated members to email them
@@ -2843,7 +2846,7 @@ const addKittyPayment = async (req, res) => {
           <p>A new bill has been raised under your chapter <b>${chapterName}</b>.</p>
           <p><strong>Bill Type:</strong> ${bill_type}</p>
           <p><strong>Description:</strong> ${description}</p>
-          <p><strong>Total Amount:</strong> ₹${total_bill_amount}</p>
+          <p><strong>Total Amount:</strong> ₹${roundedTotalBillAmount}</p>
           <p><strong>Due Date:</strong> ${due_date}</p>
           <p>We request you to pay the bill amount before due date, as penalty fee of <b>₹${penalty_amount}</b> will be applied.</b>.</p>
           <br/>
@@ -2887,10 +2890,10 @@ const addKittyPayment = async (req, res) => {
           } else {
             console.log(`Order ID: ${order.id} is not overdue. No action needed to add penalty.`);
           }
-          currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(total_bill_amount);
+          currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(roundedTotalBillAmount);
         } else {
           console.log(`for order ID: ${order.id}. Amount to pay is ${order.amount_to_pay}`);
-          currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(total_bill_amount);
+          currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(roundedTotalBillAmount);
         }
 
         const updateQuery = `
