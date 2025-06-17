@@ -76,7 +76,7 @@ const sessionIdGenerator = async (req, res) => {
                   responseData.order_amount,
                   responseData.order_currency,
                   data.customer_details.payment_gateway_id ? parseInt(data.customer_details.payment_gateway_id) : null, // Ensure this is available
-                  data.customer_details.member_id || null, // Use member_id from customer_details
+                  parseInt(data.customer_details.customer_id) || null, // Use member_id from customer_details
                   data.customer_details.chapter_id || null, // Use chapter_id from customer_details
                   data.customer_details.region_id || null, // Use region_id from customer_details
                   data.customer_details.universal_link_id ? parseInt(data.customer_details.universal_link_id) : null,
