@@ -247,7 +247,7 @@ const verifyOtpController = async (req, res) => {
             }, 
             process.env.JWT_SECRET,
             { 
-                expiresIn: '30m'  // expires in 30 minutes
+                expiresIn: '120m'  // expires in 30 minutes
             }
         );
         

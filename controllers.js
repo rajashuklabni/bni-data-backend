@@ -3809,6 +3809,28 @@ const getDisplayLogo = async (req, res) => {
   }
 };
 
+const getConvenienceCharge = async (req, res) => {
+  try {
+    // console.log("Fetching display logo...");
+
+    const result = await con.query(
+      "SELECT * from  convenience_charge"
+    );
+
+    // console.log("Query result:", result.rows);
+
+    if (result.rows.length > 0) {
+      res.json(result.rows);
+    } else {
+      console.log("No active convenience charge found");
+      res.json([]);
+    }
+  } catch (error) {
+    console.error("Error fetching convenience charge:", error);
+    res.status(500).json({ error: "Error fetching convenience charge" });
+  }
+};
+
 const getGstType = async (req, res) => {
   try {
     const result = await con.query(
@@ -12449,6 +12471,198 @@ paymentGroup = 'cash';
 };
 
 
+// Create a new banner
+const createBanner = async (req, res) => {
+  try {
+const {
+  banner_status,
+  banner_heading,
+  banner_description,
+  banner_button_0_status,
+  banner_button_0_text,
+  banner_button_0_link,
+  banner_button_0_x_position,
+  banner_button_0_y_position, // NEW
+  banner_button_1_status,
+  banner_button_1_text,
+  banner_button_1_link,
+  banner_button_1_x_position,
+  banner_button_1_y_position  // NEW
+} = req.body;
+
+    const banner_image = req.file?.filename;
+
+const result = await con.query(
+  `INSERT INTO banner_carousels (
+    banner_image, banner_status, banner_heading, banner_description,
+    banner_button_0_status, banner_button_0_text, banner_button_0_link, banner_button_0_x_position, banner_button_0_y_position,
+    banner_button_1_status, banner_button_1_text, banner_button_1_link, banner_button_1_x_position, banner_button_1_y_position
+  ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+  [
+    banner_image,
+    banner_status,
+    banner_heading,
+    banner_description,
+    banner_button_0_status,
+    banner_button_0_text,
+    banner_button_0_link,
+    banner_button_0_x_position,
+    banner_button_0_y_position,
+    banner_button_1_status,
+    banner_button_1_text,
+    banner_button_1_link,
+    banner_button_1_x_position,
+    banner_button_1_y_position
+  ]
+);
+
+
+    res.status(201).json({ success: true, data: result.rows[0] });
+    console.log("req.file.filename =>", req.file.filename);
+    console.log("req.file.originalname =>", req.file.originalname);
+  } catch (err) {
+    console.error("Create Banner Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Get all banners
+const getAllBanners = async (req, res) => {
+  try {
+    const result = await con.query(`SELECT * FROM banner_carousels ORDER BY id DESC`);
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Get single banner
+const getBanner = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await con.query(`SELECT * FROM banner_carousels WHERE id = $1`, [id]);
+    if (!result.rows.length) return res.status(404).json({ success: false, message: "Banner not found" });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Update banner
+const updateBanner = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      banner_status,
+      banner_heading,
+      banner_description,
+      banner_button_0_status,
+      banner_button_0_text,
+      banner_button_0_link,
+      banner_button_0_x_position,
+      banner_button_1_status,
+      banner_button_1_text,
+      banner_button_1_link,
+      banner_button_1_x_position
+    } = req.body;
+
+    let banner_image;
+    if (req.file) {
+      banner_image = req.file.filename;
+    } else {
+      const existing = await con.query("SELECT banner_image FROM banner_carousels WHERE id = $1", [id]);
+      banner_image = existing.rows[0]?.banner_image;
+    }
+
+    const updateQuery = `
+      UPDATE banner_carousels SET
+        banner_image = $1,
+        banner_status = $2,
+        banner_heading = $3,
+        banner_description = $4,
+        banner_button_0_status = $5,
+        banner_button_0_text = $6,
+        banner_button_0_link = $7,
+        banner_button_0_x_position = $8,
+        banner_button_1_status = $9,
+        banner_button_1_text = $10,
+        banner_button_1_link = $11,
+        banner_button_1_x_position = $12
+      WHERE id = $13
+      RETURNING *;
+    `;
+
+    const values = [
+      banner_image,
+      banner_status,
+      banner_heading,
+      banner_description,
+      banner_button_0_status,
+      banner_button_0_text,
+      banner_button_0_link,
+      banner_button_0_x_position,
+      banner_button_1_status,
+      banner_button_1_text,
+      banner_button_1_link,
+      banner_button_1_x_position,
+      id
+    ];
+
+    const result = await con.query(updateQuery, values);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error("Update Banner Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Delete banner
+const deleteBanner = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await con.query(`DELETE FROM banner_carousels WHERE id = $1 RETURNING *`, [id]);
+    if (result.rowCount === 0)
+      return res.status(404).json({ success: false, message: "Banner not found" });
+
+    const filepath = path.join(__dirname, "..", "uploads", "banners", result.rows[0].banner_image);
+    fs.unlink(filepath, (err) => {
+      if (err) console.warn("Image deletion error:", err.message);
+    });
+
+    res.json({ success: true, message: "Banner deleted" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Get only enabled banners
+const getEnabledBanners = async (req, res) => {
+  try {
+    const result = await con.query(
+      "SELECT * FROM banner_carousels WHERE banner_status = true ORDER BY id DESC"
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Toggle status
+const toggleBannerStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const result = await con.query(
+      `UPDATE banner_carousels SET banner_status = $1 WHERE id = $2 RETURNING *`,
+      [status, id]
+    );
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -12628,5 +12842,12 @@ module.exports = {
   getSettlementOrder,
   generateBulkEinvoicePdf,
   addMultipleVisitorPayment,
-
+  createBanner,
+  getAllBanners,
+  getBanner,
+  updateBanner,
+  deleteBanner,
+  getEnabledBanners,
+  toggleBannerStatus,
+  getConvenienceCharge
 };

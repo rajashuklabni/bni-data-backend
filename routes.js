@@ -181,6 +181,14 @@ deleteVisitorDocument,
 getSettlementOrder,
 generateBulkEinvoicePdf,
 addMultipleVisitorPayment,
+createBanner,
+  getAllBanners,
+  getBanner,
+  updateBanner,
+  deleteBanner,
+  getEnabledBanners,
+  toggleBannerStatus,
+  getConvenienceCharge
 } = require("./controllers");
 
 const path = require("path");
@@ -743,6 +751,7 @@ router.put("/updateLogo", updateLogo);
 router.put("/updateGstTypeValues", updateGstTypeValues);
 router.put("/updateUserPassword", updateUserPassword);
 router.get("/getDisplayLogo", getDisplayLogo);
+router.get("/getConvenienceCharge", getConvenienceCharge);
 router.get("/getGstType", getGstType);
 router.get("/getGstTypeValues", getGstTypeValues);
 router.post("/send-qr-code", sendQrCodeByEmail);
@@ -1315,5 +1324,14 @@ router.get('/uploads/tds-certificates/:filename', (req, res) => {
 });
 
 router.put("/tdsUpdateexpense", uploadTdsCertificate.single('tds_certificate'), tdsUpdateexpense);
+
+router.get("/banners/enabled", getEnabledBanners);
+router.get("/banners", getAllBanners);
+router.get("/banners/:id", getBanner);
+
+router.post("/banners", upload.single("banner_image"), createBanner);
+router.put("/banners/:id", upload.single("banner_image"), updateBanner);
+router.delete("/banners/:id", deleteBanner);
+router.patch("/banners/:id/status", toggleBannerStatus);
 
 module.exports = router;
