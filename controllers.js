@@ -6954,8 +6954,9 @@ const addChapterRequisition = async (req, res) => {
           try {
               const accoladeCount = Array.isArray(accolade_ids) ? accolade_ids.length : 1;
               const mailOptions = {
-                  from: 'demobni009@gmail.com',
-                  to: 'test4@yopmail.com',
+                  from: 'info@bninewdelhi.com',
+                  to: 'support@bninewdelhi.com',
+                  cc: 'rajashuklabni@gmail.com',
                   subject: `New Requisition Request from ${chapterName}`,
                   html: `
                       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
@@ -7083,8 +7084,9 @@ const addChapterRequisition = async (req, res) => {
       try {
           const accoladeCount = accolade_ids.length;
           const mailOptions = {
-              from: 'demobni009@gmail.com',
-              to: 'test4@yopmail.com',
+            from: 'info@bninewdelhi.com',
+            to: 'support@bninewdelhi.com',
+            cc: 'rajashuklabni@gmail.com',
               subject: `New Requisition Request from ${chapterName}`,
               html: `
                   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
