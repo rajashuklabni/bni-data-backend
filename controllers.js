@@ -6807,9 +6807,10 @@ const addMemberRequisition = async (req, res) => {
               order_id,
               approve_status,
               request_status,
-              given_status
+              given_status,
+              action_need
           )
-          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8, $9)
+          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8, $9, $10)
           RETURNING *
       `;
 
@@ -6822,7 +6823,8 @@ const addMemberRequisition = async (req, res) => {
           order_id,
           approve_status,
           request_status,
-          given_status
+          given_status,
+          true
       ];
 
       console.log('📊 Executing Query with values:', values);
@@ -6912,9 +6914,10 @@ const addChapterRequisition = async (req, res) => {
                   slab_wise_comment,
                   given_status,
                   visitor_id,
-                  requested_by
+                  requested_by,
+                  request_send
               )
-              VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+              VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
               RETURNING *
           `;
 
@@ -6931,7 +6934,8 @@ const addChapterRequisition = async (req, res) => {
               slab_wise_comment,
               given_status,
               visitor_id,  // Moved to last position
-              req.body.requested_by
+              req.body.requested_by,
+              true
           ];
 
           console.log('🔍 Executing visitor flow query with values:', visitorValues);
@@ -6940,6 +6944,57 @@ const addChapterRequisition = async (req, res) => {
           const newRequisition = result.rows[0];
 
           console.log('✅ Chapter Requisition created successfully (visitor flow):', newRequisition);
+
+          // Get chapter name for email
+          const chapterQuery = 'SELECT chapter_name FROM chapter WHERE chapter_id = $1';
+          const chapterResult = await con.query(chapterQuery, [chapter_id]);
+          const chapterName = chapterResult.rows[0]?.chapter_name || 'Unknown Chapter';
+
+          // Send email notification for visitor flow
+          try {
+              const accoladeCount = Array.isArray(accolade_ids) ? accolade_ids.length : 1;
+              const mailOptions = {
+                  from: 'demobni009@gmail.com',
+                  to: 'test4@yopmail.com',
+                  subject: `New Requisition Request from ${chapterName}`,
+                  html: `
+                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+                          <div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                              <h2 style="color: #2c3e50; text-align: center; margin-bottom: 20px;">🎯 New Requisition Request</h2>
+                              
+                              <div style="background-color: #e8f4fd; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                  <p style="font-size: 18px; color: #2c3e50; margin: 0;">
+                                      <strong>${chapterName}</strong> has applied for requisitions!
+                                  </p>
+                              </div>
+                              
+                              <div style="background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                                  <p style="margin: 5px 0; color: #495057;">
+                                      <strong>📊 Accolades Requested:</strong> ${accoladeCount} item(s)
+                                  </p>
+                                  <p style="margin: 5px 0; color: #495057;">
+                                      <strong>📅 Request Date:</strong> ${new Date().toLocaleDateString()}
+                                  </p>
+                                  <p style="margin: 5px 0; color: #495057;">
+                                      <strong>👤 Requested By:</strong> ${req.body.requested_by || 'System'}
+                                  </p>
+                              </div>
+                              
+                              <div style="text-align: center; margin-top: 25px;">
+                                  <p style="color: #6c757d; font-style: italic;">
+                                      Please review and approve or decline this request as soon as possible.
+                                  </p>
+                              </div>
+                          </div>
+                      </div>
+                  `
+              };
+
+              await transporter.sendMail(mailOptions);
+              console.log('📧 Email sent successfully for visitor flow');
+          } catch (emailError) {
+              console.error('❌ Email sending failed:', emailError);
+          }
 
           return res.status(201).json({
               success: true,
@@ -6991,9 +7046,10 @@ const addChapterRequisition = async (req, res) => {
               pickup_status,
               pickup_date,
               visitor_id,
-              requested_by
+              requested_by,
+              request_send
           )
-          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8, $9, $10)
+          VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, $6, $7, $8, $9, $10, $11)
           RETURNING *
       `;
 
@@ -7007,7 +7063,8 @@ const addChapterRequisition = async (req, res) => {
           pickup_status,
           pickup_date,
           null,  // visitor_id will be null in regular flow
-          req.body.requested_by
+          req.body.requested_by,
+          true
       ];
 
       console.log('🔍 Executing regular flow query with values:', values);
@@ -7016,6 +7073,60 @@ const addChapterRequisition = async (req, res) => {
       const newRequisition = result.rows[0];
 
       console.log('✅ Chapter Requisition created successfully (regular flow):', newRequisition);
+
+      // Get chapter name for email
+      const chapterQuery = 'SELECT chapter_name FROM chapter WHERE chapter_id = $1';
+      const chapterResult = await con.query(chapterQuery, [chapter_id]);
+      const chapterName = chapterResult.rows[0]?.chapter_name || 'Unknown Chapter';
+
+      // Send email notification for regular flow
+      try {
+          const accoladeCount = accolade_ids.length;
+          const mailOptions = {
+              from: 'demobni009@gmail.com',
+              to: 'test4@yopmail.com',
+              subject: `New Requisition Request from ${chapterName}`,
+              html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+                      <div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                          <h2 style="color: #2c3e50; text-align: center; margin-bottom: 20px;">🎯 New Requisition Request</h2>
+                          
+                          <div style="background-color: #e8f4fd; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                              <p style="font-size: 18px; color: #2c3e50; margin: 0;">
+                                  <strong>${chapterName}</strong> has applied for requisitions!
+                              </p>
+                          </div>
+                          
+                          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                              <p style="margin: 5px 0; color: #495057;">
+                                  <strong>📊 Accolades Requested:</strong> ${accoladeCount} item(s)
+                              </p>
+                              <p style="margin: 5px 0; color: #495057;">
+                                  <strong>👥 Members Involved:</strong> ${member_ids.length} member(s)
+                              </p>
+                              <p style="margin: 5px 0; color: #495057;">
+                                  <strong>📅 Request Date:</strong> ${new Date().toLocaleDateString()}
+                              </p>
+                              <p style="margin: 5px 0; color: #495057;">
+                                  <strong>👤 Requested By:</strong> ${req.body.requested_by || 'System'}
+                              </p>
+                          </div>
+                          
+                          <div style="text-align: center; margin-top: 25px;">
+                              <p style="color: #6c757d; font-style: italic;">
+                                  Please review and approve or decline this request as soon as possible.
+                              </p>
+                          </div>
+                      </div>
+                  </div>
+              `
+          };
+
+          await transporter.sendMail(mailOptions);
+          console.log('📧 Email sent successfully for regular flow');
+      } catch (emailError) {
+          console.error('❌ Email sending failed:', emailError);
+      }
 
       res.status(201).json({
           success: true,
@@ -7031,7 +7142,7 @@ const addChapterRequisition = async (req, res) => {
           error: error.message
       });
   }
-};;
+};
 
 
 const updateChapterRequisition = async (req, res) => {
@@ -7522,31 +7633,61 @@ for (const [key, status] of Object.entries(approveStatusObj)) {
     const [memberId, accoladeId] = key.split('_').map(Number);
 
     if (status === 'approved') {
-        console.log(`🎯 Processing approved accolade for member ${memberId}, accolade ${accoladeId}`);
-
-        // First check if this combination already exists
-        const checkQuery = `
-            SELECT id FROM member_accolades 
-            WHERE member_id = $1 AND accolade_id = $2
-            LIMIT 1
-        `;
-        
-        const existingRecord = await con.query(checkQuery, [memberId, accoladeId]);
-        
-        if (existingRecord.rows.length === 0) { 
-            const insertQuery = `
-                INSERT INTO member_accolades 
-                (member_id, accolade_id, issue_date, count, given_date, comment)
-                VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL)
-                RETURNING *
-            `;
-
-            const insertResult = await con.query(insertQuery, [memberId, accoladeId]);
-            console.log('✅ Inserted new record into member_accolades:', insertResult.rows[0]);
-        } else {
-            console.log(`ℹ️ Skipping insert: Accolade ${accoladeId} already exists for member ${memberId}`);
-        }
-    }
+      console.log(`🎯 Processing approved accolade for member ${memberId}, accolade ${accoladeId}`);
+  
+      // First check if this combination already exists
+      const checkQuery = `
+          SELECT id FROM member_accolades 
+          WHERE member_id = $1 AND accolade_id = $2
+          LIMIT 1
+      `;
+      
+      const existingRecord = await con.query(checkQuery, [memberId, accoladeId]);
+      
+      if (existingRecord.rows.length === 0) { 
+          const insertQuery = `
+              INSERT INTO member_accolades 
+              (member_id, accolade_id, issue_date, count, given_date, comment)
+              VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL)
+              RETURNING *
+          `;
+  
+          const insertResult = await con.query(insertQuery, [memberId, accoladeId]);
+          console.log('✅ Inserted new record into member_accolades:', insertResult.rows[0]);
+          
+          // Additional condition: If accoladeId is 1, also insert accolades 8, 2, and 10
+          if (accoladeId === 1) {
+              const additionalAccolades = [8, 2, 10];
+              
+              for (const additionalAccoladeId of additionalAccolades) {
+                  // Check if this additional accolade already exists for the member
+                  const additionalCheckQuery = `
+                      SELECT id FROM member_accolades 
+                      WHERE member_id = $1 AND accolade_id = $2
+                      LIMIT 1
+                  `;
+                  
+                  const additionalExistingRecord = await con.query(additionalCheckQuery, [memberId, additionalAccoladeId]);
+                  
+                  if (additionalExistingRecord.rows.length === 0) {
+                      const additionalInsertQuery = `
+                          INSERT INTO member_accolades 
+                          (member_id, accolade_id, issue_date, count, given_date, comment)
+                          VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL)
+                          RETURNING *
+                      `;
+                      
+                      const additionalInsertResult = await con.query(additionalInsertQuery, [memberId, additionalAccoladeId]);
+                      console.log(`✅ Inserted additional accolade ${additionalAccoladeId} for member ${memberId}:`, additionalInsertResult.rows[0]);
+                  } else {
+                      console.log(`ℹ️ Skipping additional accolade ${additionalAccoladeId}: Already exists for member ${memberId}`);
+                  }
+              }
+          }
+      } else {
+          console.log(`ℹ️ Skipping insert: Accolade ${accoladeId} already exists for member ${memberId}`);
+      }
+  }
 
     // NEW: Remove member_accolades record if status is declined
     if (status === 'declined') {
@@ -7685,10 +7826,11 @@ const updateMemberRequisition = async (req, res) => {
           response_comment,
           given_status,
           given_date,
-          request_status
+          request_status,
+          action_need
       } = req.body;
 
-      console.log('📝 Request Data:', {
+      console.log('📋 Request Data:', {
           member_request_id,
           member_id,
           chapter_id,
@@ -7697,14 +7839,15 @@ const updateMemberRequisition = async (req, res) => {
           response_comment,
           given_status,
           given_date,
-          request_status
+          request_status,
+          action_need
       });
 
       let query;
       let values;
 
       // Case 1: If member_request_id is provided (approval flow)
-      if (member_request_id) {
+      if (member_request_id && (approve_status || response_comment)) {
           // Validate required fields for approval flow
           if (!member_id || !chapter_id || !accolade_id) {
               console.error('❌ Missing required fields for approval flow');
@@ -7715,53 +7858,67 @@ const updateMemberRequisition = async (req, res) => {
           }
 
           // Begin transaction
-          const client = await con.connect();
-
           try {
-              await client.query('BEGIN');
+              await con.query('BEGIN');
 
               // Update member_requisition_request
-          query = `
-              UPDATE member_requisition_request 
-              SET 
-                  approve_status = CAST($1 AS VARCHAR),
-                  response_comment = $2,
-                  approved_date = CASE 
-                      WHEN CAST($1 AS VARCHAR) = 'approved' THEN CURRENT_TIMESTAMP 
-                      ELSE approved_date 
-                  END
-              WHERE 
-                  member_request_id = $3 
-                  AND member_id = $4 
-                  AND chapter_id = $5 
-                  AND accolade_id = $6
-                  AND given_status = false
-                  AND request_status = 'open'
-                  AND given_date IS NULL
-              RETURNING *
-          `;
+              query = `
+                  UPDATE member_requisition_request 
+                  SET 
+                      approve_status = CAST($1 AS VARCHAR),
+                      response_comment = $2,
+                      approved_date = CASE 
+                          WHEN CAST($1 AS VARCHAR) = 'approved' THEN CURRENT_TIMESTAMP 
+                          ELSE approved_date 
+                      END
+                  WHERE 
+                      member_request_id = $3 
+                      AND member_id = $4 
+                      AND chapter_id = $5 
+                      AND accolade_id = $6
+                      AND given_status = false
+                      AND (request_status = 'open' OR request_status IS NULL)
+                      AND given_date IS NULL
+                  RETURNING *
+              `;
 
-          values = [
-              approve_status || 'pending',
-              response_comment || '',
-              member_request_id,
-              member_id,
-              chapter_id,
-              accolade_id
-          ];
+              values = [
+                  approve_status || 'pending',
+                  response_comment || '',
+                  member_request_id,
+                  member_id,
+                  chapter_id,
+                  accolade_id
+              ];
 
-              const result = await client.query(query, values);
+              const result = await con.query(query, values);
 
               if (result.rows.length === 0) {
-                  await client.query('ROLLBACK');
+                  await con.query('ROLLBACK');
                   console.log('❌ No matching requisition found or conditions not met');
                   return res.status(404).json({
                       success: false,
                       message: "No matching requisition found or conditions not met"
                   });
               }
+               // If approve_status is 'rejected', delete from member_accolades
+               if (approve_status === 'rejected') {
+                console.log('🗑️ Deleting member_accolades entry for rejected request');
+                
+                const deleteAccoladeQuery = `
+                    DELETE FROM member_accolades 
+                    WHERE member_id = $1 
+                    AND accolade_id = $2
+                    RETURNING *
+                `;
 
-              await client.query('COMMIT');
+                const deleteValues = [member_id, accolade_id];
+                const deleteResult = await con.query(deleteAccoladeQuery, deleteValues);
+                
+                console.log('✅ Deleted member_accolades entry:', deleteResult.rows[0]);
+            }
+
+              await con.query('COMMIT');
 
               console.log('✅ Member Requisition updated successfully:', result.rows[0]);
 
@@ -7772,16 +7929,14 @@ const updateMemberRequisition = async (req, res) => {
               });
 
           } catch (error) {
-              await client.query('ROLLBACK');
+              await con.query('ROLLBACK');
               throw error;
-          } finally {
-              client.release();
-          }
+          } 
       }
       // Case 2: Update given status flow
-      else {
+      else if (given_status !== undefined && given_date && request_status) {
           // Validate required fields for given status update
-          if (!member_id || !chapter_id || !accolade_id || given_status === undefined || !given_date || !request_status) {
+          if (!member_id || !chapter_id || !accolade_id) {
               console.error('❌ Missing required fields for given status update');
               return res.status(400).json({
                   success: false,
@@ -7790,85 +7945,173 @@ const updateMemberRequisition = async (req, res) => {
           }
 
           // Begin transaction
-          const client = await con.connect();
-
           try {
-              await client.query('BEGIN');
+              await con.query('BEGIN');
 
               // First update member_requisition_request
-          query = `
-              UPDATE member_requisition_request 
-              SET 
-                  given_status = $1,
-                  given_date = $2,
-                  request_status = $3
-              WHERE 
-                  member_id = $4 
-                  AND chapter_id = $5 
-                  AND accolade_id = $6
-                  AND given_status = false
-                  AND request_status = 'open'
-                  AND given_date IS NULL
-              RETURNING *
-          `;
-
-          values = [
-              given_status,
-              given_date,
-              request_status,
-              member_id,
-              chapter_id,
-              accolade_id
-          ];
-
-              const result = await client.query(query, values);
-
-      if (result.rows.length === 0) {
-                  await client.query('ROLLBACK');
-          console.log('❌ No matching requisition found or conditions not met');
-          return res.status(404).json({
-              success: false,
-              message: "No matching requisition found or conditions not met"
-          });
-      }
-
-              // Update member_accolades if record exists
-              const updateAccoladeQuery = `
-                  UPDATE member_accolades 
-                  SET given_date = $1
-                  WHERE member_id = $2 
-                  AND accolade_id = $3 
-                  AND issue_date IS NOT NULL
+              query = `
+                  UPDATE member_requisition_request 
+                  SET 
+                      given_status = $1,
+                      given_date = $2,
+                      request_status = $3
+                  WHERE 
+                      member_id = $4 
+                      AND chapter_id = $5 
+                      AND accolade_id = $6
+                      AND given_status = false
+                      AND (request_status = 'open' OR request_status IS NULL OR request_status = 'approved')
+                      AND given_date IS NULL
                   RETURNING *
               `;
 
-              const accoladeValues = [
+              values = [
+                  given_status,
                   given_date,
+                  request_status,
                   member_id,
+                  chapter_id,
                   accolade_id
               ];
 
-              console.log('🎯 Updating member_accolades:', accoladeValues);
+              const result = await con.query(query, values);
 
-              const accoladeResult = await client.query(updateAccoladeQuery, accoladeValues);
-              console.log('✅ Updated member_accolades:', accoladeResult.rows[0]);
+              if (result.rows.length === 0) {
+                  await con.query('ROLLBACK');
+                  console.log('❌ No matching requisition found or conditions not met');
+                  return res.status(404).json({
+                      success: false,
+                      message: "No matching requisition found or conditions not met"
+                  });
+              }
 
-              await client.query('COMMIT');
+              // Check if member_accolades record already exists
+              const checkAccoladeQuery = `
+                  SELECT * FROM member_accolades 
+                  WHERE member_id = $1 
+                  AND accolade_id = $2 
+                  AND issue_date IS NOT NULL
+              `;
 
-      console.log('✅ Member Requisition updated successfully:', result.rows[0]);
+              const checkValues = [member_id, accolade_id];
+              const existingAccolade = await con.query(checkAccoladeQuery, checkValues);
 
-      res.json({
-          success: true,
-          message: "Member requisition updated successfully",
-          data: result.rows[0]
-      });
+              if (existingAccolade.rows.length > 0) {
+                  // Create new entry instead of updating existing one
+                  console.log('🆕 Creating new member_accolades entry (existing record found)');
+                  
+                  const insertAccoladeQuery = `
+                      INSERT INTO member_accolades 
+                      (member_id, accolade_id, given_date, issue_date, count, comment, entry_timestamp)
+                      VALUES ($1, $2, $3, $4, 1, $5, CURRENT_TIMESTAMP)
+                      RETURNING *
+                  `;
+
+                  const insertValues = [
+                      member_id,
+                      accolade_id,
+                      given_date,
+                      given_date, // issue_date same as given_date for new entry
+                      null // comment
+                  ];
+
+                  const insertResult = await con.query(insertAccoladeQuery, insertValues);
+                  console.log('✅ Created new member_accolades entry:', insertResult.rows[0]);
+              } else {
+                  // Update existing member_accolades if record exists
+                  const updateAccoladeQuery = `
+                      UPDATE member_accolades 
+                      SET given_date = $1
+                      WHERE member_id = $2 
+                      AND accolade_id = $3 
+                      AND issue_date IS NOT NULL
+                      RETURNING *
+                  `;
+
+                  const accoladeValues = [
+                      given_date,
+                      member_id,
+                      accolade_id
+                  ];
+
+                  console.log('🎯 Updating existing member_accolades:', accoladeValues);
+
+                  const accoladeResult = await con.query(updateAccoladeQuery, accoladeValues);
+                  console.log('✅ Updated member_accolades:', accoladeResult.rows[0]);
+              }
+
+              await con.query('COMMIT');
+
+              console.log('✅ Member Requisition updated successfully:', result.rows[0]);
+
+              res.json({
+                  success: true,
+                  message: "Member requisition updated successfully",
+                  data: result.rows[0]
+              });
 
           } catch (error) {
-              await client.query('ROLLBACK');
+              await con.query('ROLLBACK');
               throw error;
-          } finally {
-              client.release();
+          } 
+      }
+      // Case 3: Update action_need field
+      else if (action_need !== undefined) {
+          // Validate required fields for action_need update
+          if (!member_request_id) {
+              console.error('❌ Missing required fields for action_need update');
+              return res.status(400).json({
+                  success: false,
+                  message: "Required fields missing: member_request_id is mandatory"
+              });
           }
+
+          // Begin transaction
+          try {
+              await con.query('BEGIN');
+
+              // Update member_requisition_request action_need field
+              query = `
+                  UPDATE member_requisition_request 
+                  SET action_need = $1
+                  WHERE member_request_id = $2
+                  RETURNING *
+              `;
+
+              values = [action_need, member_request_id];
+
+              const result = await con.query(query, values);
+
+              if (result.rows.length === 0) {
+                  await con.query('ROLLBACK');
+                  console.log('❌ No matching requisition found for action_need update');
+                  return res.status(404).json({
+                      success: false,
+                      message: "No matching requisition found for action_need update"
+                  });
+              }
+
+              await con.query('COMMIT');
+
+              console.log('✅ Member Requisition action_need updated successfully:', result.rows[0]);
+
+              res.json({
+                  success: true,
+                  message: "Member requisition action_need updated successfully",
+                  data: result.rows[0]
+              });
+
+          } catch (error) {
+              await con.query('ROLLBACK');
+              throw error;
+          }
+      }
+      else {
+          console.error('❌ Invalid request: No valid update operation specified');
+          return res.status(400).json({
+              success: false,
+              message: "Invalid request: No valid update operation specified"
+          });
       }
 
   } catch (error) {
@@ -7880,6 +8123,8 @@ const updateMemberRequisition = async (req, res) => {
       });
   }
 };
+
+
 
 // Add this new controller
 const sendVisitorEmail = async (req, res) => {

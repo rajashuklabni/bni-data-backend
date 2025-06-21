@@ -69,7 +69,7 @@ function numberToWords(amount) {
 
 // Initialize Axios client with base URL and headers
 const apiClient = axios.create({
-  baseURL: 'https://api.prod.core.irisirp.com/',
+  baseURL: 'https://api.sandbox.core.irisirp.com/',
   headers: {
     'client_id': process.env.CLIENT_ID,
     'client_secret': process.env.CLIENT_SECRET,
@@ -83,7 +83,7 @@ async function encryptData() {
     const payload = {
       type: "PUB",
       data: JSON.stringify({
-        UserName: "sunilk",
+        UserName: "rajabni",
         Password: process.env.PASSWORD,
         AppKey: process.env.APP_KEY,
         ForceRefreshAccessToken: true
@@ -464,7 +464,7 @@ async function generateIRN(req, res) {
           "Dt": docDate
         },
         "SellerDtls": {
-          "Gstin": "07AHIPK0486D1ZH",
+          "Gstin": "07EVVPS9453K004",
           "LglNm": "ADI CORPORATE TRAINING",
           "TrdNm": "ADI CORPORATE TRAINING",
           "Addr1": "Flat No.09, Pocket 1, Sector 19, Dwarka, Delhi",
@@ -472,7 +472,7 @@ async function generateIRN(req, res) {
           "Pin": 110075,
           "Stcd": "07",
           "Ph": "9899789340",
-          "Em": "sunilk@bni-india.in"
+          "Em": "rajabni@bni-india.in"
         },
         "BuyerDtls": {
           ...buyerDetails,
@@ -529,7 +529,7 @@ async function generateIRN(req, res) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "sunilk",
+        user_name: "rajabni",
         AuthToken: authtoken
       }
     });
@@ -543,7 +543,7 @@ async function generateIRN(req, res) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "sunilk",
+        user_name: "rajabni",
         AuthToken: authtoken
       }
     });
@@ -1113,7 +1113,7 @@ async function cancelIRN(req, res) {
               client_id: process.env.CLIENT_ID,
               client_secret: process.env.CLIENT_SECRET,
               gstin: process.env.GSTIN,
-              user_name: "sunilk",
+              user_name: "rajabni",
               AuthToken: authtoken
           }
       });
@@ -1131,7 +1131,7 @@ async function cancelIRN(req, res) {
               client_id: process.env.CLIENT_ID,
               client_secret: process.env.CLIENT_SECRET,
               gstin: process.env.GSTIN,
-              user_name: "sunilk",
+              user_name: "rajabni",
               AuthToken: authtoken
           }
       });
@@ -1244,7 +1244,7 @@ async function getGstDetails(req, res) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "sunilk",
+        user_name: "rajabni",
         AuthToken: authtoken
       }
     });
@@ -1265,7 +1265,7 @@ async function getGstDetails(req, res) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "sunilk",
+        user_name: "rajabni",
         AuthToken: authtoken
       }
     });
@@ -1313,7 +1313,7 @@ async function fetchGstDetails(gstNo, authToken, sek) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "sunilk",
+        user_name: "rajabni",
         AuthToken: authToken
       }
     });
@@ -1331,7 +1331,7 @@ async function fetchGstDetails(gstNo, authToken, sek) {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
         gstin: process.env.GSTIN,
-        user_name: "sunilk",
+        user_name: "rajabni",
         AuthToken: authToken
       }
     });

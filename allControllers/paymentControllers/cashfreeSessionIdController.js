@@ -86,7 +86,7 @@ const sessionIdGenerator = async (req, res) => {
                   data.customer_details.one_time_registration_fee || 0, // New field
                   data.customer_details.membership_fee || 0, // New field
                   data.tax || 0, // New fiel
-                  data.customer_details.memberName || "Unknown", // New field
+                  data.customer_details.memberName || data.customer_details.customer_name || "Unknown", // Use memberName first, then customer_name as fallback
                   data.customer_details.customer_email || "unknown@example.com", // New field
                   data.customer_details.customer_phone || "0000000000", // New field
                   (data.memberData?.member_gst_number || null), // New field
@@ -182,7 +182,7 @@ const sessionIdGenerator = async (req, res) => {
               data.customer_details.one_time_registration_fee || 0, // New field
               data.customer_details.membership_fee || 0, // New field
               data.tax || 0, // New field
-              data.customer_details.memberName || "Unknown", // New field
+              data.customer_details.memberName || data.customer_details.customer_name || "Unknown", // Use memberName first, then customer_name as fallback
               data.customer_details.customer_email || "unknown@example.com", // New field
               data.customer_details.customer_phone || "0000000000", // New field
               data.customer_details.gstin || null, // New field
@@ -193,16 +193,17 @@ const sessionIdGenerator = async (req, res) => {
               data.customer_details.trainingId || null, // New field
               data.customer_details.eventId || null, // New field
               data.kitty_bill_id || null,
+              data.customer_details.accolade_id || null, // Add accolade_id for member-requisition-payment
               new Date(),
               new Date()
 
-          ];
+        ];
 
              await db.query(
     `INSERT INTO Orders (
-      order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id, created_at, updated_at
+      order_id, order_amount, order_currency, payment_gateway_id, customer_id, chapter_id, region_id, universal_link_id, ulid, order_status, payment_session_id, one_time_registration_fee, membership_fee, tax, member_name, customer_email, customer_phone, gstin, company, mobile_number, renewal_year, payment_note, training_id, event_id, kitty_bill_id, accolade_id, created_at, updated_at
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28
     )`,
     orderValues
   );
@@ -838,7 +839,7 @@ const getOrderStatus = async (req, res) => {
             
             
             
-                   
+      
           
 
         }
@@ -848,7 +849,54 @@ const getOrderStatus = async (req, res) => {
         }
         
 
-      return res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`);
+      // Check if this is an accolade payment and create member requisition
+      if (responseData1.customer_details.payment_note === 'member-requisition-payment') {
+        try {
+          // Create member requisition for accolade payment
+          const accoladeId = responseData1.customer_details.accolade_id;
+          const memberId = responseData1.customer_details.member_id;
+          const chapterId = responseData1.customer_details.chapter_id;
+          const requestComment = responseData1.customer_details.request_comment || 'Payment completed via Cashfree';
+          
+          // Calculate base amount (total amount / 1.18 to remove tax)
+          const totalAmount = parseFloat(responseData1.order_amount);
+          const baseAmount = parseFloat((totalAmount / 1.18).toFixed(2));
+          
+          // Insert into member_requisition_request table
+          await db.query(
+            `INSERT INTO member_requisition_request 
+             (member_id, chapter_id, accolade_id, request_comment, accolade_amount, approve_status, given_status, order_id, requested_time_date, action_need)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+            [
+              memberId,
+              chapterId,
+              accoladeId,
+              requestComment,
+              baseAmount,
+              'pending', // Default approve_status
+              false, // Default given_status,
+              order_id,
+              new Date(),
+              true
+            ]
+          );
+          
+          console.log('✅ Member requisition request created for accolade payment:', {
+            memberId,
+            chapterId,
+            accoladeId,
+            baseAmount,
+            orderId: order_id
+          });
+        } catch (error) {
+          console.error('❌ Error creating member requisition request:', error);
+          // Continue with redirect even if requisition creation fails
+        }
+        
+        return res.redirect(`http://localhost:3000/macc/memberAccoladePaymentReceipt?order_id=${order_id}`);
+      } else {
+        return res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`);
+      }
     } else {
       console.error("Payment details missing");
       return res.redirect(`${process.env.baseUrl}/payment-status/${order_id}`);
