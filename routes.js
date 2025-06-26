@@ -181,14 +181,16 @@ deleteVisitorDocument,
 getSettlementOrder,
 generateBulkEinvoicePdf,
 addMultipleVisitorPayment,
-createBanner,
-  getAllBanners,
-  getBanner,
-  updateBanner,
-  deleteBanner,
-  getEnabledBanners,
-  toggleBannerStatus,
-  getConvenienceCharge
+// createBanner,
+//   getAllBanners,
+//   getBanner,
+//   updateBanner,
+//   deleteBanner,
+//   getEnabledBanners,
+//   toggleBannerStatus,
+  getConvenienceCharge,
+  updateMemberPendingAmount,
+  updateAllMembersPendingAmount
 } = require("./controllers");
 
 const path = require("path");
@@ -1325,13 +1327,17 @@ router.get('/uploads/tds-certificates/:filename', (req, res) => {
 
 router.put("/tdsUpdateexpense", uploadTdsCertificate.single('tds_certificate'), tdsUpdateexpense);
 
-router.get("/banners/enabled", getEnabledBanners);
-router.get("/banners", getAllBanners);
-router.get("/banners/:id", getBanner);
+// router.get("/banners/enabled", getEnabledBanners);
+// router.get("/banners", getAllBanners);
+// router.get("/banners/:id", getBanner);
 
-router.post("/banners", upload.single("banner_image"), createBanner);
-router.put("/banners/:id", upload.single("banner_image"), updateBanner);
-router.delete("/banners/:id", deleteBanner);
-router.patch("/banners/:id/status", toggleBannerStatus);
+// router.post("/banners", upload.single("banner_image"), createBanner);
+// router.put("/banners/:id", upload.single("banner_image"), updateBanner);
+// router.delete("/banners/:id", deleteBanner);
+// router.patch("/banners/:id/status", toggleBannerStatus);
+
+// Update member pending amount route
+router.post("/updateMemberPendingAmount", updateMemberPendingAmount);
+router.post("/updateAllMembersPendingAmount", updateAllMembersPendingAmount);
 
 module.exports = router;

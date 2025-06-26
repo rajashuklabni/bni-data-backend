@@ -12,6 +12,16 @@ const dotEnv = require("dotenv");
 const jwt = require("jsonwebtoken");
 dotEnv.config();
 
+const {
+  createBanner,
+  getAllBanners,
+  getBanner,
+  updateBanner,
+  deleteBanner,
+  getEnabledBanners,
+  toggleBannerStatus
+} = require("./controllers");
+
 const app = express();
 const ccavService = require("./ccavenueService.js");
 
@@ -37,6 +47,44 @@ const upload = multer({
   dest: "uploads/",
   limits: {
     fileSize: 50 * 1024 * 1024 // 50MB max file size
+  }
+});
+
+// Banner-specific multer storage configuration
+const bannerStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, 'uploads', 'banners');
+    console.log('📁 Creating banner directory:', uploadDir);
+    
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+      console.log('✨ Created new banner directory');
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const filename = 'banner-' + uniqueSuffix + path.extname(file.originalname);
+    console.log('📝 Generated banner filename:', filename);
+    cb(null, filename);
+  }
+});
+
+const uploadbanner = multer({
+  storage: bannerStorage,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB max file size
+  },
+  fileFilter: function (req, file, cb) {
+    const allowedTypes = /jpeg|jpg|png/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (extname && mimetype) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
+    }
   }
 });
 
@@ -243,6 +291,8 @@ app.post("/import-members", upload.single("file"), async (req, res) => {
 const paymentRoutes = require("./allRoutes/paymentRoute");
 app.use("/api", paymentRoutes);
 
+
+
 // Routes for Auth and Payment
 const authRoutes = require("./allRoutes/authRoutes/authRoutes");
 app.use("/api", authRoutes);
@@ -305,6 +355,14 @@ const verifyToken = (req, res, next) => {
 
 // Public routes (no token needed)
 app.use("/api", authRoutes); // Login and OTP verification routes
+
+app.post("/banners", uploadbanner.fields([{ name: 'banner_image', maxCount: 1 }]), createBanner);
+app.get("/banners/enabled", getEnabledBanners);
+app.get("/banners", getAllBanners);
+app.get("/banners/:id", getBanner);
+app.put("/banners/:id", uploadbanner.single("banner_image"), updateBanner);
+app.delete("/banners/:id", deleteBanner);
+app.patch("/banners/:id/status", toggleBannerStatus);
 
 // Protected routes (token required)
 app.use("/api", verifyToken, paymentRoutes);

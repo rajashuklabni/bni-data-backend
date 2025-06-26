@@ -5124,7 +5124,7 @@ const createInvoice = async (req, res) => {
         order_status, payment_session_id, created_at, updated_at, tax,
         member_name, customer_email, customer_phone, gstin,
         company, mobile_number, payment_note, training_id
-      ) VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, $8, 'ACTIVE', $9, $10, $11, $12, $13, $14, $15, $16, $17, 'All Training Payments for all', $18, $19)
+      ) VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, $8, 'ACTIVE', $9, $10, $11, $12, $13, $14, $15, $16, 'All Training Payments for all', $17, $18)
     `;
 
     const orderValues = [
@@ -12737,7 +12737,17 @@ const {
   banner_button_1_y_position  // NEW
 } = req.body;
 
-    const banner_image = req.file?.filename;
+    // const banner_image = req.file?.filename;
+     // Check if file exists
+     // Check if file exists and handle properly
+     let banner_image = null;
+     if (req.files && req.files.banner_image && req.files.banner_image[0]) {
+       banner_image = req.files.banner_image[0].filename;
+     }
+     
+     if (!banner_image) {
+       return res.status(400).json({ success: false, error: "No image file provided" });
+     }
 
 const result = await con.query(
   `INSERT INTO banner_carousels (
@@ -12765,8 +12775,9 @@ const result = await con.query(
 
 
     res.status(201).json({ success: true, data: result.rows[0] });
-    console.log("req.file.filename =>", req.file.filename);
-    console.log("req.file.originalname =>", req.file.originalname);
+     // Fix console.log to use correct file access
+     console.log("req.files.banner_image[0].filename =>", req.files.banner_image[0].filename);
+     console.log("req.files.banner_image[0].originalname =>", req.files.banner_image[0].originalname);
   } catch (err) {
     console.error("Create Banner Error:", err);
     res.status(500).json({ success: false, error: err.message });
@@ -12871,7 +12882,8 @@ const deleteBanner = async (req, res) => {
     if (result.rowCount === 0)
       return res.status(404).json({ success: false, message: "Banner not found" });
 
-    const filepath = path.join(__dirname, "..", "uploads", "banners", result.rows[0].banner_image);
+    // const filepath = path.join(__dirname, "..", "uploads", "banners", result.rows[0].banner_image);
+    const filepath = path.join(__dirname, "uploads", "banners", result.rows[0].banner_image);
     fs.unlink(filepath, (err) => {
       if (err) console.warn("Image deletion error:", err.message);
     });
@@ -12908,6 +12920,125 @@ const toggleBannerStatus = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
+
+// Update member's pending amount in database
+const updateMemberPendingAmount = async (req, res) => {
+  try {
+    const { member_id, meeting_payable_amount, advance_pay, is_advance } = req.body;
+
+    if (!member_id || meeting_payable_amount === undefined) {
+      return res.status(400).json({ 
+        message: "member_id and meeting_payable_amount are required" 
+      });
+    }
+
+    // Set default values for advance fields if not provided
+    const advancePay = advance_pay !== undefined ? advance_pay : 0;
+    const isAdvance = is_advance !== undefined ? is_advance : false;
+
+    const result = await con.query(
+      `UPDATE member 
+       SET meeting_payable_amount = $1,
+           advance_pay = $2,
+           is_advance = $3
+       WHERE member_id = $4 
+       RETURNING member_id, member_first_name, member_email_address, meeting_payable_amount, advance_pay, is_advance`,
+      [meeting_payable_amount, advancePay, isAdvance, member_id]
+    );
+
+    if (result.rowCount > 0) {
+      console.log(`✅ Updated member ${member_id} pending amount to: ${meeting_payable_amount}, advance_pay: ${advancePay}, is_advance: ${isAdvance}`);
+      res.status(200).json({ 
+        message: "Member pending amount updated successfully",
+        member: result.rows[0]
+      });
+    } else {
+      res.status(404).json({ message: "Member not found" });
+    }
+  } catch (error) {
+    console.error("Error updating member pending amount:", error);
+    res.status(500).json({ message: "Error updating member pending amount" });
+  }
+};
+
+// Bulk update all members' pending amounts
+const updateAllMembersPendingAmount = async (req, res) => {
+  try {
+    const { updates } = req.body; // Array of {member_id, meeting_payable_amount}
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({ 
+        message: "updates array is required and must not be empty" 
+      });
+    }
+
+    let successCount = 0;
+    let errorCount = 0;
+    const results = [];
+
+    for (const update of updates) {
+      try {
+        const { member_id, meeting_payable_amount, advance_pay, is_advance } = update;
+        
+        if (!member_id || meeting_payable_amount === undefined) {
+          errorCount++;
+          results.push({ member_id, status: 'error', message: 'Missing required fields' });
+          continue;
+        }
+
+        // Set default values for advance fields if not provided
+        const advancePay = advance_pay !== undefined ? advance_pay : 0;
+        const isAdvance = is_advance !== undefined ? is_advance : false;
+
+        const result = await con.query(
+          `UPDATE member 
+           SET meeting_payable_amount = $1,
+               advance_pay = $2,
+               is_advance = $3
+           WHERE member_id = $4 
+           RETURNING member_id, member_first_name, member_email_address, meeting_payable_amount, advance_pay, is_advance`,
+          [meeting_payable_amount, advancePay, isAdvance, member_id]
+        );
+
+        if (result.rowCount > 0) {
+          successCount++;
+          results.push({ 
+            member_id, 
+            status: 'success', 
+            message: 'Updated successfully',
+            data: result.rows[0]
+          });
+        } else {
+          errorCount++;
+          results.push({ member_id, status: 'error', message: 'Member not found' });
+        }
+      } catch (error) {
+        errorCount++;
+        results.push({ 
+          member_id: update.member_id, 
+          status: 'error', 
+          message: error.message 
+        });
+      }
+    }
+
+    console.log(`✅ Bulk update completed: ${successCount} successful, ${errorCount} failed`);
+    res.status(200).json({ 
+      message: "Bulk update completed",
+      summary: {
+        total: updates.length,
+        successful: successCount,
+        failed: errorCount
+      },
+      results
+    });
+  } catch (error) {
+    console.error("Error in bulk update:", error);
+    res.status(500).json({ message: "Error in bulk update" });
+  }
+};
+
 
 
 module.exports = {
@@ -13096,5 +13227,7 @@ module.exports = {
   deleteBanner,
   getEnabledBanners,
   toggleBannerStatus,
-  getConvenienceCharge
+  getConvenienceCharge,
+  updateMemberPendingAmount,
+  updateAllMembersPendingAmount
 };
