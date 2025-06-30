@@ -190,7 +190,8 @@ addMultipleVisitorPayment,
 //   toggleBannerStatus,
   getConvenienceCharge,
   updateMemberPendingAmount,
-  updateAllMembersPendingAmount
+  updateAllMembersPendingAmount,
+  applyKittyPenalties
 } = require("./controllers");
 
 const path = require("path");
@@ -1339,5 +1340,6 @@ router.put("/tdsUpdateexpense", uploadTdsCertificate.single('tds_certificate'), 
 // Update member pending amount route
 router.post("/updateMemberPendingAmount", updateMemberPendingAmount);
 router.post("/updateAllMembersPendingAmount", updateAllMembersPendingAmount);
+router.post("/apply-kitty-penalties", applyKittyPenalties);
 
 module.exports = router;

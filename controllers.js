@@ -21,6 +21,7 @@ dotEnv.config();
 
 const axios = require('axios');
 
+const { calculateMemberPendingAmountBackend } = require('./allControllers/ledgerControllers/ledgerGlobalUtilityFunction');
 
 
 
@@ -709,11 +710,11 @@ const addMember = async (req, res) => {
               member_facebook, member_instagram, member_linkedin, member_youtube, country,
               street_address_line_1, street_address_line_2, gender, notification_consent,
               date_of_publishing, member_sponsored_by, member_status, meeting_opening_balance,
-              member_company_pincode
+              member_company_pincode, writeoff_status
         ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
                    $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, 
-            $33, $34, $35, $36, $37, $38
+            $33, $34, $35, $36, $37, $38, $39
         )
           RETURNING *`,
           [
@@ -754,7 +755,8 @@ const addMember = async (req, res) => {
               req.body.member_sponsored_by,
               req.body.member_status,
               parseFloat(req.body.meeting_opening_balance) || 0,
-              req.body.member_company_pincode
+              req.body.member_company_pincode,
+              false
           ]
       );
 
@@ -762,7 +764,7 @@ const addMember = async (req, res) => {
       const newMember = result.rows[0];
       const member_id = newMember.member_id;
 
-      // === Prorated Kitty Calculation and Bankorder Insert ===
+      // === Prorated Kitty Calculation and Member Table Update ===
       // 1. Fetch active kitty bill for the member's chapter
       const kittyBillRes = await con.query(
         `SELECT * FROM kittypaymentchapter WHERE chapter_id = $1 AND is_completed = false ORDER BY raised_on DESC LIMIT 1`,
@@ -771,15 +773,26 @@ const addMember = async (req, res) => {
       const activeBill = kittyBillRes.rows[0];
 
       if (activeBill) {
-        const billStart = new Date(activeBill.raised_on);
-        let billEnd;
+        // Calculate the actual bill period based on bill type and raised_on date
+        const raisedOnDate = new Date(activeBill.raised_on);
+        let billStart, billEnd;
+        
         if (activeBill.bill_type === 'monthly') {
-          billEnd = new Date(billStart.getFullYear(), billStart.getMonth() + 1, 0);
+          // For monthly bills, the period is the month of the raised_on date
+          billStart = new Date(raisedOnDate.getFullYear(), raisedOnDate.getMonth(), 1);
+          billEnd = new Date(raisedOnDate.getFullYear(), raisedOnDate.getMonth() + 1, 0);
         } else if (activeBill.bill_type === 'quartely') {
-          billEnd = new Date(billStart.getFullYear(), billStart.getMonth() + 3, 0);
+          // For quarterly bills, calculate the quarter start
+          const quarter = Math.floor(raisedOnDate.getMonth() / 3);
+          billStart = new Date(raisedOnDate.getFullYear(), quarter * 3, 1);
+          billEnd = new Date(raisedOnDate.getFullYear(), (quarter + 1) * 3, 0);
         } else if (activeBill.bill_type === 'yearly') {
-          billEnd = new Date(billStart.getFullYear() + 1, billStart.getMonth(), 0);
+          // For yearly bills, the period starts from raised_on date and ends one year later
+          billStart = new Date(raisedOnDate);
+          billEnd = new Date(raisedOnDate.getFullYear() + 1, raisedOnDate.getMonth(), raisedOnDate.getDate() - 1);
         } else {
+          // For other bill types, use the due date as reference
+          billStart = new Date(activeBill.kitty_due_date);
           billEnd = new Date(activeBill.kitty_due_date);
         }
 
@@ -818,26 +831,19 @@ const addMember = async (req, res) => {
           const gstAmount = Math.round(proratedAmount * 0.18);
           const totalAmount = proratedAmount;
 
-          // 3. Insert into bankorder
+          // 3. Update member table with totalAmount in meeting_payable_amount
           await con.query(
-            `INSERT INTO bankorder (member_id, chapter_id, amount_to_pay, kitty_due_date, no_of_late_payment, kitty_penalty, advance_pay)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [
-              newMember.member_id,
-              newMember.chapter_id,
-              totalAmount,
-              activeBill.kitty_due_date,
-              0, // no_of_late_payment
-              activeBill.penalty_fee || 0,
-              null // advance_pay
-            ]
+            `UPDATE member 
+             SET meeting_payable_amount = COALESCE(meeting_payable_amount, 0) + $1
+             WHERE member_id = $2`,
+            [totalAmount, newMember.member_id]
           );
-          console.log('✅ Prorated bankorder inserted for new member:', newMember.member_id, 'Amount:', totalAmount);
+          console.log('✅ Prorated amount added to member meeting_payable_amount:', newMember.member_id, 'Amount:', totalAmount);
         }
       }
       // === End Prorated Kitty Calculation ===
 
-      // **logic for bank order and member kitty ledger**
+      // **logic for member kitty ledger**
       console.log('✅ Member added successfully:', newMember);
 
       res.status(201).json({
@@ -2807,9 +2813,10 @@ const addKittyPayment = async (req, res) => {
     ]);
 
     // Update the meeting_payable_amount field in the member table for the same chapter_id
+    // Add the roundedTotalBillAmount to existing meeting_payable_amount instead of replacing it
     const updateMemberQuery = `
           UPDATE member
-          SET meeting_payable_amount = $1
+          SET meeting_payable_amount = COALESCE(meeting_payable_amount, 0) + $1
           WHERE chapter_id = $2 AND writeoff_status = false;
       `;
 
@@ -2820,7 +2827,7 @@ const addKittyPayment = async (req, res) => {
     const fetchMembersQuery = `
       SELECT member_id, member_first_name, member_email_address, meeting_payable_amount 
       FROM member 
-      WHERE chapter_id = $1 AND writeoff_status = FALSE AND member_email_address IS NOT NULL
+      WHERE chapter_id = $1 AND (writeoff_status = FALSE OR writeoff_status IS NULL) AND member_email_address IS NOT NULL
     `;
     const membersResult = await con.query(fetchMembersQuery, [chapter_id]);
     const membersToEmail = membersResult.rows;
@@ -2863,74 +2870,13 @@ const addKittyPayment = async (req, res) => {
       }
     }
 
-    const response = await fetch('https://backend.bninewdelhi.com/api/getbankOrder');
-    const bankOrders = await response.json();
-
-    // Filter the bank orders based on chapter_id
-    const filteredBankOrders = bankOrders.filter(order => {
-      return order.chapter_id === Number(chapter_id);
-    });
-    console.log('Filtered Bank Orders:', filteredBankOrders);
-
-    if (filteredBankOrders.length > 0) {
-      for (const order of filteredBankOrders) {
-        let currentAmountToPay = order.amount_to_pay;
-        let noOfLatePayment = order.no_of_late_payment;
-
-        if (currentAmountToPay > 0) {
-          let currentDate = new Date();
-          let dueDate = order.kitty_due_date ? new Date(order.kitty_due_date) : null;
-          if (dueDate === null) {
-            console.log(`Order ID: ${order.id} has due date === null.`);
-          }
-          else if (currentDate > dueDate) {
-            currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(order.kitty_penalty);
-            noOfLatePayment = parseFloat(noOfLatePayment) + 1;
-            console.log(`Order ID: ${order.id} is overdue. Processing overdue actions. added penalty ${order.kitty_penalty} and no of late payment ${noOfLatePayment}`);
-          } else {
-            console.log(`Order ID: ${order.id} is not overdue. No action needed to add penalty.`);
-          }
-          currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(roundedTotalBillAmount);
-        } else {
-          console.log(`for order ID: ${order.id}. Amount to pay is ${order.amount_to_pay}`);
-          currentAmountToPay = parseFloat(currentAmountToPay) + parseFloat(roundedTotalBillAmount);
-        }
-
-        const updateQuery = `
-          UPDATE bankorder 
-          SET 
-            amount_to_pay = $1, 
-            kitty_due_date = $2, 
-            no_of_late_payment = $3, 
-            kitty_penalty = $4 
-          WHERE member_id = $5
-        `;
-
-        const values = [
-          currentAmountToPay, 
-          due_date, 
-          noOfLatePayment, 
-          penalty_amount, 
-          order.member_id
-        ];
-
-        try {
-          await con.query(updateQuery, values);
-          console.log(`Updated bank order for member ID: ${order.member_id}`);
-        } catch (dbError) {
-          console.error(`Error updating bank order for member ID: ${order.member_id}`, dbError);
-        }
-      }
-    } else {
-      console.log(`No member found for chapter in bank orders ${chapter_id}.`);
-    }
-
     res.status(201).json({ message: "Kitty payment added successfully." });
   } catch (error) {
     console.error("Error adding kitty payment:", error);
     res.status(500).json({ message: "Internal server error." });
   }
 };
+
 
 
 // Fetch all active members
@@ -4639,7 +4585,6 @@ const getAllMemberCredit = async (req, res) => {
 };
 
 
-
 const addMemberCredit = async (req, res) => {
   let { member_id, chapter_id, credit_amount, credit_date, credit_type } = req.body;
 
@@ -4658,36 +4603,47 @@ const addMemberCredit = async (req, res) => {
 
     let insertedRecords = [];
 
-    const response = await fetch("https://backend.bninewdelhi.com/api/getbankOrder");
-    const bankOrders = await response.json();
-
-    
     for (const id of member_id) {
       const values = [parseInt(id), chapter_id, credit_amount, credit_date, false, credit_type]; // Ensure member_id is an integer
       const result = await con.query(query, values);
       insertedRecords.push(result.rows[0]);
-    const matchedBankOrder = bankOrders.find(order => parseFloat(id) === parseFloat(order.member_id) && order.chapter_id === parseFloat(chapter_id));
-    if (matchedBankOrder) {
-      console.log("Matched Bank Order:", matchedBankOrder);
-     
-        const updateQuery = `
-          UPDATE bankorder 
-          SET amount_to_pay = amount_to_pay - $1 
-          WHERE member_id = $2 AND chapter_id = $3 
-          RETURNING *;
-        `;
-        const values = [credit_amount, matchedBankOrder.member_id, matchedBankOrder.chapter_id];
-        const updateResult = await con.query(updateQuery, values);
-        console.log("Updated Matched Bank Order:", updateResult.rows[0]);
       
-      // You can add any additional logic here if needed
-    } else {
-      console.log("No matching bank order found for member_id:", id);
-    }
+      // Get current member details
+      const memberResult = await con.query(
+        'SELECT * FROM member WHERE member_id = $1',
+        [id]
+      );
 
-    
-    }
+      if (memberResult.rowCount > 0) {
+        const member = memberResult.rows[0];
+        const currentMeetingPayable = parseFloat(member.meeting_payable_amount) || 0;
+        
+        // Calculate new meeting payable amount by subtracting credit amount
+        const newMeetingPayable = Math.round(currentMeetingPayable - credit_amount);
+        
+        console.log("Member ID:", id);
+        console.log("Current meeting payable:", currentMeetingPayable);
+        console.log("Credit amount to subtract:", credit_amount);
+        console.log("New meeting payable:", newMeetingPayable);
 
+        // Update member's meeting payable amount
+        const updateResult = await con.query(`
+          UPDATE member 
+          SET meeting_payable_amount = $1
+          WHERE member_id = $2
+          RETURNING member_id, meeting_payable_amount`,
+          [newMeetingPayable, id]
+        );
+
+        if (updateResult.rowCount > 0) {
+          console.log("Member meeting payable amount updated successfully for member_id:", id);
+        } else {
+          console.log("Failed to update member meeting payable amount for member_id:", id);
+        }
+      } else {
+        console.log("No member found for member_id:", id);
+      }
+    }
 
     res.status(201).json({ message: "Credit added successfully!", data: insertedRecords });
   } catch (error) {
@@ -4722,10 +4678,21 @@ const insertCommitmentSheet = async (req, res) => {
     agree1, agree2, agree3, agree4, agree5, agree6, agree7, agree8, agree9,
     agree10, agree11, agree12, agree13, category, companyName, date,
     email, gstin, inductionDate, mobile, name, neftNum, sign, sponsor,
-    visitor_id, vpsign
+    visitor_id, vpsign, invited_by,
   } = req.body;
 
-  console.log("data",req.body);
+  console.log("data", req.body);
+
+  // Set invited_by_name based on invited_by value
+  let invited_by_name = null;
+  let invited_by_value = null;
+
+  if (!invited_by || invited_by === "" || invited_by === null) {
+    invited_by_name = "BNI";
+    invited_by_value = null;
+  } else {
+    invited_by_value = parseInt(invited_by);
+  }
 
   try {
     const query = `
@@ -4734,33 +4701,145 @@ const insertCommitmentSheet = async (req, res) => {
         agree1, agree2, agree3, agree4, agree5, agree6, agree7, agree8, agree9,
         agree10, agree11, agree12, agree13, category, companyName, date,
         email, gstin, inductionDate, mobile, name, neftNum, sign, sponsor,
-        visitor_id, vpsign
+        visitor_id, vpsign, invited_by, invited_by_name
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32
+        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34
       ) RETURNING commitment_id;
     `;
-    
+
     const values = [
       visitorName, chapter, chequeNum, chequeDate, bank, address,
       agree1, agree2, agree3, agree4, agree5, agree6, agree7, agree8, agree9,
       agree10, agree11, agree12, agree13, category, companyName, date,
       email, gstin, inductionDate, mobile, name, neftNum, sign, sponsor,
-      visitor_id, vpsign
+      visitor_id, vpsign, invited_by_value, invited_by_name
     ];
 
-    const result = await con.query(query, values); 
+    const result = await con.query(query, values);
     console.log("added commitment data");
+    console.log("Commitment ID:", result.rows[0].commitment_id);
+
+    // Generate new visitor_id if current visitor_id is null
+    let newVisitorId = visitor_id;
+    if (!visitor_id || visitor_id === null || visitor_id === "") {
+      console.log("Visitor ID is null, generating new visitor entry...");
+      
+      // Get invited_by_name from members API if invited_by exists
+      let finalInvitedByName = "BNI";
+      if (invited_by_value) {
+        try {
+          console.log("Fetching member details for invited_by:", invited_by_value);
+          const membersResponse = await fetch('https://backend.bninewdelhi.com/api/members');
+          const membersData = await membersResponse.json();
+          
+          const member = membersData.find(m => m.member_id === invited_by_value);
+          if (member) {
+            finalInvitedByName = `${member.member_first_name} ${member.member_last_name}`;
+            console.log("Found member:", finalInvitedByName);
+          } else {
+            console.log("Member not found, using BNI as default");
+          }
+        } catch (error) {
+          console.error("Error fetching members:", error);
+          console.log("Using BNI as default due to API error");
+        }
+      }
+
+      // Insert new visitor
+      const visitorInsertQuery = `
+        INSERT INTO visitors (
+          region_id, chapter_id, invited_by, invited_by_name, visitor_name, 
+          visitor_email, visitor_phone, visitor_company_name, visitor_address, 
+          visitor_gst, visitor_business, visitor_category, visited_date, 
+          total_amount, sub_total, tax, delete_status, active_status, 
+          order_id, visitor_form, eoi_form, new_member_form, 
+          visitor_company_address, interview_sheet, commitment_sheet, 
+          inclusion_exclusion_sheet, member_application_form, onboarding_call, 
+          vp_mail, welcome_mail, chapter_apply_kit, visitor_entry_excel, 
+          google_updation_sheet, approve_induction_kit, induction_status, 
+          verification, entry_timestamp
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 
+          $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, 
+          $29, $30, $31, $32, $33, $34, $35, $36, $37
+        ) RETURNING visitor_id;
+      `;
+
+      const visitorValues = [
+        1, // region_id (default)
+        parseInt(chapter), // chapter_id from commitment
+        invited_by_value, // invited_by
+        finalInvitedByName, // invited_by_name
+        visitorName, // visitor_name
+        email || "", // visitor_email
+        mobile || "", // visitor_phone
+        companyName || "", // visitor_company_name
+        address || "", // visitor_address
+        gstin || "", // visitor_gst
+        category || "", // visitor_business
+        category || "", // visitor_category
+        date || new Date().toISOString(), // visited_date
+        "0.00", // total_amount
+        "0.00", // sub_total
+        "0.00", // tax
+        false, // delete_status
+        "active", // active_status
+        null, // order_id
+        true, // visitor_form
+        false, // eoi_form
+        false, // new_member_form
+        address || "", // visitor_company_address
+        false, // interview_sheet
+        true, // commitment_sheet (set to true since we just added it)
+        false, // inclusion_exclusion_sheet
+        false, // member_application_form
+        null, // onboarding_call
+        false, // vp_mail
+        false, // welcome_mail
+        null, // chapter_apply_kit
+        false, // visitor_entry_excel
+        false, // google_updation_sheet
+        false, // approve_induction_kit
+        false, // induction_status
+        null, // verification
+        new Date().toISOString() // entry_timestamp
+      ];
+
+      console.log("Inserting new visitor with values:", visitorValues);
+      const visitorResult = await con.query(visitorInsertQuery, visitorValues);
+      newVisitorId = visitorResult.rows[0].visitor_id;
+      console.log("New visitor created with ID:", newVisitorId);
+
+      // Update the commitment sheet with the new visitor_id
+      const updateCommitmentQuery = `
+        UPDATE commitmentsheet 
+        SET visitor_id = $1 
+        WHERE commitment_id = $2
+      `;
+      
+      console.log("Updating commitment sheet with new visitor_id:", newVisitorId);
+      await con.query(updateCommitmentQuery, [newVisitorId, result.rows[0].commitment_id]);
+      console.log("Commitment sheet updated with new visitor_id successfully");
+    } else {
+      console.log("Visitor ID already exists:", visitor_id);
+    }
+
+    // Update visitor's commitment_sheet status
     const updateVisitorQuery = 'UPDATE Visitors SET commitment_sheet = $1 WHERE visitor_id = $2';
-    const updateValues = [true, visitor_id];
+    const updateValues = [true, newVisitorId];
 
     await con.query(updateVisitorQuery, updateValues)
       .then(() => console.log("Updated visitor commitment_sheet status successfully"))
       .catch(err => console.error("Error updating visitor commitment_sheet status:", err));
+    
     console.log("visitor data also updated");
+    console.log("Final visitor_id:", newVisitorId);
+    
     res.status(201).json({
       message: 'Commitment data inserted successfully',
-      commitment_id: result.rows[0].commitment_id 
+      commitment_id: result.rows[0].commitment_id,
+      visitor_id: newVisitorId
     });
   } catch (error) {
     console.error("Error inserting commitment sheet:", error);
@@ -4973,6 +5052,7 @@ const addInclusionSheet = async (req, res) => {
   }
 };
 
+
 const addMemberWriteOff = async (req, res) => {
   try {
     let { members, chapter_id, rightoff_date, rightoff_comment, } = req.body;
@@ -5002,7 +5082,8 @@ const addMemberWriteOff = async (req, res) => {
     const updateQuery = `
   UPDATE member 
   SET writeoff_status = TRUE,
-      member_status = 'inactive'
+      member_status = 'inactive',
+       meeting_payable_amount = 0
   WHERE member_id = $1;
 `;
 
@@ -6027,13 +6108,13 @@ const importMembersCSV = async (req, res) => {
                 member_company_logo, member_facebook, member_instagram, member_linkedin, member_youtube,
                 country, street_address_line_2, gender, notification_consent, date_of_publishing,
                 member_sponsored_by, member_status, delete_status, member_company_pincode,
-                meeting_opening_balance, meeting_payable_amount, category_name
+                meeting_opening_balance, meeting_payable_amount, category_name, writeoff_status
               ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
                 $11, $12, $13, $14, $15, $16, $17, $18,
                 $19, $20, $21, $22, $23, $24, $25, $26,
                 $27, $28, $29, $30, $31, $32, $33, $34,
-                $35, $36, $37, $38, $39, $40
+                $35, $36, $37, $38, $39, $40, $41
               ) RETURNING member_id
             `;
 
@@ -6076,8 +6157,9 @@ const importMembersCSV = async (req, res) => {
               data.delete_status,
               data.member_company_pincode,
               data.meeting_opening_balance,
-              data.meeting_payable_amount,
+              data.meeting_opening_balance,
               data.category_name,
+              false
             ];
 
             const result = await con.query(insertMemberQuery, memberValues);
@@ -6092,15 +6174,26 @@ const importMembersCSV = async (req, res) => {
             const activeBill = kittyBillRes.rows[0];
 
             if (activeBill) {
-              const billStart = new Date(activeBill.raised_on);
-              let billEnd;
+              // Calculate the actual bill period based on bill type and raised_on date
+              const raisedOnDate = new Date(activeBill.raised_on);
+              let billStart, billEnd;
+              
               if (activeBill.bill_type === 'monthly') {
-                billEnd = new Date(billStart.getFullYear(), billStart.getMonth() + 1, 0);
+                // For monthly bills, the period is the month of the raised_on date
+                billStart = new Date(raisedOnDate.getFullYear(), raisedOnDate.getMonth(), 1);
+                billEnd = new Date(raisedOnDate.getFullYear(), raisedOnDate.getMonth() + 1, 0);
               } else if (activeBill.bill_type === 'quartely') {
-                billEnd = new Date(billStart.getFullYear(), billStart.getMonth() + 3, 0);
+                // For quarterly bills, calculate the quarter start
+                const quarter = Math.floor(raisedOnDate.getMonth() / 3);
+                billStart = new Date(raisedOnDate.getFullYear(), quarter * 3, 1);
+                billEnd = new Date(raisedOnDate.getFullYear(), (quarter + 1) * 3, 0);
               } else if (activeBill.bill_type === 'yearly') {
-                billEnd = new Date(billStart.getFullYear() + 1, billStart.getMonth(), 0);
+                // For yearly bills, the period starts from raised_on date and ends one year later
+                billStart = new Date(raisedOnDate);
+                billEnd = new Date(raisedOnDate.getFullYear() + 1, raisedOnDate.getMonth(), raisedOnDate.getDate() - 1);
               } else {
+                // For other bill types, use the due date as reference
+                billStart = new Date(activeBill.kitty_due_date);
                 billEnd = new Date(activeBill.kitty_due_date);
               }
 
@@ -6144,43 +6237,25 @@ const importMembersCSV = async (req, res) => {
                   totalAmount = proratedAmount;
                 }
 
-                // 3. Insert into bankorder
+                // 3. Update member table with totalAmount in meeting_payable_amount
                 await con.query(
-                  `INSERT INTO bankorder (
-                    member_id, chapter_id, amount_to_pay, kitty_due_date,
-                    no_of_late_payment, kitty_penalty, advance_pay
-                  ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                  [
-                    member_id,
-                    data.chapter_id,
-                    totalAmount,
-                    activeBill.kitty_due_date,
-                    0, // no_of_late_payment
-                    activeBill.penalty_fee || 0,
-                    null // advance_pay
-                  ]
+                  `UPDATE member 
+                   SET meeting_payable_amount = COALESCE(meeting_payable_amount, 0) + $1
+                   WHERE member_id = $2`,
+                  [totalAmount, member_id]
                 );
-                console.log('✅ Bankorder created for imported member:', member_id, 'Amount:', totalAmount);
+                console.log('✅ Prorated amount added to member meeting_payable_amount:', member_id, 'Amount:', totalAmount);
               }
             } else {
-              // No active bill - just insert meeting_opening_balance
+              // No active bill - just update meeting_opening_balance
               const meeting_opening_balance = parseFloat(data.meeting_opening_balance) || 0;
               await con.query(
-                `INSERT INTO bankorder (
-                  member_id, chapter_id, amount_to_pay, kitty_due_date,
-                  no_of_late_payment, kitty_penalty, advance_pay
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                [
-                  member_id,
-                  data.chapter_id,
-                  meeting_opening_balance,
-                  null, // kitty_due_date
-                  0, // no_of_late_payment
-                  0, // kitty_penalty
-                  null // advance_pay
-                ]
+                `UPDATE member 
+                 SET meeting_opening_balance = $1
+                 WHERE member_id = $2`,
+                [meeting_opening_balance, member_id]
               );
-              console.log('✅ Bankorder created for imported member (no bill):', member_id, 'Amount:', meeting_opening_balance);
+              console.log('✅ Meeting opening balance updated for imported member:', member_id, 'Amount:', meeting_opening_balance);
             }
             // === End Kitty Bill Calculation ===
           }
@@ -7461,25 +7536,15 @@ console.log('📊 Final calculation:', {
     finalAmountToPay: finalAmountToPay
 });
 
-// Update bankorder
-await con.query(
-    `INSERT INTO bankorder (amount_to_pay, member_id, chapter_id, kitty_due_date, kitty_penalty)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [finalAmountToPay, member_id, chapterId, kittyDueDate, finalPenalty]
-);
-
-console.log('✅ Updated bankorder with final amount:', finalAmountToPay);
-
-
 // Update member's meeting_payable_amount
 await con.query(
     `UPDATE member 
-     SET meeting_payable_amount = $1 
+     SET meeting_payable_amount = COALESCE(meeting_payable_amount, 0) + $1
      WHERE member_id = $2`,
-    [totalKittyAmount, member_id]
+    [finalAmountToPay, member_id]
 );
 
-console.log('✅ Updated member meeting_payable_amount:', totalKittyAmount);
+console.log('✅ Updated member meeting_payable_amount:', finalAmountToPay);
 
 
           // 5. Insert into member_accolades
@@ -9366,7 +9431,9 @@ const addKittyPaymentManually = async (req, res) => {
       payment_type,
       remaining_balance_with_gst,
       created_at,
-      mode_of_payment  // New field from frontend containing payment method details
+      mode_of_payment,
+      current_balance
+      // New field from frontend containing payment method details
     } = req.body;
 
     // Generate order ID in the required format
@@ -9374,7 +9441,7 @@ const addKittyPaymentManually = async (req, res) => {
     const order_id = `order_${Date.now()}${randomString}`;
     const payment_session_id = `session_${Date.now()}${Math.random().toString(36).substring(2, 15)}payment`;
     
-    console.log('🔑 Generated IDs:', { order_id, payment_session_id });
+    console.log('�� Generated IDs:', { order_id, payment_session_id });
 
     // Prepare order data
     const orderQuery = `
@@ -9482,80 +9549,75 @@ const addKittyPaymentManually = async (req, res) => {
     // Handle bankorder updates based on payment type
     let updateBankorderQuery;
     let bankorderValues;
+    let updateMemberQuery;
+    let memberValues;
 
     if (payment_type === "advance") {
-      // Get both amount_to_pay and current advance_pay
-      const currentBankorderQuery = `
-          SELECT amount_to_pay, advance_pay 
-        FROM bankorder 
-        WHERE chapter_id = $1 AND member_id = $2
-      `;
-      const currentBankorder = await con.query(currentBankorderQuery, [chapter_id, member_id]);
-      const currentAmountToPay = currentBankorder.rows[0]?.amount_to_pay || 0;
-      const currentAdvancePay = currentBankorder.rows[0]?.advance_pay || 0;
+     // Update the member table for this member_id
+  const updateMemberQuery = `
+  UPDATE member
+  SET is_advance = true,
+      advance_pay = $2,
+      meeting_payable_amount = 0
+  WHERE member_id = $1
+  RETURNING *
+`;
+const memberValues = [member_id, current_balance];
 
-      if (currentAmountToPay === 0) {
-          // If amount_to_pay is 0, add order_amount to existing advance_pay
-        updateBankorderQuery = `
-          UPDATE bankorder 
-              SET advance_pay = advance_pay + $3
-          WHERE chapter_id = $1 AND member_id = $2
-          RETURNING *
-        `;
-        bankorderValues = [chapter_id, member_id, order_amount];
-      }
-      else {
-        // If amount_to_pay exists:
-        // 1. Calculate remaining after paying amount_to_pay
-        const remainingAmount = order_amount - currentAmountToPay;
-        
-        // 2. Set amount_to_pay to 0 and add remaining to existing advance_pay
-        updateBankorderQuery = `
-          UPDATE bankorder 
-          SET amount_to_pay = 0,
-                advance_pay = advance_pay + $3
-          WHERE chapter_id = $1 AND member_id = $2
-          RETURNING *
-        `;
-        bankorderValues = [chapter_id, member_id, remainingAmount];
-      }
+console.log('💰 Updating member for advance payment:', { 
+  member_id, 
+  current_balance,
+  memberValues
+});
+const memberResult = await con.query(updateMemberQuery, memberValues);
+console.log('✅ Member advance updated successfully:', memberResult.rows[0]);
 
-    console.log("💰 Advance Payment Update:", {
-        currentAdvancePay,
-        newAmount: order_amount,
-        currentAmountToPay,
-        finalQuery: updateBankorderQuery,
-        values: bankorderValues
-    });
-}else {
-      // Existing logic for partial/full payments
-      updateBankorderQuery = `
-        UPDATE bankorder 
-        SET amount_to_pay = $3
-        WHERE chapter_id = $1 AND member_id = $2
+}
+else {
+      // Update member table instead of bankorder for partial/full payments
+      updateMemberQuery = `
+        UPDATE member 
+        SET meeting_payable_amount = $2
+        WHERE member_id = $1
         RETURNING *
       `;
-      const newAmountToPay = payment_type === "partial" ? remaining_balance_with_gst : 0;
-      bankorderValues = [chapter_id, member_id, newAmountToPay];
+      const newMeetingPayableAmount = payment_type === "partial" ? remaining_balance_with_gst : 0;
+      memberValues = [member_id, newMeetingPayableAmount];
+
+      console.log('💰 Updating member meeting_payable_amount for member:', { 
+        member_id, 
+        payment_type,
+        newMeetingPayableAmount,
+        memberValues
+      });
+
+      const memberResult = await con.query(updateMemberQuery, memberValues);
+      console.log('✅ Member meeting_payable_amount updated successfully:', memberResult.rows[0]);
     }
 
-    console.log('�� Updating bankorder for member:', { 
-      member_id, 
-      chapter_id, 
-      payment_type,
-      bankorderValues
-    });
+    // Execute bankorder update for advance payments
+    // let bankorderResult = null;
+    // if (payment_type === "advance") {
+    //   console.log('�� Updating bankorder for member:', { 
+    //     member_id, 
+    //     chapter_id, 
+    //     payment_type,
+    //     bankorderValues
+    //   });
 
-    const bankorderResult = await con.query(updateBankorderQuery, bankorderValues);
-    console.log('✅ Bankorder updated successfully:', bankorderResult.rows[0]);
-
+    //   bankorderResult = await con.query(updateBankorderQuery, bankorderValues);
+    //   console.log('✅ Bankorder updated successfully:', bankorderResult.rows[0]);
+    // }
+    let bankorderResult = null;
+    let memberResult = null;
     res.status(201).json({
       success: true,
       message: 'Kitty payment processed successfully',
       data: {
         order: orderResult.rows[0],
         transaction: transactionResult.rows[0],
-        bankorder: bankorderResult.rows[0],
+        bankorder: bankorderResult?.rows[0] || null,
+        member: memberResult?.rows[0] || null,
         payment_method: paymentMethod  // Include payment method in response
       }
     });
@@ -12049,7 +12111,7 @@ const uploadVisitorDocument = async (req, res) => {
       });
   }
 };
-// 
+
 
 
 // Get visitor documents
@@ -12775,13 +12837,10 @@ const result = await con.query(
 
 
     res.status(201).json({ success: true, data: result.rows[0] });
-     // Fix console.log to use correct file access
-     console.log("req.files.banner_image[0].filename =>", req.files.banner_image[0].filename);
-     console.log("req.files.banner_image[0].originalname =>", req.files.banner_image[0].originalname);
-  } catch (err) {
+} catch (err) {
     console.error("Create Banner Error:", err);
     res.status(500).json({ success: false, error: err.message });
-  }
+}
 };
 
 // Get all banners
@@ -13040,6 +13099,95 @@ const updateAllMembersPendingAmount = async (req, res) => {
 };
 
 
+const applyKittyPenalties = async (req, res) => {
+  try {
+    console.log("🚀 Starting kitty penalty calculation...");
+
+    // Fetch all kitty payments
+    const kittyPaymentsResponse = await fetch('https://backend.bninewdelhi.com/api/getkittyPayments');
+    const kittyPayments = await kittyPaymentsResponse.json();
+
+    // Fetch all members
+    const membersResponse = await fetch('https://backend.bninewdelhi.com/api/members');
+    const members = await membersResponse.json();
+
+    console.log(`📊 Found ${kittyPayments.length} kitty payments and ${members.length} members`);
+
+    const today = new Date();
+    let totalPenaltiesApplied = 0;
+    let totalMembersUpdated = 0;
+
+    // Process each kitty payment
+    for (const kittyPayment of kittyPayments) {
+      const kittyDueDate = new Date(kittyPayment.kitty_due_date);
+      
+      // Check if due date has passed
+      if (today > kittyDueDate) {
+        console.log(`⏰ Due date passed for chapter ${kittyPayment.chapter_id}: ${kittyPayment.kitty_due_date}`);
+        
+        // Find members in this chapter with writeoff_status false or null
+        const eligibleMembers = members.filter(member => 
+          member.chapter_id === kittyPayment.chapter_id && 
+          (member.writeoff_status === false || member.writeoff_status === null) &&
+          member.meeting_payable_amount > 0
+        );
+
+        console.log(`👥 Found ${eligibleMembers.length} eligible members for chapter ${kittyPayment.chapter_id}`);
+
+        // Apply penalty to each eligible member
+        for (const member of eligibleMembers) {
+          try {
+            const newPayableAmount = parseFloat(member.meeting_payable_amount) + parseFloat(kittyPayment.penalty_fee);
+            
+            // Update member's meeting_payable_amount
+            const updateQuery = `
+              UPDATE member 
+              SET meeting_payable_amount = $1 
+              WHERE member_id = $2
+            `;
+            
+            await con.query(updateQuery, [newPayableAmount, member.member_id]);
+            
+            console.log(`�� Applied penalty of ${kittyPayment.penalty_fee} to member ${member.member_id} (${member.member_first_name} ${member.member_last_name})`);
+            console.log(`   Previous amount: ${member.meeting_payable_amount} → New amount: ${newPayableAmount}`);
+            
+            totalPenaltiesApplied += parseFloat(kittyPayment.penalty_fee);
+            totalMembersUpdated++;
+            
+          } catch (memberError) {
+            console.error(`❌ Error updating member ${member.member_id}:`, memberError);
+          }
+        }
+      } else {
+        console.log(`✅ Due date not passed for chapter ${kittyPayment.chapter_id}: ${kittyPayment.kitty_due_date}`);
+      }
+    }
+
+    console.log(`�� Process completed!`);
+    console.log(`   Total penalties applied: ${totalPenaltiesApplied}`);
+    console.log(`   Total members updated: ${totalMembersUpdated}`);
+
+    res.json({
+      success: true,
+      message: "Kitty penalties applied successfully",
+      summary: {
+        totalPenaltiesApplied,
+        totalMembersUpdated,
+        processedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error in applyKittyPenalties:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to apply kitty penalties",
+      error: error.message
+    });
+  }
+};
+
+
 
 module.exports = {
   addInvoiceManually,
@@ -13229,5 +13377,6 @@ module.exports = {
   toggleBannerStatus,
   getConvenienceCharge,
   updateMemberPendingAmount,
-  updateAllMembersPendingAmount
+  updateAllMembersPendingAmount,
+  applyKittyPenalties
 };
