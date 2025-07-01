@@ -2753,6 +2753,7 @@ const getSpecificBankOrder = async (req, res) => {
     }
 }
 
+
 const addKittyPayment = async (req, res) => {
   try {
     const {
@@ -2839,26 +2840,153 @@ const addKittyPayment = async (req, res) => {
     const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; // fallback if not found
     const region_id = chapter ? chapter.region_id : ''; // --- GET REGION_ID ---
 
+    // Format the due date
+    const formatDueDate = (dateStr) => {
+      if (!dateStr) return 'Not specified';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    };
+
     for (const member of membersToEmail) {
+      // Calculate GST and check if due date has passed
+      const baseAmount = parseFloat(member.meeting_payable_amount || 0);
+      const gstAmount = Math.round(baseAmount * 0.18);
+      const currentDate = new Date();
+      const dueDate = due_date ? new Date(due_date) : null;
+      const isDueDatePassed = dueDate && currentDate > dueDate;
+      const penaltyAmount = penalty_amount || 0;
+
+      // Calculate total amount WITHOUT penalty (just base + GST)
+      const totalAmount = Math.round(baseAmount + gstAmount);
+
       // --- DYNAMIC PAY NOW URL LOGIC ---
       // Use region_id, chapter_id, and member_id in the URL
       const payNowUrl = `https://bninewdelhi.com/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1?region_id=${region_id}&chapter_id=${chapter_id}&member_id=${member.member_id}`;
 
       const mailOptions = {
-        from: '"BNI New Delhi" <info@bninewdelhi.in>',
+        from: `"LT ${chapterName}" <info@bninewdelhi.in>`,
         to: member.member_email_address,
-        subject: "New Bill Raised - Payment Reminder",
+        subject: "Bill Raised - Meeting Fee",
         html: `
-          <p>Dear ${member.member_first_name},</p>
-          <p>A new bill has been raised under your chapter <b>${chapterName}</b>.</p>
-          <p><strong>Bill Type:</strong> ${bill_type}</p>
-          <p><strong>Description:</strong> ${description}</p>
-          <p><strong>Total Amount:</strong> ₹${roundedTotalBillAmount}</p>
-          <p><strong>Due Date:</strong> ${due_date}</p>
-          <p>We request you to pay the bill amount before due date, as penalty fee of <b>₹${penalty_amount}</b> will be applied.</b>.</p>
-          <br/>
-          <p>Thank you,<br/><b>BNI NEW Delhi</b></p>
-          <a href="${payNowUrl}" style="text-decoration: none; color: white; background-color: red; padding: 10px 20px; border-radius: 5px;"><button>Pay Now</button></a>
+          <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <!-- Header with Logo -->
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #1a237e; font-size: 28px; margin: 0; padding-bottom: 10px; border-bottom: 3px solid #1a237e; display: inline-block;">Bill Raised- Meeting Fee</h1>
+            </div>
+
+            <!-- Greeting -->
+            <p style="color: #333; font-size: 18px; line-height: 1.6; margin-bottom: 20px;">
+              Dear <span style="color: #1a237e; font-weight: 600;">${member.member_first_name}</span>,
+            </p>
+
+            <!-- Main Message -->
+            <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+              This is a friendly reminder that your meeting fee for the chapter 
+              <span style="color: #1a237e; font-weight: 600; font-size: 18px;">${chapterName}</span> 
+              is been applied.
+            </p>
+
+            <!-- Summary Box -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #e0e0e0;">
+              <h3 style="color: #1a237e; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Amount Summary</h3>
+
+              <div style="margin-bottom: 10px;">
+                <span style="color: #666;">Base Amount:</span>
+                <span style="color: #1a237e; font-weight: 600; float: right;">₹${baseAmount}</span>
+                <div style="color: #666; font-size: 12px; margin-top: 5px; font-style: italic;">
+                  (Meeting opening balance + Meeting payable amount )
+                </div>
+              </div>
+
+              <div style="margin-bottom: 10px;">
+                <span style="color: #666;">GST (18%):</span>
+                <span style="color: #1a237e; font-weight: 600; float: right;">₹${gstAmount}</span>
+              </div>
+
+              <div style="margin-bottom: 10px;">
+                <span style="color: #666;">Penalty Amount:</span>
+                <span style="color: #d32f2f; font-weight: 600; float: right;">₹${penaltyAmount}</span>
+                <div style="color: #666; font-size: 12px; margin-top: 5px; font-style: italic;">
+                  (Will be applied if payment is made after ${formatDueDate(due_date)})
+                </div>
+              </div>
+            </div>
+
+            <!-- Payment Details Box -->
+            <div style="background: linear-gradient(145deg, #f8f9fa, #ffffff); padding: 25px; border-radius: 8px; margin: 25px 0; border: 1px solid #e0e0e0; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+              <h3 style="color: #1a237e; margin-top: 0; margin-bottom: 20px; font-size: 20px;">Payment Details</h3>
+
+              <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
+                <span style="color: #666; font-weight: 500;">Base Amount:</span>
+                <span style="color: #1a237e; font-weight: 600; font-size: 18px;">₹${baseAmount}</span>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
+                <span style="color: #666; font-weight: 500;">GST (18%):</span>
+                <span style="color: #1a237e; font-weight: 600; font-size: 18px;">₹${gstAmount}</span>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
+                <span style="color: #666; font-weight: 500;">Due Date:</span>
+                <span style="color: #1a237e; font-weight: 600;">${formatDueDate(due_date)}</span>
+              </div>
+
+              ${isDueDatePassed && penaltyAmount ? `
+              <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
+                <span style="color: #d32f2f; font-weight: 500;">Late Payment Penalty:</span>
+                <span style="color: #d32f2f; font-weight: 600; font-size: 18px;">₹${penaltyAmount}</span>
+              </div>
+              ` : ''}
+
+              <div style="display: flex; justify-content: space-between; margin-top: 20px; padding-top: 15px; border-top: 2px solid #1a237e;">
+                <span style="color: #1a237e; font-weight: 600; font-size: 20px;">Total Amount Due:</span>
+                <span style="color: #1a237e; font-weight: 700; font-size: 22px;">₹${totalAmount}</span>
+              </div>
+            </div>
+
+            <!-- Warning Message -->
+            <p style="color: #d32f2f; font-size: 15px; line-height: 1.6; margin: 25px 0; padding: 15px; background-color: #ffebee; border-radius: 5px; border-left: 4px solid #d32f2f;">
+              ⚠️ Please make the payment at your earliest convenience to avoid any additional penalties.
+            </p>
+
+            <!-- Pay Now Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${payNowUrl}" 
+                 style="background-color: #dc3545; 
+                        color: white; 
+                        padding: 12px 30px; 
+                        text-decoration: none; 
+                        border-radius: 5px; 
+                        font-weight: bold;
+                        display: inline-block;">
+                Pay Now
+              </a>
+            </div>
+
+            <!-- Disclaimer -->
+            <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 25px 0; padding: 15px; background-color: #f5f5f5; border-radius: 5px;">
+              ℹ️ If you have already made the payment, please ignore this reminder.
+            </p>
+
+            <!-- Footer -->
+            <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+              <p style="color: #666; font-size: 15px; line-height: 1.6; margin: 0;">
+                Thank you,<br>
+                <span style="color: #1a237e; font-weight: 600; font-size: 16px;">LT ${chapterName}</span>
+              </p>
+            </div>
+
+            <!-- Additional Info -->
+            <div style="margin-top: 20px; text-align: center; color: #999; font-size: 12px;">
+              <p style="margin: 5px 0;">This is an automated message, please do not reply directly to this email.</p>
+              <p style="margin: 5px 0;">For any queries, please contact your chapter administrator.</p>
+            </div>
+          </div>
         `,
       };
 
@@ -2876,6 +3004,130 @@ const addKittyPayment = async (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 };
+
+// const addKittyPayment = async (req, res) => {
+//   try {
+//     const {
+//       chapter_id,
+//       date,
+//       bill_type,
+//       description,
+//       total_weeks,
+//       total_bill_amount,
+//       due_date,
+//       penalty_amount,
+//     } = req.body;
+
+//     // Round total_bill_amount to whole number
+//     const roundedTotalBillAmount = Math.round(parseFloat(total_bill_amount));
+
+//     // Check if all required fields are provided
+//     if (
+//       !chapter_id ||
+//       !date ||
+//       !bill_type ||
+//       !description ||
+//       !total_weeks ||
+//       !total_bill_amount ||
+//       !due_date
+//     ) {
+//       return res.status(400).json({ message: "All fields are required." });
+//     }
+
+//     // Check if a payment has already been raised for this chapter_id with delete_status = 0
+//     const checkQuery =
+//       "SELECT * FROM kittyPaymentChapter WHERE chapter_id = $1 AND delete_status = 0";
+//     const checkResult = await con.query(checkQuery, [chapter_id]);
+
+//     if (checkResult.rows.length > 0) {
+//       return res
+//         .status(400)
+//         .json({ message: "A bill has already been raised for this chapter." });
+//     }
+//     const raisedOnDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+//     // If no active payment exists for this chapter_id, proceed to insert the new record raised_on payment_date
+//     const query = `
+//           INSERT INTO kittyPaymentChapter 
+//           (chapter_id, payment_date, raised_on, bill_type, description, total_weeks, total_bill_amount ,kitty_due_date, penalty_fee) 
+//           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+//       `;
+
+//     await con.query(query, [
+//       chapter_id,
+//       raisedOnDate,
+//       date,
+//       bill_type,
+//       description,
+//       total_weeks,
+//       roundedTotalBillAmount,
+//       due_date,
+//       penalty_amount,
+//     ]);
+
+//     // Update the meeting_payable_amount field in the member table for the same chapter_id
+//     // Add the roundedTotalBillAmount to existing meeting_payable_amount instead of replacing it
+//     const updateMemberQuery = `
+//           UPDATE member
+//           SET meeting_payable_amount = COALESCE(meeting_payable_amount, 0) + $1
+//           WHERE chapter_id = $2 AND writeoff_status = false;
+//       `;
+
+//     await con.query(updateMemberQuery, [roundedTotalBillAmount, chapter_id]);
+//     console.log(updateMemberQuery);
+
+//     // Fetch updated members to email them
+//     const fetchMembersQuery = `
+//       SELECT member_id, member_first_name, member_email_address, meeting_payable_amount 
+//       FROM member 
+//       WHERE chapter_id = $1 AND (writeoff_status = FALSE OR writeoff_status IS NULL) AND member_email_address IS NOT NULL
+//     `;
+//     const membersResult = await con.query(fetchMembersQuery, [chapter_id]);
+//     const membersToEmail = membersResult.rows;
+
+//     // Fetch chapters to get chapter_name and region_id from chapter_id
+//     const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
+//     const chapterData = await chapterResponse.json();
+//     const chapter = chapterData.find(c => c.chapter_id === Number(chapter_id));
+//     const chapterName = chapter ? chapter.chapter_name : `Chapter #${chapter_id}`; // fallback if not found
+//     const region_id = chapter ? chapter.region_id : ''; // --- GET REGION_ID ---
+
+//     for (const member of membersToEmail) {
+//       // --- DYNAMIC PAY NOW URL LOGIC ---
+//       // Use region_id, chapter_id, and member_id in the URL
+//       const payNowUrl = `https://bninewdelhi.com/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1?region_id=${region_id}&chapter_id=${chapter_id}&member_id=${member.member_id}`;
+
+//       const mailOptions = {
+//         from: '"BNI New Delhi" <info@bninewdelhi.in>',
+//         to: member.member_email_address,
+//         subject: "New Bill Raised - Payment Reminder",
+//         html: `
+//           <p>Dear ${member.member_first_name},</p>
+//           <p>A new bill has been raised under your chapter <b>${chapterName}</b>.</p>
+//           <p><strong>Bill Type:</strong> ${bill_type}</p>
+//           <p><strong>Description:</strong> ${description}</p>
+//           <p><strong>Total Amount:</strong> ₹${roundedTotalBillAmount}</p>
+//           <p><strong>Due Date:</strong> ${due_date}</p>
+//           <p>We request you to pay the bill amount before due date, as penalty fee of <b>₹${penalty_amount}</b> will be applied.</b>.</p>
+//           <br/>
+//           <p>Thank you,<br/><b>BNI NEW Delhi</b></p>
+//           <a href="${payNowUrl}" style="text-decoration: none; color: white; background-color: red; padding: 10px 20px; border-radius: 5px;"><button>Pay Now</button></a>
+//         `,
+//       };
+
+//       try {
+//         await transporter.sendMail(mailOptions);
+//         console.log(`Email sent to ${member.member_email_address}`);
+//       } catch (mailErr) {
+//         console.error(`Error sending email to ${member.member_email_address}:`, mailErr);
+//       }
+//     }
+
+//     res.status(201).json({ message: "Kitty payment added successfully." });
+//   } catch (error) {
+//     console.error("Error adding kitty payment:", error);
+//     res.status(500).json({ message: "Internal server error." });
+//   }
+// };
 
 
 
@@ -11408,9 +11660,9 @@ const sendKittyReminder = async (req, res) => {
   try {
     const { member_id } = req.body;
 
-    // Check if member exists and get their details including meeting_opening_balance
+    // Check if member exists and get their details including meeting_payable_amount
     const memberQuery = `
-      SELECT m.member_id, m.member_first_name, m.member_email_address, m.chapter_id, m.meeting_opening_balance, c.region_id 
+      SELECT m.member_id, m.member_first_name, m.member_email_address, m.chapter_id, m.meeting_payable_amount, c.region_id 
       FROM member m
       LEFT JOIN chapter c ON m.chapter_id = c.chapter_id
       WHERE m.member_id = $1 AND (m.writeoff_status IS NULL OR m.writeoff_status = FALSE)
@@ -11433,16 +11685,13 @@ const sendKittyReminder = async (req, res) => {
     const chapter = chapterData.find(c => c.chapter_id === member.chapter_id);
     const chapterName = chapter ? chapter.chapter_name : `Chapter #${member.chapter_id}`;
 
-    // Get member's pending amount from bankorder
-    const bankOrderQuery = `
-      SELECT amount_to_pay, kitty_due_date, kitty_penalty
-      FROM bankorder 
-      WHERE member_id = $1
-    `;
-    const bankOrderResult = await con.query(bankOrderQuery, [member_id]);
-    const bankOrder = bankOrderResult.rows[0];
-     // Format the due date
-     const formatDueDate = (dateStr) => {
+    // Get kitty payments data for this chapter
+    const kittyPaymentsResponse = await fetch('https://backend.bninewdelhi.com/api/getkittyPayments');
+    const kittyPaymentsData = await kittyPaymentsResponse.json();
+    const chapterKittyPayment = kittyPaymentsData.find(kp => kp.chapter_id === member.chapter_id);
+    
+    // Format the due date
+    const formatDueDate = (dateStr) => {
       if (!dateStr) return 'Not specified';
       const date = new Date(dateStr);
       return date.toLocaleDateString('en-US', { 
@@ -11454,15 +11703,15 @@ const sendKittyReminder = async (req, res) => {
     };
 
     // Calculate GST and check if due date has passed
-    const gstAmount = (bankOrder?.amount_to_pay || 0) * 0.18;
+    const baseAmount = parseFloat(member.meeting_payable_amount || 0);
+    const gstAmount = Math.round(baseAmount * 0.18);
     const currentDate = new Date();
-    const dueDate = bankOrder?.kitty_due_date ? new Date(bankOrder.kitty_due_date) : null;
+    const dueDate = chapterKittyPayment?.kitty_due_date ? new Date(chapterKittyPayment.kitty_due_date) : null;
     const isDueDatePassed = dueDate && currentDate > dueDate;
+    const penaltyAmount = chapterKittyPayment?.penalty_fee || 0;
 
-    // Calculate total amount
-    const totalAmount = (bankOrder?.amount_to_pay || 0) + 
-    gstAmount + 
-    (isDueDatePassed ? (bankOrder?.kitty_penalty || 0) : 0);
+    // Calculate total amount WITHOUT penalty (just base + GST)
+    const totalAmount = Math.round(baseAmount + gstAmount);
 
     // Construct payment URL
     const payNowUrl = `https://bninewdelhi.com/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1?region_id=${member.region_id}&chapter_id=${member.chapter_id}&member_id=${member.member_id}`;
@@ -11473,126 +11722,116 @@ const sendKittyReminder = async (req, res) => {
       subject: "Payment Reminder - Meeting Fee",
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #ffffff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-  <!-- Header with Logo -->
-  <div style="text-align: center; margin-bottom: 30px;">
-    <h1 style="color: #1a237e; font-size: 28px; margin: 0; padding-bottom: 10px; border-bottom: 3px solid #1a237e; display: inline-block;">Payment Reminder- Meeting Fee</h1>
-  </div>
+          <!-- Header with Logo -->
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #1a237e; font-size: 28px; margin: 0; padding-bottom: 10px; border-bottom: 3px solid #1a237e; display: inline-block;">Payment Reminder- Meeting Fee</h1>
+          </div>
 
-  <!-- Greeting -->
-  <p style="color: #333; font-size: 18px; line-height: 1.6; margin-bottom: 20px;">
-    Dear <span style="color: #1a237e; font-weight: 600;">${member.member_first_name}</span>,
-  </p>
+          <!-- Greeting -->
+          <p style="color: #333; font-size: 18px; line-height: 1.6; margin-bottom: 20px;">
+            Dear <span style="color: #1a237e; font-weight: 600;">${member.member_first_name}</span>,
+          </p>
 
-  <!-- Main Message -->
-  <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
-    This is a friendly reminder that your meeting fee for the chapter 
-    <span style="color: #1a237e; font-weight: 600; font-size: 18px;">${chapterName}</span> 
-    is pending.
-  </p>
-  <!-- Summary Box -->
-  <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #e0e0e0;">
-    <h3 style="color: #1a237e; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Amount Summary</h3>
-    
-    ${member?.meeting_opening_balance ? `
-    <div style="margin-bottom: 10px;">
-      <span style="color: #666;">Meeting Pending Balance:</span>
-      <span style="color: #1a237e; font-weight: 600; float: right;">₹${member.meeting_opening_balance}</span>
-    </div>
-    ` : ''}
+          <!-- Main Message -->
+          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+            This is a friendly reminder that your meeting fee for the chapter 
+            <span style="color: #1a237e; font-weight: 600; font-size: 18px;">${chapterName}</span> 
+            is pending.
+          </p>
 
-    <div style="margin-bottom: 10px;">
-      <span style="color: #666;">Base Amount:</span>
-      <span style="color: #1a237e; font-weight: 600; float: right;">₹${bankOrder?.amount_to_pay || 0}</span>
-    </div>
+          <!-- Summary Box -->
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #e0e0e0;">
+            <h3 style="color: #1a237e; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Amount Summary</h3>
 
-    <div style="margin-bottom: 10px;">
-      <span style="color: #666;">GST (18%):</span>
-      <span style="color: #1a237e; font-weight: 600; float: right;">₹${gstAmount.toFixed(2)}</span>
-    </div>
+            <div style="margin-bottom: 10px;">
+              <span style="color: #666;">Base Amount:</span>
+              <span style="color: #1a237e; font-weight: 600; float: right;">₹${baseAmount}</span>
+            </div>
 
-    <div style="margin-bottom: 10px;">
-      <span style="color: #666;">Penalty Amount:</span>
-      <span style="color: #d32f2f; font-weight: 600; float: right;">₹${bankOrder?.kitty_penalty || 0}</span>
-      <div style="color: #666; font-size: 12px; margin-top: 5px; font-style: italic;">
-        (Will be applied if payment is made after ${formatDueDate(bankOrder?.kitty_due_date)})
-      </div>
-    </div>
+            <div style="margin-bottom: 10px;">
+              <span style="color: #666;">GST (18%):</span>
+              <span style="color: #1a237e; font-weight: 600; float: right;">₹${gstAmount}</span>
+            </div>
 
-   
-  </div>
-
-
-  <!-- Payment Details Box -->
-  <div style="background: linear-gradient(145deg, #f8f9fa, #ffffff); padding: 25px; border-radius: 8px; margin: 25px 0; border: 1px solid #e0e0e0; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-    <h3 style="color: #1a237e; margin-top: 0; margin-bottom: 20px; font-size: 20px;">Payment Details</h3>
-    
-  
-
-    <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
-      <span style="color: #666; font-weight: 500;">Base Amount:</span>
-      <span style="color: #1a237e; font-weight: 600; font-size: 18px;">₹${bankOrder?.amount_to_pay || 0}</span>
-    </div>
-
-    <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
-      <span style="color: #666; font-weight: 500;">GST (18%):</span>
-      <span style="color: #1a237e; font-weight: 600; font-size: 18px;">₹${gstAmount.toFixed(2)}</span>
-    </div>
-
-   <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
-      <span style="color: #666; font-weight: 500;">Due Date:</span>
-      <span style="color: #1a237e; font-weight: 600;">${formatDueDate(bankOrder?.kitty_due_date)}</span>
-    </div>
-
-    ${isDueDatePassed && bankOrder?.kitty_penalty ? `
-    <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
-      <span style="color: #d32f2f; font-weight: 500;">Late Payment Penalty:</span>
-      <span style="color: #d32f2f; font-weight: 600; font-size: 18px;">₹${bankOrder.kitty_penalty}</span>
-    </div>
-    ` : ''}
-
-    <div style="display: flex; justify-content: space-between; margin-top: 20px; padding-top: 15px; border-top: 2px solid #1a237e;">
-      <span style="color: #1a237e; font-weight: 600; font-size: 20px;">Total Amount Due:</span>
-      <span style="color: #1a237e; font-weight: 700; font-size: 22px;">₹${Math.round(totalAmount)}</span>
-    </div>
-  </div>
-
-  <!-- Warning Message -->
-  <p style="color: #d32f2f; font-size: 15px; line-height: 1.6; margin: 25px 0; padding: 15px; background-color: #ffebee; border-radius: 5px; border-left: 4px solid #d32f2f;">
-    ⚠️ Please make the payment at your earliest convenience to avoid any additional penalties.
-  </p>
-
-  <!-- Pay Now Button -->
-   <div style="text-align: center; margin: 30px 0;">
-                <a href="${payNowUrl}" 
-                   style="background-color: #dc3545; 
-                          color: white; 
-                          padding: 12px 30px; 
-                          text-decoration: none; 
-                          border-radius: 5px; 
-                          font-weight: bold;
-                          display: inline-block;">
-                  Pay Now
-                </a>
+            <div style="margin-bottom: 10px;">
+              <span style="color: #666;">Penalty Amount:</span>
+              <span style="color: #d32f2f; font-weight: 600; float: right;">₹${penaltyAmount}</span>
+              <div style="color: #666; font-size: 12px; margin-top: 5px; font-style: italic;">
+                (Will be applied if payment is made after ${formatDueDate(chapterKittyPayment?.kitty_due_date)})
               </div>
-  <!-- Disclaimer -->
-  <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 25px 0; padding: 15px; background-color: #f5f5f5; border-radius: 5px;">
-    ℹ️ If you have already made the payment, please ignore this reminder.
-  </p>
+            </div>
+          </div>
 
-  <!-- Footer -->
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
-    <p style="color: #666; font-size: 15px; line-height: 1.6; margin: 0;">
-      Thank you,<br>
-      <span style="color: #1a237e; font-weight: 600; font-size: 16px;">LT ${chapterName}</span>
-    </p>
-  </div>
+          <!-- Payment Details Box -->
+          <div style="background: linear-gradient(145deg, #f8f9fa, #ffffff); padding: 25px; border-radius: 8px; margin: 25px 0; border: 1px solid #e0e0e0; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            <h3 style="color: #1a237e; margin-top: 0; margin-bottom: 20px; font-size: 20px;">Payment Details</h3>
 
-  <!-- Additional Info -->
-  <div style="margin-top: 20px; text-align: center; color: #999; font-size: 12px;">
-    <p style="margin: 5px 0;">This is an automated message, please do not reply directly to this email.</p>
-    <p style="margin: 5px 0;">For any queries, please contact your chapter administrator.</p>
-  </div>
-</div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
+              <span style="color: #666; font-weight: 500;">Base Amount:</span>
+              <span style="color: #1a237e; font-weight: 600; font-size: 18px;">₹${baseAmount}</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
+              <span style="color: #666; font-weight: 500;">GST (18%):</span>
+              <span style="color: #1a237e; font-weight: 600; font-size: 18px;">₹${gstAmount}</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
+              <span style="color: #666; font-weight: 500;">Due Date:</span>
+              <span style="color: #1a237e; font-weight: 600;">${formatDueDate(chapterKittyPayment?.kitty_due_date)}</span>
+            </div>
+
+            ${isDueDatePassed && penaltyAmount ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
+              <span style="color: #d32f2f; font-weight: 500;">Late Payment Penalty:</span>
+              <span style="color: #d32f2f; font-weight: 600; font-size: 18px;">₹${penaltyAmount}</span>
+            </div>
+            ` : ''}
+
+            <div style="display: flex; justify-content: space-between; margin-top: 20px; padding-top: 15px; border-top: 2px solid #1a237e;">
+              <span style="color: #1a237e; font-weight: 600; font-size: 20px;">Total Amount Due:</span>
+              <span style="color: #1a237e; font-weight: 700; font-size: 22px;">₹${totalAmount}</span>
+            </div>
+          </div>
+
+          <!-- Warning Message -->
+          <p style="color: #d32f2f; font-size: 15px; line-height: 1.6; margin: 25px 0; padding: 15px; background-color: #ffebee; border-radius: 5px; border-left: 4px solid #d32f2f;">
+            ⚠️ Please make the payment at your earliest convenience to avoid any additional penalties.
+          </p>
+
+          <!-- Pay Now Button -->
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${payNowUrl}" 
+               style="background-color: #dc3545; 
+                      color: white; 
+                      padding: 12px 30px; 
+                      text-decoration: none; 
+                      border-radius: 5px; 
+                      font-weight: bold;
+                      display: inline-block;">
+              Pay Now
+            </a>
+          </div>
+
+          <!-- Disclaimer -->
+          <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 25px 0; padding: 15px; background-color: #f5f5f5; border-radius: 5px;">
+            ℹ️ If you have already made the payment, please ignore this reminder.
+          </p>
+
+          <!-- Footer -->
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+            <p style="color: #666; font-size: 15px; line-height: 1.6; margin: 0;">
+              Thank you,<br>
+              <span style="color: #1a237e; font-weight: 600; font-size: 16px;">LT ${chapterName}</span>
+            </p>
+          </div>
+
+          <!-- Additional Info -->
+          <div style="margin-top: 20px; text-align: center; color: #999; font-size: 12px;">
+            <p style="margin: 5px 0;">This is an automated message, please do not reply directly to this email.</p>
+            <p style="margin: 5px 0;">For any queries, please contact your chapter administrator.</p>
+          </div>
+        </div>
       `
     };
 
@@ -11629,12 +11868,16 @@ const sendKittyReminderToAll = async (req, res) => {
     const chapterResponse = await fetch('https://backend.bninewdelhi.com/api/chapters');
     const chapterData = await chapterResponse.json();
 
+    // Get kitty payments data once for all chapters
+    const kittyPaymentsResponse = await fetch('https://backend.bninewdelhi.com/api/getkittyPayments');
+    const kittyPaymentsData = await kittyPaymentsResponse.json();
+
     // Process each member
     const results = await Promise.all(member_ids.map(async (member_id) => {
       try {
-        // Check if member exists and get their details including meeting_opening_balance
+        // Check if member exists and get their details including meeting_payable_amount
         const memberQuery = `
-          SELECT m.member_id, m.member_first_name, m.member_email_address, m.chapter_id, m.meeting_opening_balance, c.region_id 
+          SELECT m.member_id, m.member_first_name, m.member_email_address, m.chapter_id, m.meeting_payable_amount, c.region_id 
           FROM member m
           LEFT JOIN chapter c ON m.chapter_id = c.chapter_id
           WHERE m.member_id = $1 AND (m.writeoff_status IS NULL OR m.writeoff_status = FALSE)
@@ -11656,15 +11899,9 @@ const sendKittyReminderToAll = async (req, res) => {
         const chapter = chapterData.find(c => c.chapter_id === member.chapter_id);
         const chapterName = chapter ? chapter.chapter_name : `Chapter #${member.chapter_id}`;
 
-        // Get member's pending amount from bankorder
-        const bankOrderQuery = `
-          SELECT amount_to_pay, kitty_due_date, kitty_penalty
-          FROM bankorder 
-          WHERE member_id = $1
-        `;
-        const bankOrderResult = await con.query(bankOrderQuery, [member_id]);
-        const bankOrder = bankOrderResult.rows[0];
-
+        // Get kitty payment details for this chapter from API data
+        const chapterKittyPayment = kittyPaymentsData.find(kp => kp.chapter_id === member.chapter_id);
+        
         // Format the due date
         const formatDueDate = (dateStr) => {
           if (!dateStr) return 'Not specified';
@@ -11678,15 +11915,15 @@ const sendKittyReminderToAll = async (req, res) => {
         };
 
         // Calculate GST and check if due date has passed
-        const gstAmount = Math.round((bankOrder?.amount_to_pay || 0) * 0.18);
+        const baseAmount = parseFloat(member.meeting_payable_amount || 0);
+        const gstAmount = Math.round(baseAmount * 0.18);
         const currentDate = new Date();
-        const dueDate = bankOrder?.kitty_due_date ? new Date(bankOrder.kitty_due_date) : null;
+        const dueDate = chapterKittyPayment?.kitty_due_date ? new Date(chapterKittyPayment.kitty_due_date) : null;
         const isDueDatePassed = dueDate && currentDate > dueDate;
+        const penaltyAmount = chapterKittyPayment?.penalty_fee || 0;
 
-        // Calculate total amount and round to nearest integer
-        const totalAmount = Math.round((bankOrder?.amount_to_pay || 0) + 
-                           gstAmount + 
-                           (isDueDatePassed ? (bankOrder?.kitty_penalty || 0) : 0));
+        // Calculate total amount WITHOUT penalty (just base + GST)
+        const totalAmount = Math.round(baseAmount + gstAmount);
 
         // Construct payment URL
         const payNowUrl = `https://bninewdelhi.com/meeting-payment/4/2d4efe39-b134-4187-a5c0-4530125f5248/1?region_id=${member.region_id}&chapter_id=${member.chapter_id}&member_id=${member.member_id}`;
@@ -11717,17 +11954,13 @@ const sendKittyReminderToAll = async (req, res) => {
               <!-- Summary Box -->
               <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #e0e0e0;">
                 <h3 style="color: #1a237e; margin-top: 0; margin-bottom: 15px; font-size: 18px;">Amount Summary</h3>
-                
-                ${member?.meeting_opening_balance ? `
-                <div style="margin-bottom: 10px;">
-                  <span style="color: #666;">Meeting Pending Balance:</span>
-                  <span style="color: #1a237e; font-weight: 600; float: right;">₹${member.meeting_opening_balance}</span>
-                </div>
-                ` : ''}
 
                 <div style="margin-bottom: 10px;">
                   <span style="color: #666;">Base Amount:</span>
-                  <span style="color: #1a237e; font-weight: 600; float: right;">₹${bankOrder?.amount_to_pay || 0}</span>
+                  <span style="color: #1a237e; font-weight: 600; float: right;">₹${baseAmount}</span>
+                   <div style="color: #666; font-size: 12px; margin-top: 5px; font-style: italic;">
+                    (Meeting opening balance + Meeting payable amount )
+                  </div>
                 </div>
 
                 <div style="margin-bottom: 10px;">
@@ -11737,9 +11970,9 @@ const sendKittyReminderToAll = async (req, res) => {
 
                 <div style="margin-bottom: 10px;">
                   <span style="color: #666;">Penalty Amount:</span>
-                  <span style="color: #d32f2f; font-weight: 600; float: right;">₹${bankOrder?.kitty_penalty || 0}</span>
+                  <span style="color: #d32f2f; font-weight: 600; float: right;">₹${penaltyAmount}</span>
                   <div style="color: #666; font-size: 12px; margin-top: 5px; font-style: italic;">
-                    (Will be applied if payment is made after ${formatDueDate(bankOrder?.kitty_due_date)})
+                    (Will be applied if payment is made after ${formatDueDate(chapterKittyPayment?.kitty_due_date)})
                   </div>
                 </div>
               </div>
@@ -11750,7 +11983,7 @@ const sendKittyReminderToAll = async (req, res) => {
 
                 <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
                   <span style="color: #666; font-weight: 500;">Base Amount:</span>
-                  <span style="color: #1a237e; font-weight: 600; font-size: 18px;">₹${bankOrder?.amount_to_pay || 0}</span>
+                  <span style="color: #1a237e; font-weight: 600; font-size: 18px;">₹${baseAmount}</span>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
@@ -11760,13 +11993,13 @@ const sendKittyReminderToAll = async (req, res) => {
 
                 <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
                   <span style="color: #666; font-weight: 500;">Due Date:</span>
-                  <span style="color: #1a237e; font-weight: 600;">${formatDueDate(bankOrder?.kitty_due_date)}</span>
+                  <span style="color: #1a237e; font-weight: 600;">${formatDueDate(chapterKittyPayment?.kitty_due_date)}</span>
                 </div>
 
-                ${isDueDatePassed && bankOrder?.kitty_penalty ? `
+                ${isDueDatePassed && penaltyAmount ? `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
                   <span style="color: #d32f2f; font-weight: 500;">Late Payment Penalty:</span>
-                  <span style="color: #d32f2f; font-weight: 600; font-size: 18px;">₹${bankOrder.kitty_penalty}</span>
+                  <span style="color: #d32f2f; font-weight: 600; font-size: 18px;">₹${penaltyAmount}</span>
                 </div>
                 ` : ''}
 
