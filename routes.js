@@ -191,7 +191,8 @@ addMultipleVisitorPayment,
   getConvenienceCharge,
   updateMemberPendingAmount,
   updateAllMembersPendingAmount,
-  applyKittyPenalties
+  applyKittyPenalties,
+  getDisapprovedAccolades
 } = require("./controllers");
 
 const path = require("path");
@@ -1112,8 +1113,87 @@ router.get('/uploads/onboardingCalls/:filename', (req, res) => {
     const filePath = path.join(__dirname, 'uploads', 'onboardingCalls', req.params.filename);
     res.sendFile(filePath);
 });
+// Add this multer configuration after the existing uploadOnboardingCall configuration
+const uploadRoImage = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => {
+            const uploadDir = path.join(__dirname, 'uploads', 'reqImage');
+            // Create directory if it doesn't exist
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+                console.log('✨ Created reqImage directory:', uploadDir);
+            }
+            cb(null, uploadDir);
+        },
+        filename: (req, file, cb) => {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            cb(null, 'roimage-' + uniqueSuffix + path.extname(file.originalname));
+        }
+    }),
+    fileFilter: (req, file, cb) => {
+        const extname = path.extname(file.originalname).toLowerCase();
+        const mimetype = file.mimetype;
+        
+        if (extname && mimetype) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
+        }
+    }
+});
+router.put(
+    '/updateChapterRequisition',
+    uploadRoImage.single('roimage'),
+    updateChapterRequisition
+);
+// Add this route after the existing onboarding calls route
+router.get('/uploads/reqImage/:filename', (req, res) => {
+    const filePath = path.join(__dirname, 'uploads', 'reqImage', req.params.filename);
+    
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ 
+            message: 'Image not found',
+            requestedFile: req.params.filename
+        });
+    }
+    
+    // Set proper headers for image files
+    const ext = path.extname(req.params.filename).toLowerCase();
+    const contentType = ext === '.png' ? 'image/png' : 
+                       ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 
+                       ext === '.gif' ? 'image/gif' : 'image/jpeg';
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.sendFile(filePath);
+});
+// Add route for uploading RO images
+router.post('/uploadRoImage', uploadRoImage.single('roimage'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No file uploaded'
+            });
+        }
 
-router.put("/updateChapterRequisition", updateChapterRequisition);
+        console.log('📸 RO Image uploaded:', req.file.filename);
+        
+        res.json({
+            success: true,
+            message: 'Image uploaded successfully',
+            filename: req.file.filename,
+            originalName: req.file.originalname
+        });
+    } catch (error) {
+        console.error('❌ Error uploading RO image:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error uploading image',
+            error: error.message
+        });
+    }
+});
 router.put("/updateMemberRequisition", updateMemberRequisition);
 
 router.post("/send-visitor-email", sendVisitorEmail);
@@ -1341,5 +1421,6 @@ router.put("/tdsUpdateexpense", uploadTdsCertificate.single('tds_certificate'), 
 router.post("/updateMemberPendingAmount", updateMemberPendingAmount);
 router.post("/updateAllMembersPendingAmount", updateAllMembersPendingAmount);
 router.post("/apply-kitty-penalties", applyKittyPenalties);
+router.get("/getDisapprovedAccolades", getDisapprovedAccolades);
 
 module.exports = router;

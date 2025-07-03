@@ -2818,7 +2818,7 @@ const addKittyPayment = async (req, res) => {
     const updateMemberQuery = `
           UPDATE member
           SET meeting_payable_amount = COALESCE(meeting_payable_amount, 0) + $1
-          WHERE chapter_id = $2 AND writeoff_status = false;
+          WHERE chapter_id = $2 AND (writeoff_status = FALSE OR writeoff_status IS NULL);
       `;
 
     await con.query(updateMemberQuery, [roundedTotalBillAmount, chapter_id]);
@@ -7488,7 +7488,8 @@ const updateChapterRequisition = async (req, res) => {
           given_status, 
           slab_wise_comment,
           pick_up_status_ro,
-          pick_up_status_ro_comment 
+          pick_up_status_ro_comment,
+          roimage
       } = req.body;
 
       await con.query('BEGIN');
@@ -7501,11 +7502,9 @@ const updateChapterRequisition = async (req, res) => {
       );
       
       const isVisitorRequest = visitorCheck.rows[0]?.visitor_id !== null;
-      console.log('👤 Is Visitor Request:', isVisitorRequest);
-
+      console.log('�� Is Visitor Request:', isVisitorRequest);
 
     // NEW CODE FOR VISITOR TO MEMBER CONVERSION
-// NEW CODE FOR VISITOR TO MEMBER CONVERSION
 if (isVisitorRequest && approve_status === 'approved') {
   try {
       // Fetch visitor data
@@ -7608,7 +7607,7 @@ console.log('visitor.date_of_publishing:', visitor.date_of_publishing);
 const dateOfPublishing = visitor.date_of_publishing
     ? new Date(visitor.date_of_publishing)
     : new Date(); // fallback
-console.log('📅 Date of Publishing:', dateOfPublishing);
+console.log('�� Date of Publishing:', dateOfPublishing);
 
 const kittyBillsResponse = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
 const allKittyBills = kittyBillsResponse.data;
@@ -7661,7 +7660,7 @@ let kittyDueDate = null;
 let kittyPenalty = null;
 
 console.log('🔍 Starting kitty calculation...');
-console.log('📅 Date of Publishing:', dateOfPublishing);
+console.log('�� Date of Publishing:', dateOfPublishing);
 
 for (const bill of chapterKittyBills) {
     // Convert dates to IST
@@ -7701,7 +7700,7 @@ for (const bill of chapterKittyBills) {
 
     const billKittyDueDate = new Date(new Date(bill.kitty_due_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
 
-    console.log('📊 Processing bill:', {
+    console.log('�� Processing bill:', {
         billStartDate: billStartDate.toISOString(),
         billEndDate: billEndDate.toISOString(),
         kittyDueDate: billKittyDueDate.toISOString(),
@@ -7718,7 +7717,7 @@ for (const bill of chapterKittyBills) {
     if (!kittyDueDate && bill.kitty_due_date) {
         kittyDueDate = bill.kitty_due_date;
         kittyPenalty = bill.penalty_fee || 0;
-        console.log('📌 Captured kitty due date:', kittyDueDate);
+        console.log('�� Captured kitty due date:', kittyDueDate);
         console.log('💰 Kitty penalty:', kittyPenalty);
     }
 
@@ -7735,11 +7734,11 @@ for (const bill of chapterKittyBills) {
         totalKittyAmount += weeksFromDOP * weeklyAmount;
         
         console.log('💵 Weekly amount:', weeklyAmount);
-        console.log('💵 Total kitty amount before first meeting deduction:', totalKittyAmount);
+        console.log('�� Total kitty amount before first meeting deduction:', totalKittyAmount);
         
         // Always deduct first meeting fee regardless of meeting day
         totalKittyAmount -= weeklyAmount;
-        console.log('💵 Total kitty amount after first meeting deduction:', totalKittyAmount);
+        console.log('�� Total kitty amount after first meeting deduction:', totalKittyAmount);
         
     } else {
         console.log('📅 DOP is before or equal to raised_on date, using total weeks from API');
@@ -7750,10 +7749,9 @@ for (const bill of chapterKittyBills) {
         
         console.log('💵 Weekly amount:', weeklyAmount);
         console.log('📅 Total weeks from API:', totalWeeks);
-        console.log('💵 Total kitty amount:', totalKittyAmount);
+        console.log('�� Total kitty amount:', totalKittyAmount);
     }
 }
-
 
 // If somehow not found, fallback
 if (!kittyDueDate) {
@@ -7788,19 +7786,26 @@ console.log('📊 Final calculation:', {
     finalAmountToPay: finalAmountToPay
 });
 
+// Update bankorder
+await con.query(
+    `INSERT INTO bankorder (amount_to_pay, member_id, chapter_id, kitty_due_date, kitty_penalty)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [finalAmountToPay, member_id, chapterId, kittyDueDate, finalPenalty]
+);
+
+console.log('✅ Updated bankorder with final amount:', finalAmountToPay);
+
 // Update member's meeting_payable_amount
 await con.query(
     `UPDATE member 
-     SET meeting_payable_amount = COALESCE(meeting_payable_amount, 0) + $1
+     SET meeting_payable_amount = $1 
      WHERE member_id = $2`,
-    [finalAmountToPay, member_id]
+    [totalKittyAmount, member_id]
 );
 
-console.log('✅ Updated member meeting_payable_amount:', finalAmountToPay);
+console.log('✅ Updated member meeting_payable_amount:', totalKittyAmount);
 
-
-          // 5. Insert into member_accolades
-          // 5. Insert into member_accolades
+// 5. Insert into member_accolades
 const insertAccoladeQuery = `
 INSERT INTO member_accolades 
 (member_id, accolade_id, issue_date, count, given_date, comment)
@@ -7865,7 +7870,6 @@ console.log('✅ Added member accolade 8:', accoladeResult4.rows[0]);
       // Continue with the rest of the function even if member creation fails
   }
 }
-
 
       // Keep existing slab wise comment check
       const isOnlySlabWiseCommentUpdate = slab_wise_comment && 
@@ -7943,118 +7947,152 @@ console.log('✅ Added member accolade 8:', accoladeResult4.rows[0]);
           }
       }
 
-          // Handle member_accolades insertion for approved statuses
-          // const [memberId, accoladeId] = key.split('_').map(Number);
-          if (!isVisitorRequest && approve_status) {
-            const approveStatusObj = safeJSONParse(approve_status);
+      // Handle member_accolades insertion for approved statuses
+      if (!isVisitorRequest && approve_status) {
+        const approveStatusObj = safeJSONParse(approve_status);
+        const roImageObj = roimage ? safeJSONParse(roimage) : {};
 
-for (const [key, status] of Object.entries(approveStatusObj)) {
-    const [memberId, accoladeId] = key.split('_').map(Number);
+        for (const [key, status] of Object.entries(approveStatusObj)) {
+            const [memberId, accoladeId] = key.split('_').map(Number);
+            const roImageForThisAccolade = roImageObj[key] || null;
 
-    if (status === 'approved') {
-      console.log(`🎯 Processing approved accolade for member ${memberId}, accolade ${accoladeId}`);
+            if (status === 'approved') {
+                console.log(`🎯 Processing approved accolade for member ${memberId}, accolade ${accoladeId}`);
+            
+                // First check if this combination already exists
+                const checkQuery = `
+                    SELECT id FROM member_accolades 
+                    WHERE member_id = $1 AND accolade_id = $2
+                    LIMIT 1
+                `;
+                
+                const existingRecord = await con.query(checkQuery, [memberId, accoladeId]);
+                
+                if (existingRecord.rows.length === 0) { 
+                    const insertQuery = `
+                        INSERT INTO member_accolades 
+                        (member_id, accolade_id, issue_date, count, given_date, comment, confirmimage)
+                        VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL, $3)
+                        RETURNING *
+                    `;
+
+                    const insertResult = await con.query(insertQuery, [memberId, accoladeId, roImageForThisAccolade]);
+                    console.log('✅ Inserted new record into member_accolades:', insertResult.rows[0]);
+                    
+                    // Additional condition: If accoladeId is 1, also insert accolades 8, 2, and 10
+                    if (accoladeId === 1) {
+                        const additionalAccolades = [8, 2, 10];
+                        
+                        for (const additionalAccoladeId of additionalAccolades) {
+                            // Check if this additional accolade already exists for the member
+                            const additionalCheckQuery = `
+                                SELECT id FROM member_accolades 
+                                WHERE member_id = $1 AND accolade_id = $2
+                                LIMIT 1
+                            `;
+                            
+                            const additionalExistingRecord = await con.query(additionalCheckQuery, [memberId, additionalAccoladeId]);
+                            
+                            if (additionalExistingRecord.rows.length === 0) {
+                                const additionalInsertQuery = `
+                                    INSERT INTO member_accolades 
+                                    (member_id, accolade_id, issue_date, count, given_date, comment, confirmimage)
+                                    VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL, $3)
+                                    RETURNING *
+                                `;
+                                
+                                const additionalInsertResult = await con.query(additionalInsertQuery, [memberId, additionalAccoladeId, roImageForThisAccolade]);
+                                console.log(`✅ Inserted additional accolade ${additionalAccoladeId} for member ${memberId}:`, additionalInsertResult.rows[0]);
+                            } else {
+                                console.log(`ℹ️ Skipping additional accolade ${additionalAccoladeId}: Already exists for member ${memberId}`);
+                            }
+                        }
+                    }
+                } else {
+                    // Update existing record with confirmimage if provided
+                    if (roImageForThisAccolade) {
+                        const updateQuery = `
+                            UPDATE member_accolades 
+                            SET confirmimage = $1
+                            WHERE member_id = $2 AND accolade_id = $3
+                            RETURNING *
+                        `;
+                        await con.query(updateQuery, [roImageForThisAccolade, memberId, accoladeId]);
+                        console.log(`✅ Updated confirmimage for existing accolade ${accoladeId} for member ${memberId}`);
+                    } else {
+                        console.log(`ℹ️ Skipping insert: Accolade ${accoladeId} already exists for member ${memberId}`);
+                    }
+                }
+            }
+
+            // NEW: Remove member_accolades record if status is declined
+            // NEW: Handle declined accolade - remove from member_accolades and insert into disapproved_accolades
+if (status === 'declined') {
+  console.log(`🗑️ Processing declined accolade for member ${memberId}, accolade ${accoladeId}`);
   
-      // First check if this combination already exists
-      const checkQuery = `
-          SELECT id FROM member_accolades 
-          WHERE member_id = $1 AND accolade_id = $2
-          LIMIT 1
+  // First, remove the entry from member_accolades
+  const deleteQuery = `
+      DELETE FROM member_accolades
+      WHERE member_id = $1 AND accolade_id = $2
+  `;
+  await con.query(deleteQuery, [memberId, accoladeId]);
+  console.log(`✅ Removed declined accolade from member_accolades for member ${memberId}, accolade ${accoladeId}`);
+  
+  // If roImage exists, insert into disapproved_accolades table
+  if (roImageForThisAccolade) {
+      console.log(`�� Inserting declined accolade into disapproved_accolades with image: ${roImageForThisAccolade}`);
+      
+      const insertDisapprovedQuery = `
+          INSERT INTO disapproved_accolades 
+          (member_id, accolade_id, declineImage, disapproved_date)
+          VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+          RETURNING *
       `;
       
-      const existingRecord = await con.query(checkQuery, [memberId, accoladeId]);
+      const disapprovedResult = await con.query(insertDisapprovedQuery, [memberId, accoladeId, roImageForThisAccolade]);
+      console.log(`✅ Inserted into disapproved_accolades:`, disapprovedResult.rows[0]);
+  } else {
+      console.log(`ℹ️ No roImage provided for declined accolade, skipping disapproved_accolades insertion`);
+  }
+}
+        }
+    }
+
+      // Handle given status updates - Only update member_accolades table
+      if (given_status) {
+      console.log('📝 Processing member accolade updates for given status:', given_status);
       
-      if (existingRecord.rows.length === 0) { 
-          const insertQuery = `
-              INSERT INTO member_accolades 
-              (member_id, accolade_id, issue_date, count, given_date, comment)
-              VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL)
-              RETURNING *
-          `;
-  
-          const insertResult = await con.query(insertQuery, [memberId, accoladeId]);
-          console.log('✅ Inserted new record into member_accolades:', insertResult.rows[0]);
-          
-          // Additional condition: If accoladeId is 1, also insert accolades 8, 2, and 10
-          if (accoladeId === 1) {
-              const additionalAccolades = [8, 2, 10];
-              
-              for (const additionalAccoladeId of additionalAccolades) {
-                  // Check if this additional accolade already exists for the member
-                  const additionalCheckQuery = `
-                      SELECT id FROM member_accolades 
-                      WHERE member_id = $1 AND accolade_id = $2
-                      LIMIT 1
+      const givenStatusObj = safeJSONParse(given_status);
+      
+      for (const [key, value] of Object.entries(givenStatusObj)) {
+          if (value && value.date) {
+              const [memberId, accoladeId] = key.split('_').map(Number);
+                  console.log(`🎯 Processing given status for member ${memberId}, accolade ${accoladeId}`);
+
+                  // Update member_accolades table
+                  const updateAccoladeQuery = `
+                      UPDATE member_accolades 
+                      SET given_date = $1
+                      WHERE member_id = $2 
+                      AND accolade_id = $3 
+                      AND given_date IS NULL
+                      RETURNING *
                   `;
-                  
-                  const additionalExistingRecord = await con.query(additionalCheckQuery, [memberId, additionalAccoladeId]);
-                  
-                  if (additionalExistingRecord.rows.length === 0) {
-                      const additionalInsertQuery = `
-                          INSERT INTO member_accolades 
-                          (member_id, accolade_id, issue_date, count, given_date, comment)
-                          VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL)
-                          RETURNING *
-                      `;
-                      
-                      const additionalInsertResult = await con.query(additionalInsertQuery, [memberId, additionalAccoladeId]);
-                      console.log(`✅ Inserted additional accolade ${additionalAccoladeId} for member ${memberId}:`, additionalInsertResult.rows[0]);
+
+                  const accoladeResult = await con.query(updateAccoladeQuery, [
+                      value.date,
+                      memberId,
+                      accoladeId
+                  ]);
+
+                  if (accoladeResult.rows.length > 0) {
+                      console.log('✅ Updated member_accolades:', accoladeResult.rows[0]);
                   } else {
-                      console.log(`ℹ️ Skipping additional accolade ${additionalAccoladeId}: Already exists for member ${memberId}`);
-                  }
+                      console.log(`ℹ️ No eligible record found to update given_date for member ${memberId}, accolade ${accoladeId}`);
               }
           }
-      } else {
-          console.log(`ℹ️ Skipping insert: Accolade ${accoladeId} already exists for member ${memberId}`);
       }
   }
-
-    // NEW: Remove member_accolades record if status is declined
-    if (status === 'declined') {
-        console.log(`🗑️ Removing declined accolade for member ${memberId}, accolade ${accoladeId}`);
-        const deleteQuery = `
-            DELETE FROM member_accolades
-            WHERE member_id = $1 AND accolade_id = $2
-        `;
-        await con.query(deleteQuery, [memberId, accoladeId]);
-    }
-}
-          }
-
-          // Handle given status updates - Only update member_accolades table
-          if (given_status) {
-          console.log('📝 Processing member accolade updates for given status:', given_status);
-          
-          const givenStatusObj = safeJSONParse(given_status);
-          
-          for (const [key, value] of Object.entries(givenStatusObj)) {
-              if (value && value.date) {
-                  const [memberId, accoladeId] = key.split('_').map(Number);
-                      console.log(`🎯 Processing given status for member ${memberId}, accolade ${accoladeId}`);
-
-                      // Update member_accolades table
-                      const updateAccoladeQuery = `
-                          UPDATE member_accolades 
-                          SET given_date = $1
-                          WHERE member_id = $2 
-                          AND accolade_id = $3 
-                          AND given_date IS NULL
-                          RETURNING *
-                      `;
-
-                      const accoladeResult = await con.query(updateAccoladeQuery, [
-                          value.date,
-                          memberId,
-                          accoladeId
-                      ]);
-
-                      if (accoladeResult.rows.length > 0) {
-                          console.log('✅ Updated member_accolades:', accoladeResult.rows[0]);
-                      } else {
-                          console.log(`ℹ️ No eligible record found to update given_date for member ${memberId}, accolade ${accoladeId}`);
-                  }
-              }
-          }
-      }
 
       const finalPickupDate = pickup_date && pickup_date.trim() !== '' ? pickup_date : existingRequisition.rows[0].pickup_date;
 
@@ -8068,8 +8106,9 @@ for (const [key, status] of Object.entries(approveStatusObj)) {
               given_status = $5,
               slab_wise_comment = $6,
               pick_up_status_ro = $7,
-              pick_up_status_ro_comment = $8
-          WHERE chapter_requisition_id = $9
+              pick_up_status_ro_comment = $8,
+              roimage = $9
+          WHERE chapter_requisition_id = $10
           RETURNING *
       `;
 
@@ -8098,6 +8137,7 @@ for (const [key, status] of Object.entries(approveStatusObj)) {
           slab_wise_comment || existingRequisition.rows[0].slab_wise_comment,
           pick_up_status_ro !== undefined ? pick_up_status_ro : existingRequisition.rows[0].pick_up_status_ro,
           pick_up_status_ro_comment !== undefined ? pick_up_status_ro_comment : existingRequisition.rows[0].pick_up_status_ro_comment,
+          prepareValue(roimage) || existingRequisition.rows[0].roimage,
           chapter_requisition_id
       ];
 
@@ -8128,6 +8168,663 @@ for (const [key, status] of Object.entries(approveStatusObj)) {
       });
   }
 };
+
+
+
+// const updateChapterRequisition = async (req, res) => {
+//   console.log('\n🔄 Starting Chapter Requisition Update');
+//   console.log('=====================================');
+
+//   try {
+//       const { 
+//           chapter_requisition_id, 
+//           approve_status, 
+//           ro_comment, 
+//           pickup_status, 
+//           pickup_date, 
+//           given_status, 
+//           slab_wise_comment,
+//           pick_up_status_ro,
+//           pick_up_status_ro_comment 
+//       } = req.body;
+
+//       await con.query('BEGIN');
+
+//       try {
+//       // First, check if this is a visitor requisition
+//       const visitorCheck = await con.query(
+//           'SELECT visitor_id FROM chapter_requisition WHERE chapter_requisition_id = $1',
+//           [chapter_requisition_id]
+//       );
+      
+//       const isVisitorRequest = visitorCheck.rows[0]?.visitor_id !== null;
+//       console.log('👤 Is Visitor Request:', isVisitorRequest);
+
+
+//     // NEW CODE FOR VISITOR TO MEMBER CONVERSION
+// // NEW CODE FOR VISITOR TO MEMBER CONVERSION
+// if (isVisitorRequest && approve_status === 'approved') {
+//   try {
+//       // Fetch visitor data
+//       const visitorsResponse = await fetch('https://backend.bninewdelhi.com/api/getallvisitors');
+//       const visitors = await visitorsResponse.json();
+      
+//       // Find the specific visitor
+//       const visitor = visitors.find(v => v.visitor_id === visitorCheck.rows[0].visitor_id);
+      
+//       if (visitor) {
+//           // Split visitor name into first and last name
+//           const nameParts = visitor.visitor_name.split(' ');
+//           const firstName = nameParts[0] || '';
+//           const lastName = nameParts.slice(1).join(' ') || '';
+          
+//           // Calculate renewal date (1 year from now)
+//           const inductionDate = new Date();
+//           const renewalDate = new Date(inductionDate);
+//           renewalDate.setFullYear(renewalDate.getFullYear() + 1);
+          
+//           // Insert into member table
+//           const insertMemberQuery = `
+//               INSERT INTO member (
+//                   member_first_name, member_last_name, member_date_of_birth, member_phone_number,
+//                   member_alternate_mobile_number, member_email_address, address_pincode,
+//                   address_city, address_state, region_id, chapter_id, accolades_id, category_name,
+//                   member_induction_date, member_current_membership, member_renewal_date, member_gst_number,
+//                   member_company_name, member_company_address, member_company_state, member_company_city,
+//                   member_photo, member_website, member_company_logo,
+//                   member_facebook, member_instagram, member_linkedin, member_youtube, country,
+//                   street_address_line_1, street_address_line_2, gender, notification_consent,
+//                   date_of_publishing, member_sponsored_by, member_status, meeting_opening_balance,
+//                   member_company_pincode
+//               ) VALUES (
+//                   $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+//                   $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, 
+//                   $33, $34, $35, $36, $37, $38
+//               ) RETURNING *
+//           `;
+
+//           // Before memberValues:
+// const now = new Date();
+// const istOffset = 5.5 * 60 * 60 * 1000;
+// const istDate = new Date(now.getTime() + istOffset);
+// const date_OfPublishing = istDate.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+//           const memberValues = [
+//               firstName,                    // member_first_name
+//               lastName,                     // member_last_name
+//               '1970-04-04',                // member_date_of_birth
+//               visitor.visitor_phone,        // member_phone_number
+//               visitor.visitor_phone,        // member_alternate_mobile_number
+//               visitor.visitor_email,        // member_email_address
+//               '110075',                    // address_pincode
+//               'New Delhi',                 // address_city
+//               'Delhi',                     // address_state
+//               visitor.region_id,           // region_id
+//               visitor.chapter_id,          // chapter_id
+//               null,                        // accolades_id
+//               visitor.visitor_category,    // category_name
+//               inductionDate,               // member_induction_date
+//               '1 yr',                      // member_current_membership
+//               renewalDate,                 // member_renewal_date
+//               visitor.visitor_gst,         // member_gst_number
+//               visitor.visitor_company_name,// member_company_name
+//               visitor.visitor_company_address, // member_company_address
+//               'Delhi',                     // member_company_state
+//               'New Delhi',                 // member_company_city
+//               null,                        // member_photo
+//               null,                        // member_website
+//               null,                        // member_company_logo
+//               null,                        // member_facebook
+//               null,                        // member_instagram
+//               null,                        // member_linkedin
+//               null,                        // member_youtube
+//               'IND',                       // country
+//               visitor.visitor_address,     // street_address_line_1
+//               null,                        // street_address_line_2
+//               null,                        // gender
+//               'on',                        // notification_consent
+//               date_OfPublishing,                   // date_of_publishing
+//               null,                        // member_sponsored_by
+//               'active',                    // member_status
+//               0,                           // meeting_opening_balance
+//               '110075'                     // member_company_pincode
+//           ];
+          
+//           const memberResult = await con.query(insertMemberQuery, memberValues);
+//           console.log('✅ New member created from visitor:', memberResult.rows[0]);
+
+//      // ✅ Member inserted
+// const newMember = memberResult.rows[0];
+// const member_id = newMember.member_id;
+
+// // ✅ Declare meeting_opening_balance properly
+// const meeting_opening_balance = parseFloat(req.body.meeting_opening_balance) || 0;
+
+// // 1. Fetch Kitty Bills
+// const chapterId = visitor.chapter_id; // Always use the visitor's chapter_id for visitor-to-member conversion
+// console.log('visitor.date_of_publishing:', visitor.date_of_publishing);
+// const dateOfPublishing = visitor.date_of_publishing
+//     ? new Date(visitor.date_of_publishing)
+//     : new Date(); // fallback
+// console.log('📅 Date of Publishing:', dateOfPublishing);
+
+// const kittyBillsResponse = await axios.get('https://backend.bninewdelhi.com/api/getAllKittyPayments');
+// const allKittyBills = kittyBillsResponse.data;
+
+// const chapterKittyBills = allKittyBills.filter(bill => bill.chapter_id === chapterId && bill.delete_status === 0);
+
+// // 2. Fetch chapter meeting day and billing frequency
+// const chaptersResponse = await axios.get('https://backend.bninewdelhi.com/api/chapters');
+// console.log('chapterId:', chapterId, 'typeof:', typeof chapterId);
+// console.log('chapter_id in API:', chaptersResponse.data.map(ch => ch.chapter_id));
+// const chapterInfo = chaptersResponse.data.find(ch => Number(ch.chapter_id) === Number(chapterId));
+
+// if (!chapterInfo) {
+//     throw new Error('Chapter not found for meeting day');
+// }
+
+// const chapterMeetingDay = chapterInfo.chapter_meeting_day;
+// const chapterMeetingFees = chapterInfo.chapter_kitty_fees;
+// const kittyBillingFrequency = chapterInfo.kitty_billing_frequency;
+
+// console.log('�� Chapter Info:', {
+//     meetingDay: chapterMeetingDay,
+//     meetingFees: chapterMeetingFees,
+//     billingFrequency: kittyBillingFrequency
+// });
+
+// // Function to check if meeting day has passed for the week
+// function hasMeetingDayPassed(dop, meetingDay) {
+//     const daysOfWeek = {
+//         Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+//         Thursday: 4, Friday: 5, Saturday: 6
+//     };
+    
+//     const dopDate = new Date(dop);
+//     const meetingDayNum = daysOfWeek[meetingDay];
+    
+//     // Find the meeting day of the same week
+//     const meetingDate = new Date(dopDate);
+//     while (meetingDate.getDay() !== meetingDayNum) {
+//         meetingDate.setDate(meetingDate.getDate() - 1);
+//     }
+    
+//     // If meeting date is before DOP, meeting has passed
+//     return meetingDate < dopDate;
+// }
+
+// // Calculate Kitty Amount
+// let totalKittyAmount = 0;
+// let kittyDueDate = null;
+// let kittyPenalty = null;
+
+// console.log('🔍 Starting kitty calculation...');
+// console.log('📅 Date of Publishing:', dateOfPublishing);
+
+// for (const bill of chapterKittyBills) {
+//     // Convert dates to IST
+//     const billStartDate = bill.raised_on ? 
+//         new Date(new Date(bill.raised_on).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })) : 
+//         new Date(bill.payment_date);
+    
+//     const totalWeeks = bill.total_weeks;
+
+//     // Calculate bill end date based on bill type and raised_on date
+//     let billEndDate;
+//     const raisedOnDate = new Date(new Date(bill.raised_on).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+//     const raisedOnMonth = raisedOnDate.getMonth(); // 0-11
+//     const raisedOnYear = raisedOnDate.getFullYear();
+
+//     console.log('📅 Bill Type:', bill.bill_type);
+//     console.log('📅 Raised On Date:', raisedOnDate);
+//     console.log('📅 Total Weeks:', totalWeeks);
+
+//     // Fix the bill type check to be case-insensitive and handle the typo
+//     const billType = bill.bill_type.toLowerCase().trim();
+//     if (billType === 'quartely' || billType === 'quarterly') {
+//         // For quarterly, end date is 3 months from raised_on
+//         billEndDate = new Date(raisedOnYear, raisedOnMonth + 3, 0); // Last day of the 3rd month
+//         console.log('📅 Calculated End Date for Quarterly:', billEndDate);
+//     } else if (billType === 'half-yearly') {
+//         billEndDate = new Date(raisedOnYear, raisedOnMonth + 6, 0);
+//     } else if (billType === 'yearly') {
+//         billEndDate = new Date(raisedOnYear, raisedOnMonth + 12, 0);
+//     } else if (billType === 'weekly') {
+//         billEndDate = new Date(raisedOnDate);
+//         billEndDate.setDate(billEndDate.getDate() + 7);
+//     } else {
+//         console.log('⚠️ Unknown bill type:', bill.bill_type);
+//         continue;
+//     }
+
+//     const billKittyDueDate = new Date(new Date(bill.kitty_due_date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+
+//     console.log('📊 Processing bill:', {
+//         billStartDate: billStartDate.toISOString(),
+//         billEndDate: billEndDate.toISOString(),
+//         kittyDueDate: billKittyDueDate.toISOString(),
+//         totalWeeks: totalWeeks,
+//         billType: bill.bill_type
+//     });
+
+//     if (dateOfPublishing > billEndDate) {
+//         console.log('⏭️ Skipping past bill');
+//         continue;
+//     }
+
+//     // Capture kittyDueDate and kittyPenalty from the first eligible bill
+//     if (!kittyDueDate && bill.kitty_due_date) {
+//         kittyDueDate = bill.kitty_due_date;
+//         kittyPenalty = bill.penalty_fee || 0;
+//         console.log('📌 Captured kitty due date:', kittyDueDate);
+//         console.log('💰 Kitty penalty:', kittyPenalty);
+//     }
+
+//     // Check if DOP is after raised_on date
+//     if (dateOfPublishing > billStartDate) {
+//         console.log('📅 DOP is after raised_on date, calculating weeks from DOP');
+        
+//         // Calculate weeks from DOP to bill end date
+//         const weeksFromDOP = Math.ceil((billEndDate - dateOfPublishing) / (7 * 24 * 60 * 60 * 1000));
+//         console.log('📅 Weeks from DOP to bill end:', weeksFromDOP);
+        
+//         // Calculate amount based on weeks from DOP
+//         const weeklyAmount = parseFloat(chapterMeetingFees);
+//         totalKittyAmount += weeksFromDOP * weeklyAmount;
+        
+//         console.log('💵 Weekly amount:', weeklyAmount);
+//         console.log('💵 Total kitty amount before first meeting deduction:', totalKittyAmount);
+        
+//         // Always deduct first meeting fee regardless of meeting day
+//         totalKittyAmount -= weeklyAmount;
+//         console.log('💵 Total kitty amount after first meeting deduction:', totalKittyAmount);
+        
+//     } else {
+//         console.log('📅 DOP is before or equal to raised_on date, using total weeks from API');
+        
+//         // Calculate amount based on total weeks from API
+//         const weeklyAmount = parseFloat(chapterMeetingFees);
+//         totalKittyAmount += totalWeeks * weeklyAmount;
+        
+//         console.log('💵 Weekly amount:', weeklyAmount);
+//         console.log('📅 Total weeks from API:', totalWeeks);
+//         console.log('💵 Total kitty amount:', totalKittyAmount);
+//     }
+// }
+
+
+// // If somehow not found, fallback
+// if (!kittyDueDate) {
+//     kittyDueDate = new Date();
+//     console.log('⚠️ No kitty due date found, using current date');
+// }
+// if (kittyPenalty === null || kittyPenalty === undefined) {
+//     kittyPenalty = 0;
+//     console.log('⚠️ No kitty penalty found, using 0');
+// }
+
+// // Check if publishing date exceeds kitty due date
+// const publishingDate = new Date(dateOfPublishing);
+// const dueDate = new Date(kittyDueDate);
+// let finalPenalty = 0;
+
+// if (publishingDate > dueDate) {
+//     console.log('⚠️ Publishing date exceeds kitty due date');
+//     console.log('�� Publishing date:', publishingDate);
+//     console.log('📅 Due date:', dueDate);
+//     finalPenalty = kittyPenalty;
+//     console.log('💰 Adding penalty:', finalPenalty);
+// }
+
+// // Calculate final amount
+// const finalAmountToPay = meeting_opening_balance + totalKittyAmount;
+
+// console.log('📊 Final calculation:', {
+//     meetingOpeningBalance: meeting_opening_balance,
+//     totalKittyAmount: totalKittyAmount,
+//     finalPenalty: finalPenalty,
+//     finalAmountToPay: finalAmountToPay
+// });
+
+// // Update member's meeting_payable_amount
+// await con.query(
+//     `UPDATE member 
+//      SET meeting_payable_amount = COALESCE(meeting_payable_amount, 0) + $1
+//      WHERE member_id = $2`,
+//     [finalAmountToPay, member_id]
+// );
+
+// console.log('✅ Updated member meeting_payable_amount:', finalAmountToPay);
+
+
+//           // 5. Insert into member_accolades
+//           // 5. Insert into member_accolades
+// const insertAccoladeQuery = `
+// INSERT INTO member_accolades 
+// (member_id, accolade_id, issue_date, count, given_date, comment)
+// VALUES ($1, $2, $3, $4, $5, $6)
+// RETURNING *
+// `;
+
+// // First accolade (ID: 1)
+// const accoladeValues1 = [
+// member_id,           // member_id
+// 1,                   // accolade_id (fixed as 1)
+// new Date(),          // issue_date (current date)
+// 1,                   // count
+// null,                // given_date
+// null                 // comment
+// ];
+
+// const accoladeResult1 = await con.query(insertAccoladeQuery, accoladeValues1);
+// console.log('✅ Added member accolade 1:', accoladeResult1.rows[0]);
+
+// // Second accolade (ID: 2)
+// const accoladeValues2 = [
+// member_id,           // member_id
+// 2,                   // accolade_id
+// new Date(),          // issue_date
+// 1,                   // count
+// null,                // given_date
+// null                 // comment
+// ];
+
+// const accoladeResult2 = await con.query(insertAccoladeQuery, accoladeValues2);
+// console.log('✅ Added member accolade 2:', accoladeResult2.rows[0]);
+
+// // Third accolade (ID: 10)
+// const accoladeValues3 = [
+// member_id,           // member_id
+// 10,                  // accolade_id
+// new Date(),          // issue_date
+// 1,                   // count
+// null,                // given_date
+// null                 // comment
+// ];
+
+// const accoladeResult3 = await con.query(insertAccoladeQuery, accoladeValues3);
+// console.log('✅ Added member accolade 10:', accoladeResult3.rows[0]);
+
+// // Fourth accolade (ID: 8)
+// const accoladeValues4 = [
+// member_id,           // member_id
+// 8,                   // accolade_id
+// new Date(),          // issue_date
+// 1,                   // count
+// null,                // given_date
+// null                 // comment
+// ];
+
+// const accoladeResult4 = await con.query(insertAccoladeQuery, accoladeValues4);
+// console.log('✅ Added member accolade 8:', accoladeResult4.rows[0]);
+//       }
+//   } catch (error) {
+//       console.error('❌ Error converting visitor to member:', error);
+//       // Continue with the rest of the function even if member creation fails
+//   }
+// }
+
+
+//       // Keep existing slab wise comment check
+//       const isOnlySlabWiseCommentUpdate = slab_wise_comment && 
+//           !approve_status && 
+//           !ro_comment && 
+//           pickup_status === undefined && 
+//           !pickup_date && 
+//           !given_status;
+
+//       if (!chapter_requisition_id) {
+//           console.log('❌ Missing chapter_requisition_id in request body');
+//           return res.status(400).json({
+//               success: false,
+//               message: "chapter_requisition_id is required in request body"
+//           });
+//       }
+
+//       // Get existing requisition data
+//       const existingRequisition = await con.query(
+//           'SELECT * FROM chapter_requisition WHERE chapter_requisition_id = $1',
+//           [chapter_requisition_id]
+//       );
+
+//       if (existingRequisition.rows.length === 0) {
+//           console.log('❌ No requisition found with ID:', chapter_requisition_id);
+//           return res.status(404).json({
+//               success: false,
+//               message: "Requisition not found"
+//           });
+//       }
+
+//       let finalApproveStatus = {};
+//       let finalRoComment = {};
+//       let finalGivenStatus = {};
+
+//       // Helper function to safely parse JSON
+//       const safeJSONParse = (str) => {
+//           if (!str) return {};
+//           try {
+//               return typeof str === 'object' ? str : JSON.parse(str);
+//           } catch (e) {
+//               console.error('Error parsing JSON:', e);
+//               return {};
+//           }
+//       };
+
+//       // Check if this is only a pickup status update
+//       const isOnlyPickupUpdate = (pick_up_status_ro !== undefined || pick_up_status_ro_comment !== undefined) && 
+//           !approve_status && 
+//           !ro_comment && 
+//           !given_status && 
+//           !slab_wise_comment;
+
+//       if (isOnlyPickupUpdate) {
+//           finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
+//           finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
+//           finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
+//       } else if (isVisitorRequest) {
+//           finalApproveStatus = approve_status || existingRequisition.rows[0].approve_status;
+//           finalRoComment = ro_comment || existingRequisition.rows[0].ro_comment;
+//           finalGivenStatus = given_status || existingRequisition.rows[0].given_status || '{}';
+//       } else {
+//           finalApproveStatus = safeJSONParse(existingRequisition.rows[0].approve_status);
+//           finalRoComment = safeJSONParse(existingRequisition.rows[0].ro_comment);
+//           finalGivenStatus = safeJSONParse(existingRequisition.rows[0].given_status);
+
+//           if (approve_status) {
+//               finalApproveStatus = { ...finalApproveStatus, ...safeJSONParse(approve_status) };
+//           }
+//           if (ro_comment) {
+//               finalRoComment = { ...finalRoComment, ...safeJSONParse(ro_comment) };
+//           }
+//           if (given_status) {
+//               finalGivenStatus = { ...finalGivenStatus, ...safeJSONParse(given_status) };
+//           }
+//       }
+
+//           // Handle member_accolades insertion for approved statuses
+//           // const [memberId, accoladeId] = key.split('_').map(Number);
+//           if (!isVisitorRequest && approve_status) {
+//             const approveStatusObj = safeJSONParse(approve_status);
+
+// for (const [key, status] of Object.entries(approveStatusObj)) {
+//     const [memberId, accoladeId] = key.split('_').map(Number);
+
+//     if (status === 'approved') {
+//       console.log(`🎯 Processing approved accolade for member ${memberId}, accolade ${accoladeId}`);
+  
+//       // First check if this combination already exists
+//       const checkQuery = `
+//           SELECT id FROM member_accolades 
+//           WHERE member_id = $1 AND accolade_id = $2
+//           LIMIT 1
+//       `;
+      
+//       const existingRecord = await con.query(checkQuery, [memberId, accoladeId]);
+      
+//       if (existingRecord.rows.length === 0) { 
+//           const insertQuery = `
+//               INSERT INTO member_accolades 
+//               (member_id, accolade_id, issue_date, count, given_date, comment)
+//               VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL)
+//               RETURNING *
+//           `;
+  
+//           const insertResult = await con.query(insertQuery, [memberId, accoladeId]);
+//           console.log('✅ Inserted new record into member_accolades:', insertResult.rows[0]);
+          
+//           // Additional condition: If accoladeId is 1, also insert accolades 8, 2, and 10
+//           if (accoladeId === 1) {
+//               const additionalAccolades = [8, 2, 10];
+              
+//               for (const additionalAccoladeId of additionalAccolades) {
+//                   // Check if this additional accolade already exists for the member
+//                   const additionalCheckQuery = `
+//                       SELECT id FROM member_accolades 
+//                       WHERE member_id = $1 AND accolade_id = $2
+//                       LIMIT 1
+//                   `;
+                  
+//                   const additionalExistingRecord = await con.query(additionalCheckQuery, [memberId, additionalAccoladeId]);
+                  
+//                   if (additionalExistingRecord.rows.length === 0) {
+//                       const additionalInsertQuery = `
+//                           INSERT INTO member_accolades 
+//                           (member_id, accolade_id, issue_date, count, given_date, comment)
+//                           VALUES ($1, $2, CURRENT_DATE, 1, NULL, NULL)
+//                           RETURNING *
+//                       `;
+                      
+//                       const additionalInsertResult = await con.query(additionalInsertQuery, [memberId, additionalAccoladeId]);
+//                       console.log(`✅ Inserted additional accolade ${additionalAccoladeId} for member ${memberId}:`, additionalInsertResult.rows[0]);
+//                   } else {
+//                       console.log(`ℹ️ Skipping additional accolade ${additionalAccoladeId}: Already exists for member ${memberId}`);
+//                   }
+//               }
+//           }
+//       } else {
+//           console.log(`ℹ️ Skipping insert: Accolade ${accoladeId} already exists for member ${memberId}`);
+//       }
+//   }
+
+//     // NEW: Remove member_accolades record if status is declined
+//     if (status === 'declined') {
+//         console.log(`🗑️ Removing declined accolade for member ${memberId}, accolade ${accoladeId}`);
+//         const deleteQuery = `
+//             DELETE FROM member_accolades
+//             WHERE member_id = $1 AND accolade_id = $2
+//         `;
+//         await con.query(deleteQuery, [memberId, accoladeId]);
+//     }
+// }
+//           }
+
+//           // Handle given status updates - Only update member_accolades table
+//           if (given_status) {
+//           console.log('📝 Processing member accolade updates for given status:', given_status);
+          
+//           const givenStatusObj = safeJSONParse(given_status);
+          
+//           for (const [key, value] of Object.entries(givenStatusObj)) {
+//               if (value && value.date) {
+//                   const [memberId, accoladeId] = key.split('_').map(Number);
+//                       console.log(`🎯 Processing given status for member ${memberId}, accolade ${accoladeId}`);
+
+//                       // Update member_accolades table
+//                       const updateAccoladeQuery = `
+//                           UPDATE member_accolades 
+//                           SET given_date = $1
+//                           WHERE member_id = $2 
+//                           AND accolade_id = $3 
+//                           AND given_date IS NULL
+//                           RETURNING *
+//                       `;
+
+//                       const accoladeResult = await con.query(updateAccoladeQuery, [
+//                           value.date,
+//                           memberId,
+//                           accoladeId
+//                       ]);
+
+//                       if (accoladeResult.rows.length > 0) {
+//                           console.log('✅ Updated member_accolades:', accoladeResult.rows[0]);
+//                       } else {
+//                           console.log(`ℹ️ No eligible record found to update given_date for member ${memberId}, accolade ${accoladeId}`);
+//                   }
+//               }
+//           }
+//       }
+
+//       const finalPickupDate = pickup_date && pickup_date.trim() !== '' ? pickup_date : existingRequisition.rows[0].pickup_date;
+
+//       const query = `
+//           UPDATE chapter_requisition 
+//           SET 
+//               approve_status = $1,
+//               ro_comment = $2,
+//               pickup_status = $3,
+//               pickup_date = $4,
+//               given_status = $5,
+//               slab_wise_comment = $6,
+//               pick_up_status_ro = $7,
+//               pick_up_status_ro_comment = $8
+//           WHERE chapter_requisition_id = $9
+//           RETURNING *
+//       `;
+
+//       const prepareValue = (value) => {
+//           if (!value) return '{}';
+          
+//           if (typeof value === 'string') {
+//               try {
+//                   const parsed = JSON.parse(value);
+//                   return JSON.stringify(parsed);
+//               } catch (e) {
+//                   return value;
+//               }
+//           }
+          
+//           return JSON.stringify(value);
+//       };
+
+//       const values = [
+//           prepareValue(finalApproveStatus),
+//           prepareValue(finalRoComment),
+//           isOnlySlabWiseCommentUpdate ? existingRequisition.rows[0].pickup_status : 
+//               (pickup_status !== undefined ? pickup_status : existingRequisition.rows[0].pickup_status),
+//           finalPickupDate,
+//           prepareValue(finalGivenStatus),
+//           slab_wise_comment || existingRequisition.rows[0].slab_wise_comment,
+//           pick_up_status_ro !== undefined ? pick_up_status_ro : existingRequisition.rows[0].pick_up_status_ro,
+//           pick_up_status_ro_comment !== undefined ? pick_up_status_ro_comment : existingRequisition.rows[0].pick_up_status_ro_comment,
+//           chapter_requisition_id
+//       ];
+
+//       const result = await con.query(query, values);
+//       const updatedRequisition = result.rows[0];
+
+//           await con.query('COMMIT');
+//       console.log('✅ Chapter Requisition updated successfully:', updatedRequisition);
+
+//       res.json({
+//           success: true,
+//           message: "Chapter requisition updated successfully",
+//           data: updatedRequisition
+//       });
+
+//       } catch (error) {
+//           await con.query('ROLLBACK');
+//           throw error;
+//       }
+
+//   } catch (error) {
+//       console.error('❌ Error in updateChapterRequisition:', error);
+//       console.error('Error stack:', error.stack);
+//       res.status(500).json({
+//           success: false,
+//           message: "Error updating chapter requisition",
+//           error: error.message
+//       });
+//   }
+// };
 
 
 const updateMemberRequisition = async (req, res) => {
@@ -13420,8 +14117,15 @@ const applyKittyPenalties = async (req, res) => {
   }
 };
 
-
-
+const getDisapprovedAccolades = async (req, res) => {
+  try {
+    const result = await con.query("SELECT * FROM disapproved_accolades");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching disapproved accolades:", error);
+    res.status(500).send("Error fetching disapproved accolades");
+  }
+};
 module.exports = {
   addInvoiceManually,
   getPendingAmount,
@@ -13611,5 +14315,6 @@ module.exports = {
   getConvenienceCharge,
   updateMemberPendingAmount,
   updateAllMembersPendingAmount,
-  applyKittyPenalties
+  applyKittyPenalties,
+  getDisapprovedAccolades
 };
