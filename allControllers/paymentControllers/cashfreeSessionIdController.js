@@ -998,6 +998,37 @@ const webhookSettlementStatus = async (req, res) => {
     const settled_on = settlement.settled_on;
 
     try {
+      // Convert Cashfree time format to IST for comparison
+      // Cashfree sends: "2025-06-30 20:53:23" (IST)
+      // We need to convert this to match our database format
+      
+      // Convert payment_from and payment_till to IST datetime objects
+      const convertToIST = (timeString) => {
+        if (!timeString) return null;
+        // Parse the time string and assume it's in IST
+        const [datePart, timePart] = timeString.split(' ');
+        const [year, month, day] = datePart.split('-');
+        const [hour, minute, second] = timePart.split(':');
+        
+        // Create date in IST (UTC+5:30)
+        const istDate = new Date(Date.UTC(
+          parseInt(year), 
+          parseInt(month) - 1, // Month is 0-indexed
+          parseInt(day),
+          parseInt(hour) - 5, // Convert IST to UTC
+          parseInt(minute) - 30,
+          parseInt(second)
+        ));
+        
+        return istDate.toISOString();
+      };
+
+      const paymentFromIST = convertToIST(payment_from);
+      const paymentTillIST = convertToIST(payment_till);
+
+      console.log('Original Cashfree times:', { payment_from, payment_till });
+      console.log('Converted to IST:', { paymentFromIST, paymentTillIST });
+
       const updateQuery = `
         UPDATE transactions
         SET is_settled = true, settlement_id = $1, utr = $2, settled_on = $3
@@ -1006,7 +1037,7 @@ const webhookSettlementStatus = async (req, res) => {
           AND payment_completion_time <= $5
           AND payment_group NOT IN ('cash', 'visitor_payment')
       `;
-      const updateValues = [settlement_id, utr, settled_on, payment_from, payment_till];
+      const updateValues = [settlement_id, utr, settled_on, paymentFromIST, paymentTillIST];
       const result = await db.query(updateQuery, updateValues);
       console.log(`Reconciliation: ${result.rowCount} transactions marked as settled for settlement_id ${settlement_id}`);
     } catch (err) {
@@ -1016,7 +1047,7 @@ const webhookSettlementStatus = async (req, res) => {
     // Send email notification
     const mailOptions = {
       from: 'info@bninewdelhi.in',
-      to: 'scriptforprince@gmail.com',
+      to: 'rawatanubhav085@gmail.com',
       cc: 'rajashukla@outlook.com',
       subject: 'Cashfree Settlement Webhook Received',
       html: `

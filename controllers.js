@@ -2181,11 +2181,43 @@ const exportMembersToExcel = async (req, res) => {
     res.status(500).send("Error exporting members");
   }
 };
-
 const exportOrdersToExcel = async (req, res) => {
   try {
     // Fetch all orders from the database
     const result = await con.query("SELECT * FROM Orders");
+
+    // Function to get state from GST number
+    const getStateFromGST = (gstNumber) => {
+      if (!gstNumber || gstNumber.length < 2) return null;
+      
+      const firstTwoDigits = gstNumber.substring(0, 2);
+      
+      const stateMap = {
+        '01': 'JAMMU AND KASHMIR',
+        '02': 'HIMACHAL PRADESH',
+        '03': 'PUNJAB',
+        '04': 'CHANDIGARH',
+        '05': 'UTTARAKHAND',
+        '06': 'HARYANA',
+        '07': 'DELHI',
+        '08': 'RAJASTHAN',
+        '09': 'UTTAR PRADESH',
+        '10': 'BIHAR',
+        '12': 'ARUNACHAL PRADESH',
+        '13': 'NAGALAND',
+        '14': 'MANIPUR',
+        '15': 'MIZORAM',
+        '18': 'ASSAM',
+        '19': 'WEST BENGAL',
+        '20': 'JHARKHAND',
+        '24': 'GUJARAT',
+        '27': 'MAHARASHTRA',
+        '29': 'KARNATAKA',
+        '30': 'GOA'
+      };
+      
+      return stateMap[firstTwoDigits] || null;
+    };
 
     // Prepare data for Excel
     const orders = result.rows.map((order) => ({
@@ -2215,6 +2247,37 @@ const exportOrdersToExcel = async (req, res) => {
       updated_at: order.updated_at,
     }));
 
+    // Add GST and State columns to each order
+    for (let order of orders) {
+      let gstValue = null;
+      let stateValue = null;
+
+      // Check if payment_note is visitor payment
+      if (order.payment_note && (order.payment_note.toLowerCase() === 'visitor-payment' || order.payment_note.toLowerCase() === 'visitor payment')) {
+        // For visitor payments, get from order fields
+        gstValue = order.visitor_gstin || null;
+        stateValue = order.visitor_state || null;
+      } else {
+        // For member payments, get from member table
+        if (order.customer_id) {
+          const memberResult = await con.query("SELECT member_company_state, member_gst_number FROM member WHERE member_id = $1", [order.customer_id]);
+          if (memberResult.rows.length > 0) {
+            stateValue = memberResult.rows[0].member_company_state || null;
+            gstValue = memberResult.rows[0].member_gst_number || null;
+          }
+        }
+      }
+
+      // If state is not found but GST is available, get state from GST number
+      if ((!stateValue || stateValue === "0" || stateValue === "") && gstValue) {
+        stateValue = getStateFromGST(gstValue);
+      }
+
+      // Add the new columns
+      order.GST = gstValue;
+      order.State = stateValue;
+    }
+
     // Create an Excel workbook and sheet
     const wb = xlsx.utils.book_new();
     const ws = xlsx.utils.json_to_sheet(orders);
@@ -2240,6 +2303,66 @@ const exportOrdersToExcel = async (req, res) => {
     res.status(500).send("Error exporting orders");
   }
 };
+
+
+// const exportOrdersToExcel = async (req, res) => {
+//   try {
+//     // Fetch all orders from the database
+//     const result = await con.query("SELECT * FROM Orders");
+
+//     // Prepare data for Excel
+//     const orders = result.rows.map((order) => ({
+//       order_id: order.order_id,
+//       order_amount: order.order_amount,
+//       order_currency: order.order_currency,
+//       payment_gateway_id: order.payment_gateway_id,
+//       customer_id: order.customer_id,
+//       chapter_id: order.chapter_id,
+//       region_id: order.region_id,
+//       universal_link_id: order.universal_link_id,
+//       ulid: order.ulid,
+//       order_status: order.order_status,
+//       payment_session_id: order.payment_session_id,
+//       one_time_registration_fee: order.one_time_registration_fee,
+//       membership_fee: order.membership_fee,
+//       tax: order.tax,
+//       member_name: order.member_name,
+//       customer_email: order.customer_email,
+//       customer_phone: order.customer_phone,
+//       gstin: order.gstin,
+//       company: order.company,
+//       mobile_number: order.mobile_number,
+//       renewal_year: order.renewal_year,
+//       payment_note: order.payment_note,
+//       created_at: order.created_at, // Assuming you have timestamp fields
+//       updated_at: order.updated_at,
+//     }));
+
+//     // Create an Excel workbook and sheet
+//     const wb = xlsx.utils.book_new();
+//     const ws = xlsx.utils.json_to_sheet(orders);
+
+//     // Append the sheet to the workbook
+//     xlsx.utils.book_append_sheet(wb, ws, "Orders");
+
+//     // Set the file name
+//     const filename = "orders.xlsx";
+
+//     // Set headers for the file download
+//     res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+//     res.setHeader(
+//       "Content-Type",
+//       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+//     );
+
+//     // Write the Excel file to the response
+//     const buffer = xlsx.write(wb, { bookType: "xlsx", type: "buffer" });
+//     res.send(buffer);
+//   } catch (error) {
+//     console.error("Error exporting orders:", error);
+//     res.status(500).send("Error exporting orders");
+//   }
+// };
 
 const exportTransactionsToExcel = async (req, res) => {
   try {
