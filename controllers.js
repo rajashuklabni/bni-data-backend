@@ -2181,6 +2181,7 @@ const exportMembersToExcel = async (req, res) => {
     res.status(500).send("Error exporting members");
   }
 };
+
 const exportOrdersToExcel = async (req, res) => {
   try {
     // Fetch all orders from the database
@@ -2243,27 +2244,40 @@ const exportOrdersToExcel = async (req, res) => {
       mobile_number: order.mobile_number,
       renewal_year: order.renewal_year,
       payment_note: order.payment_note,
-      created_at: order.created_at, // Assuming you have timestamp fields
+      created_at: order.created_at,
       updated_at: order.updated_at,
+      visitor_gstin: order.visitor_gstin,
+      visitor_state: order.visitor_state,
+      visitor_pincode: order.visitor_pincode,
     }));
 
-    // Add GST and State columns to each order
+    // Add GST, State and Pincode columns to each order
     for (let order of orders) {
       let gstValue = null;
       let stateValue = null;
+      let pincodeValue = null;
 
       // Check if payment_note is visitor payment
       if (order.payment_note && (order.payment_note.toLowerCase() === 'visitor-payment' || order.payment_note.toLowerCase() === 'visitor payment')) {
         // For visitor payments, get from order fields
-        gstValue = order.visitor_gstin || null;
+        gstValue = order.visitor_gstin || 'N/A';
         stateValue = order.visitor_state || null;
+        pincodeValue = order.visitor_pincode || null;
       } else {
         // For member payments, get from member table
         if (order.customer_id) {
-          const memberResult = await con.query("SELECT member_company_state, member_gst_number FROM member WHERE member_id = $1", [order.customer_id]);
+          const memberResult = await con.query("SELECT member_company_state, member_gst_number, address_pincode FROM member WHERE member_id = $1", [order.customer_id]);
           if (memberResult.rows.length > 0) {
             stateValue = memberResult.rows[0].member_company_state || null;
             gstValue = memberResult.rows[0].member_gst_number || null;
+            pincodeValue = memberResult.rows[0].address_pincode || null;
+            
+            // If GST is N/A and state is 0/null, check pincode for Delhi
+            if ((!gstValue || gstValue === 'N/A') && (!stateValue || stateValue === '0' || stateValue === '')) {
+              if (pincodeValue && pincodeValue.toString().startsWith('1100')) {
+                stateValue = 'Delhi';
+              }
+            }
           }
         }
       }
@@ -2273,9 +2287,25 @@ const exportOrdersToExcel = async (req, res) => {
         stateValue = getStateFromGST(gstValue);
       }
 
+      // If GST is still not found, set as 'N/A'
+      if (!gstValue) {
+        gstValue = 'N/A';
+      }
+
+      // If state is still not found, set as null or 0
+      if (!stateValue || stateValue === "") {
+        stateValue = null; // or use "0" if you prefer
+      }
+
+      // If pincode is still not found, set as null
+      if (!pincodeValue || pincodeValue === "") {
+        pincodeValue = null;
+      }
+
       // Add the new columns
       order.GST = gstValue;
       order.State = stateValue;
+      order.Pincode = pincodeValue;
     }
 
     // Create an Excel workbook and sheet
@@ -2303,6 +2333,131 @@ const exportOrdersToExcel = async (req, res) => {
     res.status(500).send("Error exporting orders");
   }
 };
+
+
+
+// const exportOrdersToExcel = async (req, res) => {
+//   try {
+//     // Fetch all orders from the database
+//     const result = await con.query("SELECT * FROM Orders");
+
+//     // Function to get state from GST number
+//     const getStateFromGST = (gstNumber) => {
+//       if (!gstNumber || gstNumber.length < 2) return null;
+      
+//       const firstTwoDigits = gstNumber.substring(0, 2);
+      
+//       const stateMap = {
+//         '01': 'JAMMU AND KASHMIR',
+//         '02': 'HIMACHAL PRADESH',
+//         '03': 'PUNJAB',
+//         '04': 'CHANDIGARH',
+//         '05': 'UTTARAKHAND',
+//         '06': 'HARYANA',
+//         '07': 'DELHI',
+//         '08': 'RAJASTHAN',
+//         '09': 'UTTAR PRADESH',
+//         '10': 'BIHAR',
+//         '12': 'ARUNACHAL PRADESH',
+//         '13': 'NAGALAND',
+//         '14': 'MANIPUR',
+//         '15': 'MIZORAM',
+//         '18': 'ASSAM',
+//         '19': 'WEST BENGAL',
+//         '20': 'JHARKHAND',
+//         '24': 'GUJARAT',
+//         '27': 'MAHARASHTRA',
+//         '29': 'KARNATAKA',
+//         '30': 'GOA'
+//       };
+      
+//       return stateMap[firstTwoDigits] || null;
+//     };
+
+//     // Prepare data for Excel
+//     const orders = result.rows.map((order) => ({
+//       order_id: order.order_id,
+//       order_amount: order.order_amount,
+//       order_currency: order.order_currency,
+//       payment_gateway_id: order.payment_gateway_id,
+//       customer_id: order.customer_id,
+//       chapter_id: order.chapter_id,
+//       region_id: order.region_id,
+//       universal_link_id: order.universal_link_id,
+//       ulid: order.ulid,
+//       order_status: order.order_status,
+//       payment_session_id: order.payment_session_id,
+//       one_time_registration_fee: order.one_time_registration_fee,
+//       membership_fee: order.membership_fee,
+//       tax: order.tax,
+//       member_name: order.member_name,
+//       customer_email: order.customer_email,
+//       customer_phone: order.customer_phone,
+//       gstin: order.gstin,
+//       company: order.company,
+//       mobile_number: order.mobile_number,
+//       renewal_year: order.renewal_year,
+//       payment_note: order.payment_note,
+//       created_at: order.created_at, // Assuming you have timestamp fields
+//       updated_at: order.updated_at,
+//     }));
+
+//     // Add GST and State columns to each order
+//     for (let order of orders) {
+//       let gstValue = null;
+//       let stateValue = null;
+
+//       // Check if payment_note is visitor payment
+//       if (order.payment_note && (order.payment_note.toLowerCase() === 'visitor-payment' || order.payment_note.toLowerCase() === 'visitor payment')) {
+//         // For visitor payments, get from order fields
+//         gstValue = order.visitor_gstin || null;
+//         stateValue = order.visitor_state || null;
+//       } else {
+//         // For member payments, get from member table
+//         if (order.customer_id) {
+//           const memberResult = await con.query("SELECT member_company_state, member_gst_number FROM member WHERE member_id = $1", [order.customer_id]);
+//           if (memberResult.rows.length > 0) {
+//             stateValue = memberResult.rows[0].member_company_state || null;
+//             gstValue = memberResult.rows[0].member_gst_number || null;
+//           }
+//         }
+//       }
+
+//       // If state is not found but GST is available, get state from GST number
+//       if ((!stateValue || stateValue === "0" || stateValue === "") && gstValue) {
+//         stateValue = getStateFromGST(gstValue);
+//       }
+
+//       // Add the new columns
+//       order.GST = gstValue;
+//       order.State = stateValue;
+//     }
+
+//     // Create an Excel workbook and sheet
+//     const wb = xlsx.utils.book_new();
+//     const ws = xlsx.utils.json_to_sheet(orders);
+
+//     // Append the sheet to the workbook
+//     xlsx.utils.book_append_sheet(wb, ws, "Orders");
+
+//     // Set the file name
+//     const filename = "orders.xlsx";
+
+//     // Set headers for the file download
+//     res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+//     res.setHeader(
+//       "Content-Type",
+//       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+//     );
+
+//     // Write the Excel file to the response
+//     const buffer = xlsx.write(wb, { bookType: "xlsx", type: "buffer" });
+//     res.send(buffer);
+//   } catch (error) {
+//     console.error("Error exporting orders:", error);
+//     res.status(500).send("Error exporting orders");
+//   }
+// };
 
 
 // const exportOrdersToExcel = async (req, res) => {
@@ -4961,7 +5116,7 @@ const getAllMemberCredit = async (req, res) => {
 
 
 const addMemberCredit = async (req, res) => {
-  let { member_id, chapter_id, credit_amount, credit_date, credit_type } = req.body;
+  let { member_id, chapter_id, credit_amount, credit_date, credit_type, credited_by } = req.body;
 
   // Ensure member_id is always an array
   if (!Array.isArray(member_id)) {
@@ -4971,15 +5126,15 @@ const addMemberCredit = async (req, res) => {
 
   try {
     const query = `
-      INSERT INTO memberkittycredit (member_id, chapter_id, credit_amount, credit_date, is_adjusted, credit_type) 
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO memberkittycredit (member_id, chapter_id, credit_amount, credit_date, is_adjusted, credit_type, credited_by ) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *;
     `;
 
     let insertedRecords = [];
 
     for (const id of member_id) {
-      const values = [parseInt(id), chapter_id, credit_amount, credit_date, false, credit_type]; // Ensure member_id is an integer
+      const values = [parseInt(id), chapter_id, credit_amount, credit_date, false, credit_type, credited_by]; // Ensure member_id is an integer
       const result = await con.query(query, values);
       insertedRecords.push(result.rows[0]);
       
@@ -5448,9 +5603,10 @@ const addMemberWriteOff = async (req, res) => {
         writeoff_comment,
         member_name,
         member_email,
-        member_phone
+        member_phone,
+        system_entry_date
       ) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *;
     `;
 
@@ -5495,7 +5651,8 @@ const updateBankOrderQuery = `
         rightoff_comment,
         member_name || null,      // Add new fields with null fallback
         member_email || null,
-        member_phone || null
+        member_phone || null,
+        new Date().toLocaleString()
       ];
 
       const result = await con.query(insertQuery, values);
@@ -10704,6 +10861,192 @@ else {
   }
 };
 
+const addBulkKittyPaymentsManually = async (req, res) => {
+  try {
+    console.log('📝 Starting bulk manual kitty payment process');
+
+    const payments = req.body.payments;
+    if (!Array.isArray(payments) || payments.length === 0) {
+      return res.status(400).json({ success: false, message: 'No payments provided' });
+    }
+
+    // Arrays to collect results
+    const orderResults = [];
+    const transactionResults = [];
+    const memberResults = [];
+
+    for (const payment of payments) {
+      const {
+        member_id,
+        chapter_id,
+        region_id,
+        kitty_bill_id,
+        order_amount,
+        tax_amount,
+        member_first_name,
+        member_last_name,
+        member_mobilenumber,
+        member_company_name,
+        member_gstin,
+        payment_type, // "full" or "partial"
+        remaining_balance_with_gst,
+        created_at,
+        mode_of_payment
+      } = payment;
+
+      // Generate unique IDs
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const order_id = `order_${Date.now()}${randomString}`;
+      const payment_session_id = `session_${Date.now()}${Math.random().toString(36).substring(2, 15)}payment`;
+      const cf_payment_id = `TRX_${Date.now()}${Math.random().toString(36).substring(2, 8)}`;
+
+      console.log('🆔 Generated IDs:', { order_id, payment_session_id, cf_payment_id });
+
+      // Prepare order data
+      const orderQuery = `
+        INSERT INTO Orders (
+          order_id, order_amount, order_currency, payment_gateway_id,
+          customer_id, chapter_id, region_id, universal_link_id,
+          ulid, order_status, payment_session_id,
+          one_time_registration_fee, membership_fee, tax,
+          member_name, customer_email, customer_phone,
+          gstin, company, mobile_number, renewal_year,
+          payment_note, training_id, event_id, kitty_bill_id,
+          visitor_id, visitor_name, visitor_email, visitor_mobilenumber,
+          visitor_address, visitor_company, visitor_gstin,
+          visitor_business, visitor_company_address, accolade_id,
+          created_at
+        ) VALUES (
+          $1, $2, 'INR', 1,
+          $3, $4, $5, 4,
+          $6, 'ACTIVE', $7,
+          '0', '0', $8,
+          $9, $10, $11,
+          $12, $13, $14, '1Year',
+          'meeting-payments', null, null, $15,
+          null, null, null, null,
+          null, null, null,
+          null, null, null,
+          $16
+        ) RETURNING *
+      `;
+
+      const orderValues = [
+        order_id,
+        order_amount || 0,
+        member_id,
+        chapter_id,
+        region_id,
+        null, // ulid
+        payment_session_id,
+        tax_amount || 0,
+        `${member_first_name} ${member_last_name}`,
+        '', // email address (empty as not needed)
+        member_mobilenumber || '',
+        member_gstin || '',
+        member_company_name,
+        member_mobilenumber || '',
+        kitty_bill_id,
+        created_at
+      ];
+
+      console.log('📦 Inserting order with values:', orderValues);
+      const orderResult = await con.query(orderQuery, orderValues);
+      orderResults.push(orderResult.rows[0]);
+      console.log('✅ Order created successfully');
+
+      // Use payment method from frontend request
+      const paymentMethod = mode_of_payment || {
+        cash: {
+          payment_note: payment_type === "partial" ? "Partial Meeting Payment" : "Meeting Payment"
+        }
+      };
+
+      // Determine payment group based on payment method
+      let paymentGroup = 'cash';
+      if (mode_of_payment) {
+        if (mode_of_payment.upi) paymentGroup = 'upi';
+        if (mode_of_payment.netbanking) paymentGroup = 'netbanking';
+      }
+
+      // Insert transaction record
+      const transactionQuery = `
+        INSERT INTO Transactions (
+          cf_payment_id, order_id, payment_gateway_id,
+          payment_amount, payment_currency, payment_status,
+          payment_message, payment_time, payment_completion_time,
+          auth_id, payment_method, error_details, payment_group,is_settled,settlement_id,utr,settled_on,einvoice_generated
+        ) VALUES (
+          $1, $2, 1,
+          $3, 'INR', 'SUCCESS',
+          'Kitty Payment Successful', $4, $4,
+          'KITTY_PAYMENT', $5, '{}', $6, $7, $8, $9, $10, $11
+        ) RETURNING *
+      `;
+
+      const transactionValues = [
+        cf_payment_id,
+        order_id,
+        order_amount || 0,
+        created_at,
+        JSON.stringify(paymentMethod),
+        paymentGroup,
+        true,
+        null,
+        null,
+        null,
+        false
+      ];
+
+      console.log('💳 Inserting transaction with values:', transactionValues);
+      const transactionResult = await con.query(transactionQuery, transactionValues);
+      transactionResults.push(transactionResult.rows[0]);
+      console.log('✅ Transaction created successfully');
+
+      // Update member table for partial/full payments
+      let updateMemberQuery = `
+        UPDATE member 
+        SET meeting_payable_amount = $2
+        WHERE member_id = $1
+        RETURNING *
+      `;
+      const newMeetingPayableAmount = payment_type === "partial" ? remaining_balance_with_gst : 0;
+      const memberValues = [member_id, newMeetingPayableAmount];
+
+      console.log('💰 Updating member meeting_payable_amount for member:', { 
+        member_id, 
+        payment_type,
+        newMeetingPayableAmount,
+        memberValues
+      });
+
+      const memberResult = await con.query(updateMemberQuery, memberValues);
+      memberResults.push(memberResult.rows[0]);
+      console.log('✅ Member meeting_payable_amount updated successfully:', memberResult.rows[0]);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Bulk kitty payments processed successfully',
+      data: {
+        orders: orderResults,
+        transactions: transactionResults,
+        members: memberResults
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error processing bulk kitty payments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process bulk kitty payments',
+      error: error.message
+    });
+  }
+};
+
+
+
 const exportAccoladesToExcel = async (req, res) => {
   try {
     const result = await con.query('SELECT * FROM accolades');
@@ -14439,5 +14782,6 @@ module.exports = {
   updateMemberPendingAmount,
   updateAllMembersPendingAmount,
   applyKittyPenalties,
-  getDisapprovedAccolades
+  getDisapprovedAccolades,
+  addBulkKittyPaymentsManually
 };

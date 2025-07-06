@@ -943,68 +943,141 @@ const webhookSettlementStatus = async (req, res) => {
   console.log('=== Webhook Handler Debug ===');
   console.log('Headers:', req.headers);
   
-  // Get the raw body as a string
-  const rawBody = req.body.toString('utf8');
-  console.log('Raw body:', rawBody);
-  
-  let payload;
   try {
-    payload = JSON.parse(rawBody);
-  } catch (e) {
-    console.error('Failed to parse webhook body:', e);
-    return res.status(400).json({ error: 'Invalid JSON' });
-  }
-
-  // Log the parsed payload
-  console.log('Parsed webhook payload:', payload);
-
-  // Handle Cashfree test payload
-  if (!payload || !payload.data || !payload.data.settlement) {
-    if (payload && payload.data && payload.data.test_object) {
-      console.log('Received Cashfree test webhook payload');
-      return res.status(200).json({ message: 'Test webhook received' });
+    // Get the raw body as a string for signature verification
+    let rawBody;
+    let payload;
+    
+    // Handle different body formats (raw vs parsed)
+    if (typeof req.body === 'string') {
+      rawBody = req.body;
+      payload = JSON.parse(rawBody);
+    } else if (Buffer.isBuffer(req.body)) {
+      rawBody = req.body.toString('utf8');
+      payload = JSON.parse(rawBody);
+    } else {
+      // Body is already parsed object - reconstruct raw body for signature verification
+      rawBody = JSON.stringify(req.body);
+      payload = req.body;
     }
-    console.error('Invalid webhook payload structure');
-    return res.status(400).json({ error: 'Invalid webhook payload' });
-  }
+    
+    console.log('Raw body:', rawBody);
+    console.log('Parsed webhook payload:', payload);
 
-  // --- Business Logic for Real Settlement Webhook ---
-  try {
-    // Get signature and timestamp from headers
+    // Validate payload structure
+    if (!payload || typeof payload !== 'object') {
+      console.error('Invalid webhook payload: not an object');
+      return res.status(400).json({ error: 'Invalid webhook payload structure' });
+    }
+
+    // Handle Cashfree test payload
+    if (payload.data && payload.data.test_object) {
+      console.log('Received Cashfree test webhook payload');
+      return res.status(200).json({ message: 'Test webhook received successfully' });
+    }
+
+    // Validate settlement payload structure
+    if (!payload.data || !payload.data.settlement) {
+      console.error('Invalid webhook payload: missing settlement data');
+      return res.status(400).json({ error: 'Invalid settlement webhook payload' });
+    }
+
+    // Get and validate required headers
     const signature = req.headers['x-webhook-signature'];
     const timestamp = req.headers['x-webhook-timestamp'];
+
+    if (!signature || !timestamp) {
+      console.error('Missing required webhook headers');
+      return res.status(400).json({ error: 'Missing webhook signature or timestamp' });
+    }
 
     console.log('Webhook signature:', signature);
     console.log('Webhook timestamp:', timestamp);
 
-    // Set the client secret for signature verification
+    // Validate environment configuration
     if (!process.env.x_client_secret) {
       console.error('Missing x_client_secret in environment variables');
       return res.status(500).json({ error: 'Server configuration error' });
     }
+
+    // Set the client secret for signature verification
     CashfreeWebhook.XClientSecret = process.env.x_client_secret;
 
-    // Verify the webhook signature using the raw body
-    const webhookEvent = CashfreeWebhook.PGVerifyWebhookSignature(signature, rawBody, timestamp);
-    console.log('Webhook signature verified successfully');
-    console.log('Webhook data:', webhookEvent.object);
-
-    // --- Reconciliation Logic ---
-    const settlement = webhookEvent.object.data.settlement;
-    const settlement_id = settlement.settlement_id;
-    const payment_from = settlement.payment_from;
-    const payment_till = settlement.payment_till;
-    const utr = settlement.utr;
-    const settled_on = settlement.settled_on;
-
+    // Verify the webhook signature
+    let webhookEvent;
     try {
-      // Convert Cashfree time format to IST for comparison
-      // Cashfree sends: "2025-06-30 20:53:23" (IST)
-      // We need to convert this to match our database format
+      webhookEvent = CashfreeWebhook.PGVerifyWebhookSignature(signature, rawBody, timestamp);
+      console.log('Webhook signature verified successfully');
+      console.log('Webhook data:', webhookEvent.object);
+    } catch (signatureError) {
+      console.error('Webhook signature verification failed:', signatureError.message);
+      return res.status(401).json({ error: 'Invalid webhook signature' });
+    }
+
+    // Extract settlement data with validation
+    const settlement = webhookEvent.object.data.settlement;
+    const {
+      settlement_id,
+      payment_from,
+      payment_till,
+      utr,
+      settled_on,
+      status,
+      settlement_amount
+    } = settlement;
+
+    // Validate required settlement fields
+    if (!settlement_id || !utr || !settled_on) {
+      console.error('Missing required settlement fields');
+      return res.status(400).json({ error: 'Incomplete settlement data' });
+    }
+
+    // Process settlement reconciliation
+    await processSettlementReconciliation({
+      settlement_id,
+      payment_from,
+      payment_till,
+      utr,
+      settled_on
+    });
+
+    // Send email notification
+    await sendSettlementNotification({
+      eventType: webhookEvent.object.type,
+      eventTime: webhookEvent.object.event_time,
+      settlement_id,
+      status,
+      utr,
+      settlement_amount,
+      settled_on
+    });
+
+    console.log('Settlement webhook processed successfully');
+    res.status(200).json({ 
+      message: 'Webhook processed successfully',
+      settlement_id,
+      utr
+    });
+
+  } catch (error) {
+    console.error('Error processing settlement webhook:', error);
+    res.status(500).json({ 
+      error: 'Internal server error processing webhook',
+      message: error.message 
+    });
+  }
+};
+
+// Helper function to process settlement reconciliation
+const processSettlementReconciliation = async (settlementData) => {
+  const { settlement_id, payment_from, payment_till, utr, settled_on } = settlementData;
+  
+  try {
+    // Convert Cashfree time format to IST for comparison
+    const convertToIST = (timeString) => {
+      if (!timeString) return null;
       
-      // Convert payment_from and payment_till to IST datetime objects
-      const convertToIST = (timeString) => {
-        if (!timeString) return null;
+      try {
         // Parse the time string and assume it's in IST
         const [datePart, timePart] = timeString.split(' ');
         const [year, month, day] = datePart.split('-');
@@ -1021,30 +1094,57 @@ const webhookSettlementStatus = async (req, res) => {
         ));
         
         return istDate.toISOString();
-      };
+      } catch (timeError) {
+        console.error('Error converting time format:', timeError);
+        return null;
+      }
+    };
 
-      const paymentFromIST = convertToIST(payment_from);
-      const paymentTillIST = convertToIST(payment_till);
+    const paymentFromIST = convertToIST(payment_from);
+    const paymentTillIST = convertToIST(payment_till);
 
-      console.log('Original Cashfree times:', { payment_from, payment_till });
-      console.log('Converted to IST:', { paymentFromIST, paymentTillIST });
+    console.log('Original Cashfree times:', { payment_from, payment_till });
+    console.log('Converted to IST:', { paymentFromIST, paymentTillIST });
 
-      const updateQuery = `
-        UPDATE transactions
-        SET is_settled = true, settlement_id = $1, utr = $2, settled_on = $3
-        WHERE payment_status = 'SUCCESS'
-          AND payment_completion_time >= $4
-          AND payment_completion_time <= $5
-          AND payment_group NOT IN ('cash', 'visitor_payment')
-      `;
-      const updateValues = [settlement_id, utr, settled_on, paymentFromIST, paymentTillIST];
-      const result = await db.query(updateQuery, updateValues);
-      console.log(`Reconciliation: ${result.rowCount} transactions marked as settled for settlement_id ${settlement_id}`);
-    } catch (err) {
-      console.error('Error during reconciliation:', err);
-    }
+    // Update transactions for settlement
+    const updateQuery = `
+      UPDATE transactions
+      SET is_settled = true, 
+          settlement_id = $1, 
+          utr = $2, 
+          settled_on = $3
+      WHERE payment_status = 'SUCCESS'
+        AND payment_completion_time >= $4
+        AND payment_completion_time <= $5
+        AND payment_group NOT IN ('cash', 'visitor_payment')
+        AND is_settled = false
+    `;
+    
+    const updateValues = [settlement_id, utr, settled_on, paymentFromIST, paymentTillIST];
+    const result = await db.query(updateQuery, updateValues);
+    
+    console.log(`Reconciliation: ${result.rowCount} transactions marked as settled for settlement_id ${settlement_id}`);
+    
+    return result.rowCount;
+  } catch (err) {
+    console.error('Error during settlement reconciliation:', err);
+    throw err;
+  }
+};
 
-    // Send email notification
+// Helper function to send settlement notification
+const sendSettlementNotification = async (notificationData) => {
+  const {
+    eventType,
+    eventTime,
+    settlement_id,
+    status,
+    utr,
+    settlement_amount,
+    settled_on
+  } = notificationData;
+
+  try {
     const mailOptions = {
       from: 'info@bninewdelhi.in',
       to: 'rawatanubhav085@gmail.com',
@@ -1052,27 +1152,23 @@ const webhookSettlementStatus = async (req, res) => {
       subject: 'Cashfree Settlement Webhook Received',
       html: `
         <h2>Cashfree Settlement Webhook Received</h2>
-        <p><strong>Event Type:</strong> ${webhookEvent.object.type}</p>
-        <p><strong>Event Time:</strong> ${webhookEvent.object.event_time}</p>
-        <p><strong>Settlement ID:</strong> ${webhookEvent.object.data.settlement.settlement_id}</p>
-        <p><strong>Status:</strong> ${webhookEvent.object.data.settlement.status}</p>
-        <p><strong>UTR:</strong> ${webhookEvent.object.data.settlement.utr}</p>
-        <p><strong>Settlement Amount:</strong> ${webhookEvent.object.data.settlement.settlement_amount}</p>
-        <p><strong>Settled On:</strong> ${webhookEvent.object.data.settlement.settled_on}</p>
+        <p><strong>Event Type:</strong> ${eventType}</p>
+        <p><strong>Event Time:</strong> ${eventTime}</p>
+        <p><strong>Settlement ID:</strong> ${settlement_id}</p>
+        <p><strong>Status:</strong> ${status}</p>
+        <p><strong>UTR:</strong> ${utr}</p>
+        <p><strong>Settlement Amount:</strong> ${settlement_amount}</p>
+        <p><strong>Settled On:</strong> ${settled_on}</p>
       `
     };
 
     await transporter.sendMail(mailOptions);
     console.log('Settlement webhook notification email sent successfully');
-
-    // Return success response
-    res.status(200).json({ message: 'Webhook processed successfully' });
-  } catch (error) {
-    console.error('Error processing real settlement webhook:', error);
-    res.status(400).json({ error: 'Webhook processing failed' });
+  } catch (emailError) {
+    console.error('Error sending settlement notification email:', emailError);
+    // Don't throw error - email failure shouldn't break webhook processing
   }
 };
-
 
 
 module.exports = {

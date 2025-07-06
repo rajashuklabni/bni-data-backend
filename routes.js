@@ -192,7 +192,8 @@ addMultipleVisitorPayment,
   updateMemberPendingAmount,
   updateAllMembersPendingAmount,
   applyKittyPenalties,
-  getDisapprovedAccolades
+  getDisapprovedAccolades,
+  addBulkKittyPaymentsManually
 } = require("./controllers");
 
 const path = require("path");
@@ -1422,5 +1423,7 @@ router.post("/updateMemberPendingAmount", updateMemberPendingAmount);
 router.post("/updateAllMembersPendingAmount", updateAllMembersPendingAmount);
 router.post("/apply-kitty-penalties", applyKittyPenalties);
 router.get("/getDisapprovedAccolades", getDisapprovedAccolades);
+router.post("/addBulkKittyPaymentsManually", addBulkKittyPaymentsManually);
+
 
 module.exports = router;
