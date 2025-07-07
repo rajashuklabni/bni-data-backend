@@ -10958,7 +10958,7 @@ const addBulkKittyPaymentsManually = async (req, res) => {
       // Use payment method from frontend request
       const paymentMethod = mode_of_payment || {
         cash: {
-          payment_note: payment_type === "partial" ? "Partial Meeting Payment" : "Meeting Payment"
+          payment_note: "Meeting Payment"
         }
       };
 
