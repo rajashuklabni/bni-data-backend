@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const QRCode = require('qrcode');
 const puppeteer = require('puppeteer');
+const { getMaxListeners } = require('events');
 
 // Add Delhi zipcodes at the top of the file
 const delhiZipCodes = ["110080", "110081", "110082", "110083", "110084", "110085", "110086", "110087", "110088", "110089", "110090", "110091", "110092", "110093", "110094", "110095", "110096", "110097", "110099", "110110", "110001", "110002", "110003", "110004", "110005", "110006", "110007", "110008", "110009", "110010", "110011", "110012", "110013", "110014", "110015", "110016", "110017", "110018", "110019", "110020", "110021", "110022", "110023", "110024", "110025", "110026", "110027", "110028", "110029", "110030", "110031", "110032", "110033", "110034", "110035", "110036", "110037", "110038", "110039", "110040", "110041", "110042", "110043", "110044", "110045", "110046", "110047", "110048", "110049", "110051", "110052", "110053", "110054", "110055", "110056", "110057", "110058", "110059", "110060", "110061", "110062", "110063", "110064", "110065", "110066", "110067", "110068", "110069", "110070", "110071", "110072", "110073", "110074", "110075", "110076", "110077", "110078"];
@@ -315,16 +316,25 @@ async function generateIRN(req, res) {
     const { authtoken, sek } = result.rows[0];  // Fetch the most recent token
     const member_id = req.body.orderId.customer_id;
     console.log("member id", member_id);
-    const memberResponse = await axios.get(`https://backend.bninewdelhi.com/api/getMember/${member_id}`);
-    const memberData = memberResponse.data;
-    const gstin = memberData.member_gst_number;
+    
+    // Check if it's a visitor payment first
+    const isVisitorPayment = req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment';
+    
+    let memberData = null;
+    let gstin = null;
+    
+    // Only fetch member data if it's not a visitor payment and customer_id is not null
+    if (!isVisitorPayment && member_id) {
+      const memberResponse = await axios.get(`https://backend.bninewdelhi.com/api/getMember/${member_id}`);
+      memberData = memberResponse.data;
+      gstin = memberData.member_gst_number;
 
-    if (!memberData || memberData.length === 0) {
-      throw new Error("GST and address details not found.");
+      if (!memberData || memberData.length === 0) {
+        throw new Error("GST and address details not found.");
+      }
     }
 
     // Check for visitor payment without GSTIN
-    const isVisitorPayment = req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment';
     const visitorGstin = isVisitorPayment ? req.body.orderId.visitor_gstin : gstin;
     const hasNoGstin = !visitorGstin || visitorGstin === 'N/A';
 
@@ -384,13 +394,13 @@ async function generateIRN(req, res) {
         ? (req.body.orderId.visitor_state || "Delhi").padEnd(3, ' ')
         : (memberData.member_company_state || "Delhi").padEnd(3, ' '),
       Pos: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
-        ? req.body.orderId.visitor_gstin.substring(0, 2)
+        ? (req.body.orderId.visitor_gstin ? req.body.orderId.visitor_gstin.substring(0, 2) : "07")
         : stateCode,
       Pin: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
         ? req.body.orderId.visitor_pincode
         : (memberData.address_pincode || 110001),
       Stcd: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
-        ? req.body.orderId.visitor_gstin.substring(0, 2)
+        ? (req.body.orderId.visitor_gstin ? req.body.orderId.visitor_gstin.substring(0, 2) : "07")
         : stateCode,
       Ph: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
         ? req.body.orderId.visitor_mobilenumber
@@ -406,7 +416,7 @@ async function generateIRN(req, res) {
         : req.body.orderId.company,
       Gstin: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
         ? req.body.orderId.visitor_gstin
-        : memberData.member_gst_number
+        : (memberData ? memberData.member_gst_number : null)
     };
 
     console.log("buyer details", buyerDetails);
@@ -732,15 +742,10 @@ async function sendEInvoiceEmail(email, orderId, amount, irn, pdfPath) {
   // Email content
   const mailOptions = {
     from: '"BNI N E W Delhi" <info@bninewdelhi.in>',
-    to: email,
+    to: "rajashuklabni@gmail.com",
     cc: [
-      "scriptforprince@gmail.com",
-        "shini.sunil@adico.in",
-        "rajashuklabni@gmail.com",
-        "sunil.k@adico.in",
-        // "singhi_bikash@yahoo.co.in",
-        "support@bninewdelhi.com",
-        "info@bninewdelhi.in",
+     
+        
         "info@bninewdelhi.in"
     ],
     subject: `E-Invoice for Order #${orderId}`,
@@ -796,7 +801,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
         COALESCE(m.member_company_name, o.visitor_company) as company_name,
         COALESCE(m.member_first_name || ' ' || m.member_last_name, o.visitor_name) as full_name,
         COALESCE(o.company, o.visitor_company) as company,
-        m.address_pincode,
+        COALESCE(m.address_pincode, o.visitor_pincode) as address_pincode,
         o.chapter_id,
         o.customer_id
       FROM orders o
