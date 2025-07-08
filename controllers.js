@@ -3190,7 +3190,7 @@ const addKittyPayment = async (req, res) => {
                 <span style="color: #666;">Penalty Amount:</span>
                 <span style="color: #d32f2f; font-weight: 600; float: right;">₹${penaltyAmount}</span>
                 <div style="color: #666; font-size: 12px; margin-top: 5px; font-style: italic;">
-                  (Will be applied if payment is made after ${formatDueDate(due_date)})
+                  (Will be applied if payment is made after ${formatDueDate(date)})
                 </div>
               </div>
             </div>
@@ -3210,8 +3210,8 @@ const addKittyPayment = async (req, res) => {
               </div>
 
               <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
-                <span style="color: #666; font-weight: 500;">Due Date:</span>
-                <span style="color: #1a237e; font-weight: 600;">${formatDueDate(due_date)}</span>
+                <span style="color: #666; font-weight: 500;">Penalty Date:</span>
+                <span style="color: #1a237e; font-weight: 600;">${formatDueDate(date)}</span>
               </div>
 
               ${isDueDatePassed && penaltyAmount ? `
