@@ -190,6 +190,11 @@ function formatDocumentNumber(docNo) {
   return docNo;
 }
 
+// Helper function to safely extract state code from GSTIN
+function getStateCodeFromGstin(gstin) {
+  return (typeof gstin === 'string' && gstin.length >= 2) ? gstin.substring(0, 2) : "07";
+}
+
 // ******************************GENERATING IRN - E-INVOICE************************************
 
 // let docNumber = 1;
@@ -295,9 +300,9 @@ async function generateIRN(req, res) {
         console.log("Generated new document number:", docNo);
 
         // Step 7: Insert the new doc_no into DocumentNumbers table
-        const insertDocQuery = 'INSERT INTO DocumentNumbers (doc_no, order_id) VALUES ($1, $2)';
-        await db.query(insertDocQuery, [docNo, order_id]);
-        console.log("Document number inserted into database");
+        // const insertDocQuery = 'INSERT INTO DocumentNumbers (doc_no, order_id) VALUES ($1, $2)';
+        // await db.query(insertDocQuery, [docNo, order_id]);
+       
       } catch (error) {
         console.error("Error generating document number:", error);
         throw error;
@@ -342,6 +347,9 @@ async function generateIRN(req, res) {
     if (hasNoGstin) {
       // Generate document number as usual (already done above)
       // Insert a record into einvoice table with null IRN fields
+      const insertDocQuery = 'INSERT INTO DocumentNumbers (doc_no, order_id) VALUES ($1, $2)';
+      await db.query(insertDocQuery, [docNo, order_id]);
+      console.log("Document number inserted into database");
       const transaction_id = req.body.transactionId.transaction_id;
       await db.query(
         `INSERT INTO einvoice (
@@ -380,7 +388,9 @@ async function generateIRN(req, res) {
       });
     }
 
-    const stateCode = gstin.substring(0, 2);
+    // Set gstin based on payment type (visitor/member)
+    const gstinForStateCode = isVisitorPayment ? req.body.orderId.visitor_gstin : (memberData ? memberData.member_gst_number : null);
+    const stateCode = gstinForStateCode ? gstinForStateCode.substring(0, 2) : "07";
 
     // Populate address fields from member data
     const buyerDetails = {
@@ -394,13 +404,13 @@ async function generateIRN(req, res) {
         ? (req.body.orderId.visitor_state || "Delhi").padEnd(3, ' ')
         : (memberData.member_company_state || "Delhi").padEnd(3, ' '),
       Pos: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
-        ? (req.body.orderId.visitor_gstin ? req.body.orderId.visitor_gstin.substring(0, 2) : "07")
+        ? getStateCodeFromGstin(req.body.orderId.visitor_gstin)
         : stateCode,
       Pin: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
         ? req.body.orderId.visitor_pincode
         : (memberData.address_pincode || 110001),
       Stcd: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
-        ? (req.body.orderId.visitor_gstin ? req.body.orderId.visitor_gstin.substring(0, 2) : "07")
+        ? getStateCodeFromGstin(req.body.orderId.visitor_gstin)
         : stateCode,
       Ph: req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment'
         ? req.body.orderId.visitor_mobilenumber
@@ -589,6 +599,11 @@ async function generateIRN(req, res) {
       true
     ]);
 
+    // Insert the new doc_no into DocumentNumbers table (moved here, after successful IRN generation)
+    const insertDocQuery = 'INSERT INTO DocumentNumbers (doc_no, order_id) VALUES ($1, $2)';
+    await db.query(insertDocQuery, [docNo, order_id]);
+    console.log("Document number inserted into database");
+
     console.log("IRN Data saved to einvoice table");
 
        // Update settlementstatus table
@@ -625,11 +640,17 @@ async function generateIRN(req, res) {
     });
 
   } catch (error) {
-    console.error("IRN Generation Error:", error.message);
+    // Enhanced debug logging for IRN API errors
+    if (error.response && error.response.data) {
+      console.error("IRN Generation Error (full response):", JSON.stringify(error.response.data, null, 2));
+    } else {
+      console.error("IRN Generation Error:", error.message);
+    }
     // Send error details to the frontend
     return res.status(500).json({
       message: "Failed to generate IRN",
-      error: error.message
+      error: error.message,
+      details: error.response && error.response.data ? error.response.data : undefined
     });
   }
 }
@@ -1419,7 +1440,6 @@ async function updateMemberDetailsFromGst(gstDetailsList) {
 
   await Promise.all(updatePromises);
 }
-
 
 
 module.exports = { getToken, generateIRN, cancelIRN, getGstDetails, fetchGstDetails, getMultipleGstDetails, updateMemberDetailsFromGst};
