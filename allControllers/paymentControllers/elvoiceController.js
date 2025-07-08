@@ -742,10 +742,15 @@ async function sendEInvoiceEmail(email, orderId, amount, irn, pdfPath) {
   // Email content
   const mailOptions = {
     from: '"BNI N E W Delhi" <info@bninewdelhi.in>',
-    to: "rajashuklabni@gmail.com",
+    to: email,
     cc: [
-     
-        
+      "scriptforprince@gmail.com",
+        "shini.sunil@adico.in",
+        "rajashuklabni@gmail.com",
+        "sunil.k@adico.in",
+        // "singhi_bikash@yahoo.co.in",
+        "support@bninewdelhi.com",
+        "info@bninewdelhi.in",
         "info@bninewdelhi.in"
     ],
     subject: `E-Invoice for Order #${orderId}`,
