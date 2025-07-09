@@ -901,6 +901,73 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
       month: '2-digit',
       year: 'numeric'
     });
+    // Get payment date and time from transaction data and format it properly
+let paymentTime = 'N/A';
+if (req.body.transactionId?.payment_time) {
+  try {
+    const date = new Date(req.body.transactionId.payment_time);
+    if (!isNaN(date.getTime())) {
+      // Format as IST date and time (DD/MM/YYYY HH:MM:SS)
+      const dateStr = date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        timeZone: 'Asia/Kolkata'
+      });
+      const timeStr = date.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone: 'Asia/Kolkata'
+      });
+      paymentTime = `${dateStr} ${timeStr}`;
+    }
+  } catch (error) {
+    console.error('Error formatting payment time:', error);
+    paymentTime = 'N/A';
+  }
+} else if (req.body.transactionId?.created_at) {
+  try {
+    const date = new Date(req.body.transactionId.created_at);
+    if (!isNaN(date.getTime())) {
+      const dateStr = date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        timeZone: 'Asia/Kolkata'
+      });
+      const timeStr = date.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone: 'Asia/Kolkata'
+      });
+      paymentTime = `${dateStr} ${timeStr}`;
+    }
+  } catch (error) {
+    console.error('Error formatting created_at time:', error);
+    paymentTime = 'N/A';
+  }
+} else {
+  // Fallback to current date and time in IST format
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'Asia/Kolkata'
+  });
+  const timeStr = now.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Kolkata'
+  });
+  paymentTime = `${dateStr} ${timeStr}`;
+}
 
     // Get payment method details from request body
     const paymentMethod = req.body.transactionId?.payment_method 
@@ -930,6 +997,7 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
       .replace('class="invoice_date">', `class="invoice_date">${currentDate}`)
       .replace('class="doc_number">', `class="doc_number">${docNo}`)
       .replace('class="payment_mode">', `class="payment_mode">${paymentMethod}`)
+      .replace('class="payment_time">', `class="payment_time">${paymentTime}`) 
       .replace('class="bill_to_name"><strong>', `class="bill_to_name"><strong>${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_name : orderData.full_name}`)
       .replace('class="bill_to_company"><strong>', `class="bill_to_company"><strong>${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_company : orderData.company}`)
       .replace('class="bill_to_address">', `class="bill_to_address">${req.body.orderId.payment_note === 'visitor-payment' || req.body.orderId.payment_note === 'Visitor Payment' ? req.body.orderId.visitor_company_address : orderData.company_address}`)
@@ -1059,11 +1127,11 @@ async function processEmailSending(email, orderId, amount, irn, qrCode, docNo, c
       from: '"BNI N E W Delhi" <info@bninewdelhi.in>',
       to: email,
       cc: [
-        "scriptforprince@gmail.com",
+        "rawatanubhav085@gmail.com",
         "shini.sunil@adico.in",
         "rajashuklabni@gmail.com",
         "sunil.k@adico.in",
-        // "singhi_bikash@yahoo.co.in",
+        "singhi_bikash@yahoo.co.in",
         "support@bninewdelhi.com",
         "info@bninewdelhi.in",
         "info@bninewdelhi.in"

@@ -942,6 +942,9 @@ const getOrderByTrainingId = async (req, res) => {
 const webhookSettlementStatus = async (req, res) => {
   console.log('=== Webhook Handler Debug ===');
   console.log('Headers:', req.headers);
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Body type:', typeof req.body);
+  console.log('Is Buffer:', Buffer.isBuffer(req.body));
   
   try {
     // Get the raw body as a string for signature verification
@@ -961,8 +964,9 @@ const webhookSettlementStatus = async (req, res) => {
       payload = req.body;
     }
     
-    console.log('Raw body:', rawBody);
-    console.log('Parsed webhook payload:', payload);
+    console.log('Raw body length:', rawBody.length);
+    console.log('Raw body preview:', rawBody.substring(0, 200) + '...');
+    console.log('Parsed webhook payload keys:', Object.keys(payload));
 
     // Validate payload structure
     if (!payload || typeof payload !== 'object') {
@@ -1000,17 +1004,26 @@ const webhookSettlementStatus = async (req, res) => {
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
+    console.log('Client secret length:', process.env.x_client_secret.length);
+    console.log('Client secret preview:', process.env.x_client_secret.substring(0, 10) + '...');
+
     // Set the client secret for signature verification
     CashfreeWebhook.XClientSecret = process.env.x_client_secret;
 
     // Verify the webhook signature
     let webhookEvent;
     try {
+      console.log('Attempting signature verification...');
+      console.log('Signature:', signature);
+      console.log('Timestamp:', timestamp);
+      console.log('Raw body length:', rawBody.length);
+      
       webhookEvent = CashfreeWebhook.PGVerifyWebhookSignature(signature, rawBody, timestamp);
       console.log('Webhook signature verified successfully');
-      console.log('Webhook data:', webhookEvent.object);
+      console.log('Webhook data keys:', Object.keys(webhookEvent.object));
     } catch (signatureError) {
       console.error('Webhook signature verification failed:', signatureError.message);
+      console.error('Signature verification error details:', signatureError);
       return res.status(401).json({ error: 'Invalid webhook signature' });
     }
 

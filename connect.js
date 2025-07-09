@@ -113,14 +113,37 @@ const allowedOrigins = [
   "http://localhost:5000"
 ];
 
+// Add Cashfree webhook domains to allowed origins
+const cashfreeWebhookOrigins = [
+  "https://api.cashfree.com",
+  "https://production.cashfree.com",
+  "https://test.cashfree.com",
+  "https://sandbox.cashfree.com"
+];
+
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true); // Allow the request
-    } else {
-      callback(new Error("Not allowed by CORS")); // Reject the request
+    if (!origin) {
+      callback(null, true);
+      return;
     }
+    
+    // Check if origin is in allowed origins
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+      return;
+    }
+    
+    // Check if origin is a Cashfree webhook domain
+    if (cashfreeWebhookOrigins.some(cfOrigin => origin.startsWith(cfOrigin))) {
+      callback(null, true);
+      return;
+    }
+    
+    // Log blocked origins for debugging
+    console.log('CORS blocked origin:', origin);
+    callback(new Error("Not allowed by CORS"));
   },
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true, // Allow credentials (cookies, authorization headers)
@@ -288,43 +311,11 @@ app.post("/import-members", upload.single("file"), async (req, res) => {
   }
 });
 
-const paymentRoutes = require("./allRoutes/paymentRoute");
-app.use("/api", paymentRoutes);
-
-
-
 // Routes for Auth and Payment
 const authRoutes = require("./allRoutes/authRoutes/authRoutes");
 app.use("/api", authRoutes);
 app.use("/api", routes);
 app.get("/", (req, res) => {
-  res.send("Server is running.");
-});
-app.post("/generate-cashfree-session", async (req, res) => {
-  const headers = {
-    "x-client-id": process.env.x_client_id, // Replace with your client ID
-    "x-client-secret": process.env.x_client_secret, // Replace with your client secret
-    "x-api-version": process.env.x_api_version,
-    // Include the headers for form data
-  };
-
-  const data = req.body;
-  try {
-    console.log(data);
-    const res = await axios.post(
-      "https://production.cashfree.com/pg/orders",
-      data,
-      { headers }
-    );
-    console.log(res.data);
-    res.status(201).json(res.data); // Handle the response data
-  } catch (error) {
-    console.error(
-      "Error:",
-      error.response ? error.response.data : error.message
-    );
-  }
-
   res.send("Server is running.");
 });
 
@@ -364,15 +355,28 @@ app.put("/banners/:id", uploadbanner.single("banner_image"), updateBanner);
 app.delete("/banners/:id", deleteBanner);
 app.patch("/banners/:id/status", toggleBannerStatus);
 
-// Protected routes (token required)
-app.use("/api", verifyToken, paymentRoutes);
-app.use("/api", verifyToken, routes);
-
 // Add this with other route imports
 const ccavenueRoutes = require("./allRoutes/ccavenueRoute");
+const paymentRoutes = require("./allRoutes/paymentRoute");
 
 // Add this with other route uses
 app.use("/api", ccavenueRoutes);
+
+// Mount payment routes - webhook should be accessible without authentication
+app.use("/api", paymentRoutes);
+
+// Special webhook route with raw body parsing to avoid JSON parsing issues
+app.post("/api/webhook/settlementStatus", 
+  bodyParser.raw({ type: 'application/json' }), 
+  (req, res, next) => {
+    console.log('Main app webhook middleware - Content-Type:', req.headers['content-type']);
+    console.log('Main app webhook middleware - Body type:', typeof req.body);
+    console.log('Main app webhook middleware - Is Buffer:', Buffer.isBuffer(req.body));
+    console.log('Main app webhook middleware - Raw body length:', req.body.length);
+    next();
+  },
+  require("./allControllers/paymentControllers/cashfreeSessionIdController").webhookSettlementStatus
+);
 
 // --------------------------------------------------------------------------------
 // app.use(express.static('public'));
@@ -430,10 +434,7 @@ app.get("/api/payment-failure", (req, res) => {
   res.send("OOPS! Payment Failed...");
 });
 
-// Update the protected routes section
 // Protected routes (token required)
-app.use("/api", verifyToken, paymentRoutes);
-app.use("/api", verifyToken, ccavenueRoutes);
 app.use("/api", verifyToken, routes);
 
 // Error handling middleware
