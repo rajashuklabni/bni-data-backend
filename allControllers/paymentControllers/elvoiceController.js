@@ -765,7 +765,7 @@ async function sendEInvoiceEmail(email, orderId, amount, irn, pdfPath) {
     from: '"BNI N E W Delhi" <info@bninewdelhi.in>',
     to: email,
     cc: [
-      "scriptforprince@gmail.com",
+     "rawatanubhav085@gmail.com",
         "shini.sunil@adico.in",
         "rajashuklabni@gmail.com",
         "sunil.k@adico.in",
@@ -909,7 +909,7 @@ if (req.body.transactionId?.payment_time) {
     if (!isNaN(date.getTime())) {
       // Format as IST date and time (DD/MM/YYYY HH:MM:SS)
       const dateStr = date.toLocaleDateString('en-GB', {
-        
+
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
