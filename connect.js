@@ -118,7 +118,9 @@ const cashfreeWebhookOrigins = [
   "https://api.cashfree.com",
   "https://production.cashfree.com",
   "https://test.cashfree.com",
-  "https://sandbox.cashfree.com"
+  "https://sandbox.cashfree.com",
+  "https://webhook.cashfree.com",
+  "https://webhooks.cashfree.com"
 ];
 
 const corsOptions = {
@@ -364,19 +366,6 @@ app.use("/api", ccavenueRoutes);
 
 // Mount payment routes - webhook should be accessible without authentication
 app.use("/api", paymentRoutes);
-
-// Special webhook route with raw body parsing to avoid JSON parsing issues
-app.post("/api/webhook/settlementStatus", 
-  bodyParser.raw({ type: 'application/json' }), 
-  (req, res, next) => {
-    console.log('Main app webhook middleware - Content-Type:', req.headers['content-type']);
-    console.log('Main app webhook middleware - Body type:', typeof req.body);
-    console.log('Main app webhook middleware - Is Buffer:', Buffer.isBuffer(req.body));
-    console.log('Main app webhook middleware - Raw body length:', req.body.length);
-    next();
-  },
-  require("./allControllers/paymentControllers/cashfreeSessionIdController").webhookSettlementStatus
-);
 
 // --------------------------------------------------------------------------------
 // app.use(express.static('public'));

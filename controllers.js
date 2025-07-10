@@ -10967,7 +10967,7 @@ const addBulkKittyPaymentsManually = async (req, res) => {
       let paymentGroup = 'cash';
       if (mode_of_payment) {
         if (mode_of_payment.upi) paymentGroup = 'upi';
-        if (mode_of_payment.netbanking) paymentGroup = 'netbanking';
+        if (mode_of_payment.netbanking) paymentGroup = 'net_banking';
       }
 
       // Insert transaction record

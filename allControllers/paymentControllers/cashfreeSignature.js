@@ -24,11 +24,25 @@ class Cashfree {
 		console.log('=== Signature Verification Debug ===');
 		console.log('Received signature:', signature);
 		console.log('Timestamp:', timestamp);
-		console.log('Raw body:', rawBody);
+		console.log('Raw body length:', rawBody?.length || 0);
+		console.log('Raw body preview:', rawBody?.substring(0, 200) + '...');
 		console.log('Secret key length:', Cashfree.XClientSecret?.length || 0);
+		console.log('Secret key preview:', Cashfree.XClientSecret?.substring(0, 10) + '...');
+
+		// Validate inputs
+		if (!signature || !rawBody || !timestamp) {
+			console.error('Missing required parameters for signature verification');
+			throw new Error('Missing required parameters for signature verification');
+		}
+
+		if (!Cashfree.XClientSecret) {
+			console.error('Client secret not configured');
+			throw new Error('Client secret not configured');
+		}
 
 		const body = timestamp + rawBody;
-		console.log('Combined string (timestamp + rawBody):', body);
+		console.log('Combined string length:', body.length);
+		console.log('Combined string preview:', body.substring(0, 200) + '...');
 
 		const secretKey = Cashfree.XClientSecret;
 		let generatedSignature = crypto
@@ -41,8 +55,13 @@ class Cashfree {
 		console.log('=== End Debug ===');
 
 		if (generatedSignature === signature) {
-			let jsonObject = JSON.parse(rawBody);
-			return new PayoutWebhookEvent(jsonObject.type, rawBody, jsonObject);
+			try {
+				let jsonObject = JSON.parse(rawBody);
+				return new PayoutWebhookEvent(jsonObject.type, rawBody, jsonObject);
+			} catch (parseError) {
+				console.error('Error parsing webhook body:', parseError);
+				throw new Error('Invalid JSON in webhook body');
+			}
 		}
 		throw new Error(
 			"Generated signature and received signature did not match."
