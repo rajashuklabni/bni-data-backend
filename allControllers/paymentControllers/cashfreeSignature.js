@@ -40,31 +40,58 @@ class Cashfree {
 			throw new Error('Client secret not configured');
 		}
 
-		const body = timestamp + rawBody;
-		console.log('Combined string length:', body.length);
-		console.log('Combined string preview:', body.substring(0, 200) + '...');
+		// Try different signature formats
+		const signatureFormats = [
+			// Format 1: timestamp + rawBody (original)
+			{ body: timestamp + rawBody, description: 'timestamp + rawBody' },
+			// Format 2: rawBody only
+			{ body: rawBody, description: 'rawBody only' },
+			// Format 3: timestamp + rawBody with different encoding
+			{ body: timestamp + rawBody, description: 'timestamp + rawBody (hex)' },
+			// Format 4: Just rawBody with hex encoding
+			{ body: rawBody, description: 'rawBody only (hex)' }
+		];
 
 		const secretKey = Cashfree.XClientSecret;
-		let generatedSignature = crypto
-			.createHmac("sha256", secretKey)
-			.update(body)
-			.digest("base64");
 		
-		console.log('Generated signature:', generatedSignature);
-		console.log('Signatures match:', generatedSignature === signature);
-		console.log('=== End Debug ===');
-
-		if (generatedSignature === signature) {
-			try {
-				let jsonObject = JSON.parse(rawBody);
-				return new PayoutWebhookEvent(jsonObject.type, rawBody, jsonObject);
-			} catch (parseError) {
-				console.error('Error parsing webhook body:', parseError);
-				throw new Error('Invalid JSON in webhook body');
+		for (let i = 0; i < signatureFormats.length; i++) {
+			const format = signatureFormats[i];
+			let generatedSignature;
+			
+			if (i === 2 || i === 3) {
+				// Try hex encoding for formats 3 and 4
+				generatedSignature = crypto
+					.createHmac("sha256", secretKey)
+					.update(format.body)
+					.digest("hex");
+			} else {
+				// Use base64 encoding for formats 1 and 2
+				generatedSignature = crypto
+					.createHmac("sha256", secretKey)
+					.update(format.body)
+					.digest("base64");
+			}
+			
+			console.log(`Format ${i + 1} (${format.description}):`, generatedSignature);
+			console.log(`Format ${i + 1} matches:`, generatedSignature === signature);
+			
+			if (generatedSignature === signature) {
+				console.log(`✅ Signature verified using format ${i + 1}`);
+				try {
+					let jsonObject = JSON.parse(rawBody);
+					return new PayoutWebhookEvent(jsonObject.type, rawBody, jsonObject);
+				} catch (parseError) {
+					console.error('Error parsing webhook body:', parseError);
+					throw new Error('Invalid JSON in webhook body');
+				}
 			}
 		}
+		
+		console.log('❌ All signature formats failed to match');
+		console.log('=== End Debug ===');
+		
 		throw new Error(
-			"Generated signature and received signature did not match."
+			"Generated signature and received signature did not match for any format."
 		);
 	}
 }

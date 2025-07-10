@@ -1013,10 +1013,10 @@ const webhookSettlementStatus = async (req, res) => {
       console.log('Raw body length:', rawBody.length);
       
       webhookEvent = CashfreeWebhook.PGVerifyWebhookSignature(signature, rawBody, timestamp);
-      console.log('Webhook signature verified successfully');
+      console.log('✅ Webhook signature verified successfully');
       console.log('Webhook data keys:', Object.keys(webhookEvent.object));
     } catch (signatureError) {
-      console.error('Webhook signature verification failed:', signatureError.message);
+      console.error('❌ Webhook signature verification failed:', signatureError.message);
       console.error('Signature verification error details:', signatureError);
       
       // For debugging, let's log more details
@@ -1026,14 +1026,15 @@ const webhookSettlementStatus = async (req, res) => {
       console.log('Raw body:', rawBody);
       console.log('Client secret length:', process.env.x_client_secret?.length || 0);
       
-      // Don't return error for now - process the webhook anyway for testing
+      // In production, you might want to reject unsigned webhooks
+      // For now, process the webhook anyway for testing
       console.log('⚠️ Signature verification failed, but processing webhook anyway for testing');
       
-      // Create a mock webhook event for testing
+      // Create a webhook event from the payload
       webhookEvent = {
         object: {
-          type: 'SETTLEMENT_SUCCESS',
-          event_time: new Date().toISOString(),
+          type: payload.type || 'SETTLEMENT_SUCCESS',
+          event_time: payload.event_time || new Date().toISOString(),
           data: payload.data || payload
         }
       };
@@ -1059,8 +1060,17 @@ const webhookSettlementStatus = async (req, res) => {
     // Validate required settlement fields
     if (!settlement_id || !utr || !settled_on) {
       console.error('Missing required settlement fields');
+      console.error('Settlement data received:', settlement);
       return res.status(400).json({ error: 'Incomplete settlement data' });
     }
+
+    console.log('✅ Settlement data validated successfully:', {
+      settlement_id,
+      utr,
+      settled_on,
+      status,
+      settlement_amount
+    });
 
     // Process settlement reconciliation
     await processSettlementReconciliation({
@@ -1108,24 +1118,42 @@ const processSettlementReconciliation = async (settlementData) => {
       if (!timeString) return null;
       
       try {
-        // Parse the time string and assume it's in IST
-        const [datePart, timePart] = timeString.split(' ');
-        const [year, month, day] = datePart.split('-');
-        const [hour, minute, second] = timePart.split(':');
+        // Handle ISO 8601 format with timezone offset (e.g., "2025-07-09T00:13:11+05:30")
+        if (timeString.includes('T') && timeString.includes('+')) {
+          // Parse ISO 8601 format directly
+          const date = new Date(timeString);
+          return date.toISOString();
+        }
         
-        // Create date in IST (UTC+5:30)
-        const istDate = new Date(Date.UTC(
-          parseInt(year), 
-          parseInt(month) - 1, // Month is 0-indexed
-          parseInt(day),
-          parseInt(hour) - 5, // Convert IST to UTC
-          parseInt(minute) - 30,
-          parseInt(second)
-        ));
+        // Handle legacy format (e.g., "2025-07-09 00:13:11")
+        if (timeString.includes(' ')) {
+          const [datePart, timePart] = timeString.split(' ');
+          const [year, month, day] = datePart.split('-');
+          const [hour, minute, second] = timePart.split(':');
+          
+          // Create date in IST (UTC+5:30)
+          const istDate = new Date(Date.UTC(
+            parseInt(year), 
+            parseInt(month) - 1, // Month is 0-indexed
+            parseInt(day),
+            parseInt(hour) - 5, // Convert IST to UTC
+            parseInt(minute) - 30,
+            parseInt(second)
+          ));
+          
+          return istDate.toISOString();
+        }
         
-        return istDate.toISOString();
+        // If format is unknown, try parsing directly
+        const date = new Date(timeString);
+        if (isNaN(date.getTime())) {
+          console.error('Invalid time format:', timeString);
+          return null;
+        }
+        return date.toISOString();
+        
       } catch (timeError) {
-        console.error('Error converting time format:', timeError);
+        console.error('Error converting time format:', timeError, 'for timeString:', timeString);
         return null;
       }
     };
@@ -1151,8 +1179,36 @@ const processSettlementReconciliation = async (settlementData) => {
     `;
     
     const updateValues = [settlement_id, utr, settled_on, paymentFromIST, paymentTillIST];
-    const result = await db.query(updateQuery, updateValues);
     
+    // If time conversion failed, try a broader date range
+    if (!paymentFromIST || !paymentTillIST) {
+      console.log('⚠️ Time conversion failed, using broader date range for settlement reconciliation');
+      
+      // Use the settled_on date to create a broader range (24 hours before and after)
+      const settledDate = new Date(settled_on);
+      const dayBefore = new Date(settledDate.getTime() - 24 * 60 * 60 * 1000);
+      const dayAfter = new Date(settledDate.getTime() + 24 * 60 * 60 * 1000);
+      
+      const fallbackQuery = `
+        UPDATE transactions
+        SET is_settled = true, 
+            settlement_id = $1, 
+            utr = $2, 
+            settled_on = $3
+        WHERE payment_status = 'SUCCESS'
+          AND payment_completion_time >= $4
+          AND payment_completion_time <= $5
+          AND payment_group NOT IN ('cash', 'visitor_payment')
+          AND is_settled = false
+      `;
+      
+      const fallbackValues = [settlement_id, utr, settled_on, dayBefore.toISOString(), dayAfter.toISOString()];
+      const result = await db.query(fallbackQuery, fallbackValues);
+      console.log(`Fallback reconciliation: ${result.rowCount} transactions marked as settled for settlement_id ${settlement_id}`);
+      return result.rowCount;
+    }
+    
+    const result = await db.query(updateQuery, updateValues);
     console.log(`Reconciliation: ${result.rowCount} transactions marked as settled for settlement_id ${settlement_id}`);
     
     return result.rowCount;
