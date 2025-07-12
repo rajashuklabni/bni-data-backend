@@ -3188,7 +3188,7 @@ const addKittyPayment = async (req, res) => {
               </div>
 
               <div style="margin-bottom: 10px;">
-                <span style="color: #666;">Penalty Amount:</span>
+                <span style="color: #666;">Late Meeting Fee Amount:</span>
                 <span style="color: #d32f2f; font-weight: 600; float: right;">₹${penaltyAmount}</span>
                 <div style="color: #666; font-size: 12px; margin-top: 5px; font-style: italic;">
                   (Will be applied if payment is made after ${formatDueDate(dueDate)})
@@ -3217,7 +3217,7 @@ const addKittyPayment = async (req, res) => {
 
               ${isDueDatePassed && penaltyAmount ? `
               <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
-                <span style="color: #d32f2f; font-weight: 500;">Late Payment Penalty:</span>
+                <span style="color: #d32f2f; font-weight: 500;">Late Meeting Fee Amount:</span>
                 <span style="color: #d32f2f; font-weight: 600; font-size: 18px;">₹${penaltyAmount}</span>
               </div>
               ` : ''}
@@ -12858,11 +12858,17 @@ const sendKittyReminder = async (req, res) => {
     const formatDueDate = (dateStr) => {
       if (!dateStr) return 'Not specified';
       const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { 
+      // Convert to IST (UTC+5:30)
+      const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+      return istDate.toLocaleDateString('en-US', { 
         weekday: 'short',
         month: 'short',
         day: 'numeric',
         year: 'numeric'
+      }) + ' ' + istDate.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Kolkata'
       });
     };
 
@@ -12918,7 +12924,7 @@ const sendKittyReminder = async (req, res) => {
             </div>
 
             <div style="margin-bottom: 10px;">
-              <span style="color: #666;">Penalty Amount:</span>
+              <span style="color: #666;">Late Meeting Fee Amount:</span>
               <span style="color: #d32f2f; font-weight: 600; float: right;">₹${penaltyAmount}</span>
               <div style="color: #666; font-size: 12px; margin-top: 5px; font-style: italic;">
                 (Will be applied if payment is made after ${formatDueDate(chapterKittyPayment?.kitty_due_date)})
@@ -12942,12 +12948,12 @@ const sendKittyReminder = async (req, res) => {
 
             <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
               <span style="color: #666; font-weight: 500;">Due Date:</span>
-              <span style="color: #1a237e; font-weight: 600;">${formatDueDate(chapterKittyPayment?.kitty_due_date)}</span>
+              <span style="color: #1a237e; font-weight: 600;">${formatDueDate(chapterKittyPayment?.raised_on)}</span>
             </div>
 
             ${isDueDatePassed && penaltyAmount ? `
             <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
-              <span style="color: #d32f2f; font-weight: 500;">Late Payment Penalty:</span>
+              <span style="color: #d32f2f; font-weight: 500;">Late Meeting Fee Amount:</span>
               <span style="color: #d32f2f; font-weight: 600; font-size: 18px;">₹${penaltyAmount}</span>
             </div>
             ` : ''}
@@ -13070,11 +13076,17 @@ const sendKittyReminderToAll = async (req, res) => {
         const formatDueDate = (dateStr) => {
           if (!dateStr) return 'Not specified';
           const date = new Date(dateStr);
-          return date.toLocaleDateString('en-US', { 
+          // Convert to IST (UTC+5:30)
+          const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+          return istDate.toLocaleDateString('en-US', { 
             weekday: 'short',
             month: 'short',
             day: 'numeric',
             year: 'numeric'
+          }) + ' ' + istDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Asia/Kolkata'
           });
         };
 
@@ -13133,10 +13145,10 @@ const sendKittyReminderToAll = async (req, res) => {
                 </div>
 
                 <div style="margin-bottom: 10px;">
-                  <span style="color: #666;">Penalty Amount:</span>
+                  <span style="color: #666;">Late Meeting Fee Amount:</span>
                   <span style="color: #d32f2f; font-weight: 600; float: right;">₹${penaltyAmount}</span>
                   <div style="color: #666; font-size: 12px; margin-top: 5px; font-style: italic;">
-                    (Will be applied if payment is made after ${formatDueDate(chapterKittyPayment?.kitty_due_date)})
+                    (Will be applied if payment is made after ${formatDueDate(dueDate)})
                   </div>
                 </div>
               </div>
@@ -13157,12 +13169,12 @@ const sendKittyReminderToAll = async (req, res) => {
 
                 <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
                   <span style="color: #666; font-weight: 500;">Due Date:</span>
-                  <span style="color: #1a237e; font-weight: 600;">${formatDueDate(chapterKittyPayment?.kitty_due_date)}</span>
+                  <span style="color: #1a237e; font-weight: 600;">${formatDueDate(chapterKittyPayment?.raised_on)}</span>
                 </div>
 
                 ${isDueDatePassed && penaltyAmount ? `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0;">
-                  <span style="color: #d32f2f; font-weight: 500;">Late Payment Penalty:</span>
+                  <span style="color: #d32f2f; font-weight: 500;">Late Meeting Fee Amount:</span>
                   <span style="color: #d32f2f; font-weight: 600; font-size: 18px;">₹${penaltyAmount}</span>
                 </div>
                 ` : ''}
