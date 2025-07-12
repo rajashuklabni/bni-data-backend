@@ -3191,7 +3191,7 @@ const addKittyPayment = async (req, res) => {
                 <span style="color: #666;">Late Meeting Fee Amount:</span>
                 <span style="color: #d32f2f; font-weight: 600; float: right;">₹${penaltyAmount}</span>
                 <div style="color: #666; font-size: 12px; margin-top: 5px; font-style: italic;">
-                  (Will be applied if payment is made after ${formatDueDate(dueDate)})
+                  (Will be applied if payment is made from ${formatDueDate(dueDate)})
                 </div>
               </div>
             </div>
@@ -12927,7 +12927,7 @@ const sendKittyReminder = async (req, res) => {
               <span style="color: #666;">Late Meeting Fee Amount:</span>
               <span style="color: #d32f2f; font-weight: 600; float: right;">₹${penaltyAmount}</span>
               <div style="color: #666; font-size: 12px; margin-top: 5px; font-style: italic;">
-                (Will be applied if payment is made after ${formatDueDate(chapterKittyPayment?.kitty_due_date)})
+                (Will be applied if payment is made from ${formatDueDate(chapterKittyPayment?.kitty_due_date)})
               </div>
             </div>
           </div>
@@ -13148,7 +13148,7 @@ const sendKittyReminderToAll = async (req, res) => {
                   <span style="color: #666;">Late Meeting Fee Amount:</span>
                   <span style="color: #d32f2f; font-weight: 600; float: right;">₹${penaltyAmount}</span>
                   <div style="color: #666; font-size: 12px; margin-top: 5px; font-style: italic;">
-                    (Will be applied if payment is made after ${formatDueDate(dueDate)})
+                    (Will be applied if payment is made from ${formatDueDate(dueDate)})
                   </div>
                 </div>
               </div>

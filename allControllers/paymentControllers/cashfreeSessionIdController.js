@@ -1023,21 +1023,31 @@ const webhookSettlementStatus = async (req, res) => {
       console.log('=== Signature Verification Debug ===');
       console.log('Received signature:', signature);
       console.log('Timestamp:', timestamp);
-      console.log('Raw body:', rawBody);
+      console.log('Raw body length:', rawBody?.length || 0);
+      console.log('Raw body preview:', rawBody?.substring(0, 200) + '...');
       console.log('Client secret length:', process.env.x_client_secret?.length || 0);
       
-      // In production, you might want to reject unsigned webhooks
-      // For now, process the webhook anyway for testing
-      console.log('⚠️ Signature verification failed, but processing webhook anyway for testing');
+      // Check if we're in development/testing mode
+      const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
       
-      // Create a webhook event from the payload
-      webhookEvent = {
-        object: {
-          type: payload.type || 'SETTLEMENT_SUCCESS',
-          event_time: payload.event_time || new Date().toISOString(),
-          data: payload.data || payload
-        }
-      };
+      if (isDevelopment) {
+        console.log('⚠️ Development mode: Processing webhook despite signature failure');
+        
+        // Create a webhook event from the payload
+        webhookEvent = {
+          object: {
+            type: payload.type || 'SETTLEMENT_SUCCESS',
+            event_time: payload.event_time || new Date().toISOString(),
+            data: payload.data || payload
+          }
+        };
+      } else {
+        console.log('❌ Production mode: Rejecting webhook due to signature failure');
+        return res.status(401).json({ 
+          error: 'Webhook signature verification failed',
+          message: signatureError.message 
+        });
+      }
     }
 
     // Extract settlement data with validation
@@ -1115,30 +1125,65 @@ const processSettlementReconciliation = async (settlementData) => {
   try {
     // Convert Cashfree time format to IST for comparison
     const convertToIST = (timeString) => {
-      if (!timeString) return null;
+      if (!timeString || typeof timeString !== 'string') {
+        console.log('Invalid timeString provided:', timeString, 'Type:', typeof timeString);
+        return null;
+      }
       
       try {
         // Handle ISO 8601 format with timezone offset (e.g., "2025-07-09T00:13:11+05:30")
         if (timeString.includes('T') && timeString.includes('+')) {
           // Parse ISO 8601 format directly
           const date = new Date(timeString);
+          if (isNaN(date.getTime())) {
+            console.error('Invalid ISO 8601 format:', timeString);
+            return null;
+          }
           return date.toISOString();
         }
         
         // Handle legacy format (e.g., "2025-07-09 00:13:11")
         if (timeString.includes(' ')) {
-          const [datePart, timePart] = timeString.split(' ');
-          const [year, month, day] = datePart.split('-');
-          const [hour, minute, second] = timePart.split(':');
+          const parts = timeString.split(' ');
+          if (parts.length !== 2) {
+            console.error('Invalid legacy format - expected 2 parts:', timeString);
+            return null;
+          }
+          
+          const [datePart, timePart] = parts;
+          const dateComponents = datePart.split('-');
+          const timeComponents = timePart.split(':');
+          
+          if (dateComponents.length !== 3 || timeComponents.length !== 3) {
+            console.error('Invalid date/time components:', { datePart, timePart });
+            return null;
+          }
+          
+          const [year, month, day] = dateComponents;
+          const [hour, minute, second] = timeComponents;
+          
+          // Validate numeric values
+          const yearNum = parseInt(year);
+          const monthNum = parseInt(month);
+          const dayNum = parseInt(day);
+          const hourNum = parseInt(hour);
+          const minuteNum = parseInt(minute);
+          const secondNum = parseInt(second);
+          
+          if (isNaN(yearNum) || isNaN(monthNum) || isNaN(dayNum) || 
+              isNaN(hourNum) || isNaN(minuteNum) || isNaN(secondNum)) {
+            console.error('Invalid numeric values in date/time:', { year, month, day, hour, minute, second });
+            return null;
+          }
           
           // Create date in IST (UTC+5:30)
           const istDate = new Date(Date.UTC(
-            parseInt(year), 
-            parseInt(month) - 1, // Month is 0-indexed
-            parseInt(day),
-            parseInt(hour) - 5, // Convert IST to UTC
-            parseInt(minute) - 30,
-            parseInt(second)
+            yearNum, 
+            monthNum - 1, // Month is 0-indexed
+            dayNum,
+            hourNum - 5, // Convert IST to UTC
+            minuteNum - 30,
+            secondNum
           ));
           
           return istDate.toISOString();
